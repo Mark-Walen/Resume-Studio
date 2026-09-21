@@ -232,7 +232,7 @@ function fallbackGenerateResume(
     skills: existing?.skills || [
       { id: 's-1', category: '核心技术栈', skills: ['React 19', 'TypeScript', 'Node.js', 'Next.js', 'Tailwind CSS'] },
       { id: 's-2', category: '架构与性能', skills: ['高并发架构', '分布式缓存', 'Web Vitals 优化', 'Microfrontends', 'CI/CD'] },
-      { id: 's-3', category: 'AI 赋能', skills: ['Gemini API 编排', 'RAG 检索增强', 'Prompt 工程', '自动化工作流'] }
+      { id: 's-3', category: 'AI 赋能', skills: ['LLM API 编排', 'RAG 检索增强', 'Prompt 工程', '自动化工作流'] }
     ]
   };
 }

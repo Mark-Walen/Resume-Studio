@@ -29,7 +29,7 @@ export const DEFAULT_RESUME: ResumeData = {
     {
       id: 'skill-3',
       category: 'AI 赋能与现代工程化',
-      skills: ['Gemini API / LLM 编排', 'RAG 向量检索架构', 'CI/CD (GitHub Actions)', '自动化测试 (Vitest/Playwright)', 'APM 全链路监控 (OpenTelemetry)', '微前端架构']
+      skills: ['LLM API / 智能体编排', 'RAG 向量检索架构', 'CI/CD (GitHub Actions)', '自动化测试 (Vitest/Playwright)', 'APM 全链路监控 (OpenTelemetry)', '微前端架构']
     }
   ],
   workExperience: [
@@ -44,10 +44,10 @@ export const DEFAULT_RESUME: ResumeData = {
       current: true,
       highlights: [
         '主导千万级企业服务平台前端微模块架构演进，首屏加载 FCP 从 2.4s 优化至 0.65s，Lighthouse 性能得分提升至 96分。',
-        '设计并落地全自动 AI 知识资产生成管线，基于 Gemini 与向量库实现企业文档自动语义提取与智能问答，日均调用量超 800 万次，Token 消耗成本降低 42%。',
+        '设计并落地全自动 AI 知识资产生成管线，基于多模态大模型与向量库实现企业文档自动语义提取与智能问答，日均调用量超 800 万次，Token 消耗成本降低 42%。',
         '带领 14 人跨端工程团队，搭建标准化 Monorepo 与自动化 CI/CD 流程，发布周期由周级别缩减至小时级持续交付。'
       ],
-      technologies: ['React 19', 'TypeScript', 'Node.js', 'PostgreSQL', 'Redis', 'Docker', 'Gemini SDK']
+      technologies: ['React 19', 'TypeScript', 'Node.js', 'PostgreSQL', 'Redis', 'Docker', 'LLM SDK']
     },
     {
       id: 'exp-2',
@@ -91,7 +91,7 @@ export const DEFAULT_RESUME: ResumeData = {
       description: '面向多角色协同的企业级智能画布与自动化工作流平台，支持拖拽式节点连接、实时音视频旁路协同与大模型自动化任务执行。',
       highlights: [
         '基于 CRDT 算法与 WebSocket 实现了毫秒级多人协同冲突解决，支持 50+ 人同时在同一画布平滑编辑。',
-        '集成 Gemini 多模态模型流式解析能力，实现用户语音/草图实时转换为可运行工作流，转化准确率达 91.5%。'
+        '集成多模态模型流式解析能力，实现用户语音/草图实时转换为可运行工作流，转化准确率达 91.5%。'
       ],
       techStack: ['React 19', 'TypeScript', 'WebSockets', 'CRDT (Yjs)', 'Node.js', 'Tailwind CSS'],
       link: 'https://github.com/vincent-zhang-tech/omniflow'

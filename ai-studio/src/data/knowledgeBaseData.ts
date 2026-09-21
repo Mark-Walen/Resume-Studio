@@ -236,10 +236,10 @@ export const INITIAL_KNOWLEDGE_BASE: KnowledgeItem[] = [
     title: '生产级 LLM 应用架构：Prompt Engineering、确定性 Guardrails 与双轨校验',
     category: 'ai_fullstack',
     difficulty: 'big_tech_must',
-    tags: ['Gemini API', 'Guardrails', 'JSON Schema', 'Prompt工程', '幻觉抑制'],
+    tags: ['LLM API', 'Guardrails', 'JSON Schema', 'Prompt工程', '幻觉抑制'],
     summary: '掌握企业级大模型应用如何摆脱「玩具级提示词」，落地 100% 确定性输出结构、安全围栏与流式交互。',
     corePrinciples: [
-      '结构化输出保证：通过 Gemini API `responseMimeType: "application/json"` 结合 `responseSchema` 强制模型在生成阶段遵循严格的 JSON 语法树。',
+      '结构化输出保证：通过模型服务提供的 JSON Schema 或结构化输出能力，约束生成结果遵循严格的数据结构。',
       '防御注入与越狱：通过系统指令 (System Instructions) 确立不可逾越的角色边界，将用户未信任输入放置在特定分隔符内（如 `<user_context>`），防止提示词注入。',
       '双轨容错机制：当大模型输出偏离业务预期或发生网络异常时，系统必须具备确定性代码降级逻辑（Rule-based Fallback），保障主链路不中断。'
     ],

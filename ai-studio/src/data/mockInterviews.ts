@@ -332,7 +332,7 @@ export const INITIAL_INTERVIEW_RECORDS: InterviewRecord[] = [
         timestampSec: 1200,
         solution: {
           coreConcept: 'LLM 确定性护栏 (Guardrails)、RAG 语义可信度评分 (Faithfulness & Relevance)、双轨制架构 (Dual-Track Architecture) 与人机闭环 (Human-in-the-Loop)。',
-          modelAnswer: '【标准高分回答架构】\n1. 核心架构认知：永远不要让概率模型直接执行不可逆的高危业务动作。LLM 负责语义理解与意图提取，确定性业务系统负责最终规则裁决与执行（双轨制）。\n2. 召回层护栏 (Retrieval Guardrails)：采用混合检索 (Dense Vector + Sparse BM25) + Reranker 重排，计算 Context Relevance 分数；若可信度低于阈值（如 0.82），模型直接触发拒答或转人工，严禁脑补。\n3. 生成层防御：借助结构化输出约束（如 Gemini 的 Type.OBJECT 强制 JSON 校验），并在客户端或网关层配置敏感词过滤与正则语义栅栏。\n4. 意图验证与动作栅栏 (Action Guardrails)：大模型解析出的参数传入确定性代码校验器进行强类型断言与权限校验；对退款、降级等高风险操作强制要求“人机协同确认 (Human-in-the-Loop)”。\n5. 评估闭环：建立 Ragas / TruLens 评估基准，监控真实场景下的准确率并持续反哺微调或 Few-Shot。',
+          modelAnswer: '【标准高分回答架构】\n1. 核心架构认知：永远不要让概率模型直接执行不可逆的高危业务动作。LLM 负责语义理解与意图提取，确定性业务系统负责最终规则裁决与执行（双轨制）。\n2. 召回层护栏 (Retrieval Guardrails)：采用混合检索 (Dense Vector + Sparse BM25) + Reranker 重排，计算 Context Relevance 分数；若可信度低于阈值（如 0.82），模型直接触发拒答或转人工，严禁脑补。\n3. 生成层防御：借助结构化输出约束（如 模型服务的 JSON Schema 或结构化输出约束强制校验），并在客户端或网关层配置敏感词过滤与正则语义栅栏。\n4. 意图验证与动作栅栏 (Action Guardrails)：大模型解析出的参数传入确定性代码校验器进行强类型断言与权限校验；对退款、降级等高风险操作强制要求“人机协同确认 (Human-in-the-Loop)”。\n5. 评估闭环：建立 Ragas / TruLens 评估基准，监控真实场景下的准确率并持续反哺微调或 Few-Shot。',
           commonMistakes: ['只指望 Prompt 提示词压制幻觉，没意识到大模型概率特性的本质', '没有将“意图抽取”与“确定性执行”解耦'],
           strategyNextTime: '提出“双轨架构”（概率意图抽取 + 确定性引擎校验），从检索可信度、输入输出护栏、事务执行栅栏三层递进。',
           keyTakeaway: '概率模型做感知，确定性代码做裁判；高危操作强隔离，人机协同防击穿。'
@@ -367,3 +367,4 @@ export const INITIAL_INTERVIEW_RECORDS: InterviewRecord[] = [
 ];
 
 export const mockInterviews = INITIAL_INTERVIEW_RECORDS;
+

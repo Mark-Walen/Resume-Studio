@@ -51,7 +51,7 @@ export const INITIAL_WORK_DAILY_LOGS: WorkDailyLog[] = [
     tasksCompleted: '研发企业级 RAG 混合检索与 Function Calling 自动化编排工作流。',
     challengesAndSolutions: '传统稠密向量在长尾专有名词与编号查询时准确率仅为 54%。方案：搭建 BM25 稀疏检索 + BGE Embedding 双路召回通道，并引入 BGE-Reranker 交叉编码器对候选切片打分重排序。',
     quantifiableMetrics: '知识库问答检索准确率 Top-3 命中率从 61% 跃升至 92.4%，大模型回答幻觉率降低 47%。',
-    technologiesUsed: ['Gemini API', 'VectorDB', 'BM25', 'Reranker', 'Node.js'],
+    technologiesUsed: ['LLM API', 'VectorDB', 'BM25', 'Reranker', 'Node.js'],
     evidences: [
       {
         id: 'ev-3',
