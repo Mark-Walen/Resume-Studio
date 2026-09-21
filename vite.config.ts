@@ -1,0 +1,577 @@
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import {defineConfig, Plugin} from 'vite';
+import dotenv from 'dotenv';
+import { GoogleGenAI } from '@google/genai';
+
+dotenv.config();
+
+function readBody(req: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk: any) => { data += chunk; });
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function getAiClient(customKey?: string) {
+  const apiKey = customKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('未检测到 Gemini API Key。请在设置中配置 API Key，或在环境变量中提供 GEMINI_API_KEY。');
+  }
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
+
+const apiPlugin: Plugin = {
+  name: 'gemini-api-server',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      const url = req.url?.split('?')[0];
+
+      // 1. Health check
+      if (url === '/api/health' && req.method === 'GET') {
+        const hasEnvKey = !!process.env.GEMINI_API_KEY;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ status: 'ok', hasEnvKey }));
+        return;
+      }
+
+      // 2. Generate Resume
+      if (url === '/api/generate-resume' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { prompt, existingResume, auxiliaryText } = body;
+
+          const systemPrompt = `你是一位顶级技术猎头兼资深架构师简历专家。
+根据用户提供的经历描述（可能来自语音转文字）、现有简历和通过安全杀毒扫描的辅助材料，生成一份结构完整、用词专业、量化成果突出的简历数据。
+严格返回合法 JSON，格式如下：
+{
+  "title": "简历标题（如：资深全栈架构师）",
+  "personalInfo": {
+    "fullName": "姓名",
+    "jobTitle": "求职岗位",
+    "email": "邮箱",
+    "phone": "电话",
+    "location": "城市",
+    "website": "",
+    "github": "",
+    "linkedin": ""
+  },
+  "summary": "专业总结（3-4句话，包含核心优势与工程视野）",
+  "skills": [
+    { "id": "s-1", "category": "分类名称", "skills": ["技能1", "技能2"] }
+  ],
+  "workExperience": [
+    {
+      "id": "w-1",
+      "company": "公司名称",
+      "position": "岗位",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM 或 至今",
+      "current": false,
+      "highlights": ["重点产出1（包含具体指标与STAR原则）", "重点产出2"],
+      "technologies": ["技术1", "技术2"]
+    }
+  ],
+  "projects": [
+    {
+      "id": "p-1",
+      "name": "项目名称",
+      "role": "主导角色",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM",
+      "description": "项目简要背景",
+      "highlights": ["核心技术攻坚点", "可量化收益"],
+      "techStack": ["React", "TypeScript", "Node.js"]
+    }
+  ],
+  "education": [
+    {
+      "id": "e-1",
+      "school": "学校名称",
+      "degree": "学历",
+      "major": "专业",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM",
+      "gpa": "",
+      "honors": []
+    }
+  ],
+  "certificates": []
+}`;
+
+          const userContent = `【用户需求与背景经历】：
+${prompt || '请基于提供的背景优化完善简历'}
+
+${auxiliaryText ? `【辅助资料/项目材料提取内容】：\n${auxiliaryText}\n` : ''}
+${existingResume ? `【参考现有简历】：\n${JSON.stringify(existingResume).slice(0, 4000)}\n` : ''}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: userContent,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            },
+          });
+
+          const rawText = response.text || '{}';
+          const parsed = JSON.parse(rawText);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, data: parsed }));
+        } catch (err: any) {
+          console.error('Error generating resume:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '生成简历失败' }));
+        }
+        return;
+      }
+
+      // 3. Interview Feedback & Unanswered Questions Solution
+      if (url === '/api/interview-feedback' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { companyName, round, position, interviewNotes, questions } = body;
+
+          const systemPrompt = `你是一位国内一线互联网大厂资深面试官。
+请深入分析本次面试记录、现场面经及问答情况：
+1. 输出本次面试总体摘要评价、综合打分（0-100分）、候选人展现的亮点优势、待提升的关键短板，以及现场沟通表达评价。
+2. 尤其对候选人【未答上 (unanswered)】或【表现不佳/答得一般 (struggled/average)】的题目，提供一份极为详尽、可直接落地的解题方案：
+   - 核心考点剖析 (面试官底层到底在考察什么？)
+   - 标准高分回答 (STAR结构/步骤化架构推演)
+   - 常见误区与避坑指南 (绝大多数候选人踩雷的点)
+   - 下次遇到类似问题的应对策略 (一秒建立逻辑框架的方法)
+   - 一句话核心总结
+
+严格输出如下结构的合法 JSON：
+{
+  "summary": {
+    "overview": "面试整体总结回顾",
+    "overallScore": 85,
+    "candidateStrengths": ["亮点1", "亮点2"],
+    "areasToImprove": ["需要提升点1", "需要提升点2"],
+    "communicationFeedback": "沟通反馈"
+  },
+  "questionSolutions": [
+    {
+      "questionId": "对应传入的题目id",
+      "solution": {
+        "coreConcept": "核心考点剖析",
+        "modelAnswer": "标准高分回答",
+        "commonMistakes": ["误区1", "误区2"],
+        "strategyNextTime": "下次应对策略",
+        "keyTakeaway": "一句话核心总结"
+      }
+    }
+  ]
+}`;
+
+          const content = `面试公司: ${companyName}
+面试轮次: ${round}
+目标岗位: ${position}
+现场面经与回顾:
+${interviewNotes || '无特殊面经记录'}
+
+面试问题列表与候选人掌握情况:
+${JSON.stringify(questions, null, 2)}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: content,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            },
+          });
+
+          const rawText = response.text || '{}';
+          const parsed = JSON.parse(rawText);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, data: parsed }));
+        } catch (err: any) {
+          console.error('Error generating interview feedback:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '生成面试反馈失败' }));
+        }
+        return;
+      }
+
+      // 4. Cross-interview Diagnostic Engine
+      if (url === '/api/cross-interview-diagnostic' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { interviews } = body;
+
+          const systemPrompt = `你是一位高阶技术总监兼候选人面试复盘教练。
+用户经过了多轮/多家公司的面试，请深度对比分析所有面试记录：
+1. 聚合统计高频面试考点 (Frequent Questions)：找出被重复考查的技术/行为问题，统计频次，评估平均掌握度，给出复习备战建议。
+2. 识别候选人多次出现的【不当表现】或【未关注的关键盲区】(Repeated Weakness & Blindspots)：
+   - 必须严肃且具有建设性地给予提醒，引起用户高度重视！
+   - 明确指出严重程度 (critical: 致命红线 / warning: 显著丢分点 / notice: 建议优化)、发生过的场次、带来的负面影响，以及纠偏整改行动。
+3. 归纳用户多次未关注的重点及综合提升路径。
+
+严格输出合法 JSON：
+{
+  "frequentQuestions": [
+    {
+      "id": "fq-1",
+      "question": "高频问题名称",
+      "category": "分类",
+      "frequency": 2,
+      "companies": ["公司A", "公司B"],
+      "lastAskedDate": "2026-09-18",
+      "avgMastery": "low 或 medium 或 high",
+      "keyKnowledgePoints": ["考点1", "考点2"],
+      "recommendedPreparation": "具体突击准备指导"
+    }
+  ],
+  "repeatedWeaknessAlerts": [
+    {
+      "id": "wa-1",
+      "severity": "critical",
+      "title": "不当表现/盲区标题",
+      "description": "详细问题描述",
+      "occurrenceCount": 2,
+      "observedInterviews": ["场次1", "场次2"],
+      "behavioralOrTechnical": "technical",
+      "consequence": "负面影响",
+      "correctionAdvice": "立刻采取的纠偏步骤"
+    }
+  ],
+  "overlookedKeyPoints": [
+    "被用户反复忽略的重要关注点1",
+    "被用户反复忽略的重要关注点2"
+  ],
+  "overallImprovementTrajectory": "系统性改进建议"
+}`;
+
+          const content = `以下是用户多轮面试全量记录：
+${JSON.stringify(interviews, null, 2)}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: content,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            },
+          });
+
+          const rawText = response.text || '{}';
+          const parsed = JSON.parse(rawText);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, data: parsed }));
+        } catch (err: any) {
+          console.error('Error generating diagnostic:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '跨轮复盘诊断失败' }));
+        }
+        return;
+      }
+
+      // 5. Parse and Import Resume from Raw Text / Document
+      if (url === '/api/parse-resume' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { rawContent, format } = body;
+          if (!rawContent || typeof rawContent !== 'string' || rawContent.trim().length === 0) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: '请提供待解析的简历内容' }));
+            return;
+          }
+
+          const systemPrompt = `你是一位顶级求职顾问兼简历结构化解析专家。
+你的任务是将用户导入的各种非结构化或半结构化简历文本（包含 PDF文本、Word文本、Markdown 或 JSON 等），
+精准解析、纠错并归纳为标准的 ResumeData JSON 结构。
+严格输出标准 JSON 格式，不含任何包裹字符：
+{
+  "id": "resume-imported-auto",
+  "title": "简历标题（如：资深前端架构师）",
+  "lastModified": "2026-09-21",
+  "personalInfo": {
+    "fullName": "姓名",
+    "jobTitle": "期望职位",
+    "email": "邮箱",
+    "phone": "电话",
+    "location": "城市/地点",
+    "website": "个人主页或博客",
+    "github": "GitHub主页",
+    "linkedin": "领英主页"
+  },
+  "summary": "个人专业综述与核心价值",
+  "skills": [
+    {
+      "id": "s-1",
+      "category": "技能模块名称（如：前端工程与框架、后端服务与并发、DevOps等）",
+      "skills": ["技能1", "技能2"]
+    }
+  ],
+  "workExperience": [
+    {
+      "id": "exp-1",
+      "company": "公司名称",
+      "position": "担任职位",
+      "department": "部门（若有）",
+      "location": "工作地点（若有）",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM 或 至今",
+      "current": false,
+      "highlights": [
+        "成果亮点1（符合STAR原则与数据量化）",
+        "成果亮点2"
+      ],
+      "technologies": ["核心技术栈1", "核心技术栈2"]
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-1",
+      "name": "项目名称",
+      "role": "所任角色",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM",
+      "description": "项目简述",
+      "highlights": ["重点产出/攻坚成果1", "重点产出2"],
+      "techStack": ["技术1", "技术2"],
+      "link": "开源或演示链接（若有）"
+    }
+  ],
+  "education": [
+    {
+      "id": "edu-1",
+      "school": "院校名称",
+      "degree": "学历（如学士、硕士）",
+      "major": "专业",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM",
+      "gpa": "GPA或排名（若有）",
+      "honors": ["荣誉1"]
+    }
+  ],
+  "certificates": [
+    {
+      "id": "cert-1",
+      "name": "证书名称",
+      "issuer": "颁发机构",
+      "date": "YYYY-MM"
+    }
+  ]
+}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: `以下是用户导入的原始简历文本（格式识别：${format || 'text/markdown'}）：\n\n${rawContent.slice(0, 16000)}`,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
+          });
+
+          const rawJson = response.text || '{}';
+          const parsedResume = JSON.parse(rawJson);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, data: parsedResume }));
+        } catch (err: any) {
+          console.error('Error parsing resume:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '简历智能解析导入失败' }));
+        }
+        return;
+      }
+
+      // 6. Job Site Proxy & JD Parsing with Match Analysis
+      if (url === '/api/proxy-jd' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { url: targetUrl, rawJdText, currentResume } = body;
+
+          let fetchedHtmlOrText = '';
+
+          // If URL is provided, fetch via server-side proxy
+          if (targetUrl && typeof targetUrl === 'string' && targetUrl.startsWith('http')) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+              const fetchRes = await fetch(targetUrl, {
+                signal: controller.signal,
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                },
+              });
+              clearTimeout(timeoutId);
+
+              if (fetchRes.ok) {
+                const html = await fetchRes.text();
+                // Strip scripts, styles, and html tags
+                fetchedHtmlOrText = html
+                  .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                  .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+                  .replace(/<(br|p|div|li|tr|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n')
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/&nbsp;/g, ' ')
+                  .replace(/&amp;/g, '&')
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/\n\s*\n/g, '\n')
+                  .trim();
+              }
+            } catch (fetchErr: any) {
+              console.warn('Direct fetch proxy failed or timed out:', fetchErr.message);
+            }
+          }
+
+          // Combine fetched text with any raw JD text provided by the user
+          const combinedJdSource = (rawJdText && rawJdText.trim().length > 0)
+            ? rawJdText
+            : (fetchedHtmlOrText || '');
+
+          if (!combinedJdSource || combinedJdSource.trim().length < 20) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: false,
+              error: '未能从目标招聘网站直接提取出完整岗位信息（可能由于反爬虫验证或内网限制）。请直接将招聘网页中的 JD 文字复制并粘贴在输入框中，AI 仍可为您一键智能解析！'
+            }));
+            return;
+          }
+
+          const systemPrompt = `你是一位拥有大厂招聘经验的资深猎头总监兼技术面试官。
+你的任务是：
+1. 从给定的招聘岗位内容（可能来自网页爬虫提取的文本或用户粘贴的 JD）中提炼规范的企业与职位信息；
+2. 对比候选人当前的简历数据，评估【匹配度得分 (0-100)】、【优势契合点】、【潜在风险缺口】、【定制化简历优化微调建议】、【针对该岗位的专属自荐求职信/开场白】以及【面试前须重点突击的针对性考点】。
+
+严格输出合法 JSON，结构如下：
+{
+  "parsedJd": {
+    "companyName": "公司名称（如：字节跳动、阿里巴巴，若未能提取写目标企业）",
+    "position": "招聘职位全称",
+    "salaryRange": "薪资范围（如：40k-60k · 16薪，未提写面议）",
+    "location": "工作地点/城市",
+    "experienceYears": "经验年限要求（如：5-10年）",
+    "education": "学历要求（如：本科及以上）",
+    "jobDescription": "岗位职责与核心任务精炼概述（150字以内）",
+    "requiredSkills": ["核心硬性技能1", "核心硬性技能2"],
+    "bonusSkills": ["加分技能1", "加分技能2"],
+    "responsibilities": ["职责要点1", "职责要点2", "职责要点3"],
+    "sourceUrl": "${targetUrl || ''}"
+  },
+  "matchAnalysis": {
+    "matchScore": 88,
+    "matchGrade": "S (极高契合) 或 A (高契合) 或 B (基本匹配) 或 C (跨度较大)",
+    "matchSummary": "一句话客观精辟总结候选人与该岗位的契合度与竞争力",
+    "matchingStrengths": [
+      "优势契合点1：结合候选人实际项目或技能说明",
+      "优势契合点2"
+    ],
+    "potentialGaps": [
+      "潜在风险或技能短板1：提醒面试时可能被重点深挖的部分",
+      "潜在风险2"
+    ],
+    "targetedResumeAdvice": [
+      "简历优化建议1：投递该岗位前建议重点强化哪些关键词或数据指标",
+      "简历优化建议2"
+    ],
+    "customizedCoverLetter": "专为该岗位定制的高情商求职打招呼/自荐信正文（200-300字，突出针对性价值，言辞干练自信）",
+    "recommendedInterviewPrep": [
+      "面试突击考点1：该岗位必问技术",
+      "面试突击考点2"
+    ]
+  }
+}`;
+
+          const userPrompt = `【目标岗位 JD 内容】：
+${combinedJdSource.slice(0, 10000)}
+
+【候选人当前简历信息】：
+${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具体简历，请根据常规高级技术人才画像评估'}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: userPrompt,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
+          });
+
+          const rawJson = response.text || '{}';
+          const result = JSON.parse(rawJson);
+
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: true,
+            rawTextLength: combinedJdSource.length,
+            parsedJd: result.parsedJd,
+            matchAnalysis: result.matchAnalysis,
+          }));
+        } catch (err: any) {
+          console.error('Error in proxy-jd:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '获取或解析职位信息失败' }));
+        }
+        return;
+      }
+
+      next();
+    });
+  },
+};
+
+export default defineConfig(() => {
+  return {
+    plugins: [react(), tailwindcss(), apiPlugin],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      hmr: process.env.DISABLE_HMR !== 'true',
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
+});
