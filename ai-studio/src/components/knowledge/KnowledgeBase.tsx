@@ -21,7 +21,8 @@ import {
   Layers,
   Edit3,
   Library,
-  BookMarked
+  BookMarked,
+  X
 } from 'lucide-react';
 
 interface KnowledgeBaseProps {
@@ -45,7 +46,7 @@ const DIFFICULTY_CONFIG: Record<KnowledgeDifficulty, { label: string; color: str
   foundation: { label: '基础通用', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   advanced: { label: '进阶实战', color: 'bg-slate-100 text-slate-800 border-slate-300 font-medium' },
   big_tech_must: { label: '大厂必考', color: 'bg-blue-50 text-blue-700 border-blue-200 font-semibold' },
-  architecture: { label: '架构深度', color: 'bg-slate-900 text-slate-100 border-slate-800 font-semibold' },
+  architecture: { label: '架构深度', color: 'bg-[#1d1d1f] text-slate-100 border-[#38383a] font-semibold' },
 };
 
 export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
@@ -140,10 +141,10 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-[#1d1d1f] text-white p-5 sm:p-6 rounded-2xl border border-[#38383a] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono uppercase bg-slate-800 text-slate-300 border border-slate-700">
+            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono uppercase bg-[#2c2c2e] text-slate-300 border border-[#48484a]">
               Tech Knowledge Base
             </span>
             <span className="text-xs text-slate-400">大厂高频考点 · LeetBook体系专栏 · 针对性攻坚</span>
@@ -159,7 +160,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             <button
               id="btn-open-jd-recommend-kb"
               onClick={() => onOpenJdRecommender()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#2c2c2e] hover:bg-slate-700 text-slate-200 border border-[#48484a] rounded-xl text-xs font-medium transition-colors flex-shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
               <span>根据目标公司推荐考点</span>
@@ -187,12 +188,12 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             onClick={() => setViewMode('leetbook')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               viewMode === 'leetbook'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-[#1d1d1f] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <Library className="w-4 h-4" />
-            <span>📖 LeetBook 深度知识书库 (推荐 · 树状章节/PDF/Word/在线撰写)</span>
+            <span>LeetBook 深度知识书库（推荐 · 树状章节 / PDF / Word / 在线撰写）</span>
           </button>
 
           <button
@@ -200,12 +201,12 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             onClick={() => setViewMode('flashcards')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               viewMode === 'flashcards'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-[#1d1d1f] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <BookMarked className="w-4 h-4" />
-            <span>📚 分类闪卡与考点清单 (原高密度速记版)</span>
+            <span>分类闪卡与考点清单</span>
           </button>
         </div>
 
@@ -289,7 +290,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
           <button
             onClick={() => setActiveDifficulty('all')}
             className={`px-2.5 py-0.5 rounded-md text-[11px] border ${
-              activeDifficulty === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200'
+              activeDifficulty === 'all' ? 'bg-[#2c2c2e] text-white border-[#38383a]' : 'bg-white text-slate-500 border-slate-200'
             }`}
           >
             全部层级
@@ -465,15 +466,15 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
 
       {/* Add Custom Knowledge Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#1d1d1f]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-6">
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-blue-600" />
                 <h3 className="text-base font-bold text-slate-900">新增自定义攻关知识点</h3>
               </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg">
-                ✕
+              <button onClick={() => setIsAddModalOpen(false)} aria-label="关闭" className="text-slate-400 hover:text-slate-600 text-lg">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -587,4 +588,5 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
     </div>
   );
 };
+
 

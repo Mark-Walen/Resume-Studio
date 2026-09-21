@@ -326,8 +326,9 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
               {result.overallCrossComparison}
             </p>
             {result.generalAdvice && (
-              <div className="text-xs text-amber-300/90 pt-1 border-t border-indigo-500/20">
-                💡 <span className="font-semibold">求职专家总评建议：</span> {result.generalAdvice}
+              <div className="text-xs text-amber-300/90 pt-2 border-t border-indigo-500/20 flex items-start gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                <span><span className="font-semibold">求职专家总评建议：</span> {result.generalAdvice}</span>
               </div>
             )}
           </div>
@@ -495,7 +496,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                     )}
 
                     <div className="text-xs text-purple-200/90 leading-relaxed bg-purple-900/30 p-2.5 rounded-lg border border-purple-500/20">
-                      <span className="font-semibold text-purple-300">🎓 面试学术到实战故事线：</span>
+                      <span className="font-semibold text-purple-300 inline-flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" />面试学术到实战故事线：</span>
                       <span className="ml-1">
                         {result.companies[activeTabCompanyIdx].educationFramingAdvice?.academicStorytelling}
                       </span>

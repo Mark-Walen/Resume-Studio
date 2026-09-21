@@ -278,14 +278,14 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
   // If a book is selected, show the LeetBook reader view
   if (selectedBook) {
     return (
-      <div id="leetbook-reader-container" className="flex flex-col h-full bg-slate-900 text-slate-100">
+      <div id="leetbook-reader-container" className="flex flex-col h-full bg-[#1d1d1f] text-slate-100">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-950/80 backdrop-blur z-10">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-[#38383a] bg-[#111113]/80 backdrop-blur z-10">
           <div className="flex items-center space-x-3">
             <button
               id="btn-back-to-library"
               onClick={() => setSelectedBookId(null)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 rounded-lg transition-colors"
+              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-[#2c2c2e]/80 hover:bg-[#2c2c2e] rounded-lg transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>返回书库</span>
@@ -306,7 +306,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
               <button
                 id="btn-jd-recommender-from-reader"
                 onClick={() => onOpenJdRecommender(currentSection?.title)}
-                className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
+                className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-[#2c2c2e] hover:bg-slate-700 border border-[#48484a] rounded-lg transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5 text-blue-400" />
                 <span>基于即将面试公司推荐考点</span>
@@ -330,8 +330,8 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
         {/* Reader Layout: Left Table of Contents, Right Reading pane */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left TOC Drawer */}
-          <aside className="w-80 border-r border-slate-800 bg-slate-950/50 flex flex-col flex-shrink-0">
-            <div className="p-4 border-b border-slate-800/80">
+          <aside className="w-80 border-r border-[#38383a] bg-[#111113]/50 flex flex-col flex-shrink-0">
+            <div className="p-4 border-b border-[#38383a]/80">
               <div className="text-xs text-slate-400 font-medium mb-1">目录索引</div>
               <div className="text-xs text-slate-500 flex items-center justify-between">
                 <span>
@@ -346,7 +346,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             <div className="flex-1 overflow-y-auto p-3 space-y-4">
               {selectedBook.chapters.map((ch) => (
                 <div key={ch.id} className="space-y-1">
-                  <div className="text-xs font-semibold text-slate-300 px-2.5 py-1.5 flex items-center justify-between rounded bg-slate-900/60">
+                  <div className="text-xs font-semibold text-slate-300 px-2.5 py-1.5 flex items-center justify-between rounded bg-[#1d1d1f]/60">
                     <span className="truncate">{ch.title}</span>
                     <span className="text-[10px] text-slate-500 font-mono font-normal">
                       {ch.sections.length} 节
@@ -371,7 +371,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                           className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-start space-x-2 transition-all cursor-pointer select-none ${
                             isActive
                               ? 'bg-blue-600/20 text-blue-200 font-medium border border-blue-500/40 shadow-sm'
-                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-[#1d1d1f]/80'
                           }`}
                         >
                           <button
@@ -411,11 +411,11 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
           </aside>
 
           {/* Right Reading Content Pane */}
-          <main className="flex-1 overflow-y-auto bg-slate-900 px-8 py-8">
+          <main className="flex-1 overflow-y-auto bg-[#1d1d1f] px-8 py-8">
             {currentSection ? (
               <div className="max-w-3xl mx-auto space-y-6">
                 {/* Section header */}
-                <div className="border-b border-slate-800 pb-5">
+                <div className="border-b border-[#38383a] pb-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
@@ -424,7 +424,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                       {currentSection.tags?.map((t) => (
                         <span
                           key={t}
-                          className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono"
+                          className="text-[11px] px-2 py-0.5 rounded bg-[#2c2c2e] text-slate-400 border border-[#48484a] font-mono"
                         >
                           #{t}
                         </span>
@@ -437,7 +437,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                       className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         currentSection.isCompleted
                           ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          : 'bg-[#2c2c2e] text-slate-300 hover:bg-slate-700'
                       }`}
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -471,7 +471,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 </div>
 
                 {/* Bottom Navigation */}
-                <div className="pt-8 border-t border-slate-800 flex items-center justify-between">
+                <div className="pt-8 border-t border-[#38383a] flex items-center justify-between">
                   <div className="text-xs text-slate-400">
                     当前属于专栏：<span className="text-slate-200 font-medium">{selectedBook.title}</span>
                   </div>
@@ -503,15 +503,15 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
         {/* Modal: Add Section */}
         {showAddSectionModal && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+            <div className="bg-[#1d1d1f] border border-[#48484a] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#38383a]">
                 <div className="flex items-center space-x-2">
                   <Edit3 className="w-5 h-5 text-blue-400" />
                   <h3 className="text-base font-semibold text-white">撰写新章节考点</h3>
                 </div>
                 <button
                   onClick={() => setShowAddSectionModal(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#2c2c2e]"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -523,7 +523,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   <select
                     value={newSectionChapterId}
                     onChange={(e) => setNewSectionChapterId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                   >
                     {selectedBook.chapters.map((ch) => (
                       <option key={ch.id} value={ch.id}>
@@ -541,7 +541,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                     placeholder="如：2.2 Seata AT模式底层全局锁与两阶段回滚实战"
                     value={newSectionTitle}
                     onChange={(e) => setNewSectionTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -554,7 +554,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                       max="60"
                       value={newSectionMinutes}
                       onChange={(e) => setNewSectionMinutes(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
@@ -564,7 +564,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                       placeholder="Seata, 分布式事务, UndoLog"
                       value={newSectionTags}
                       onChange={(e) => setNewSectionTags(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -576,7 +576,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                     placeholder="### 一、核心架构机制\n\n在此书写深度考点推演与大厂真实追问..."
                     value={newSectionContent}
                     onChange={(e) => setNewSectionContent(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs font-mono text-white focus:outline-none focus:border-blue-500 resize-none"
                   />
                 </div>
 
@@ -584,7 +584,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAddSectionModal(false)}
-                    className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg"
+                    className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-[#2c2c2e] hover:bg-slate-700 rounded-lg"
                   >
                     取消
                   </button>
@@ -607,7 +607,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
   return (
     <div id="leetbook-library-view" className="space-y-6">
       {/* Header with Search & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1d1d1f] p-5 rounded-2xl border border-[#38383a]">
         <div>
           <div className="flex items-center space-x-2">
             <BookMarked className="w-6 h-6 text-blue-400" />
@@ -628,7 +628,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
               if (books.length > 0) setUploadBookId(books[0].id);
               setShowUploadModal(true);
             }}
-            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all"
+            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-medium text-slate-200 bg-[#2c2c2e] hover:bg-slate-700 border border-[#48484a] rounded-xl transition-all"
           >
             <Upload className="w-3.5 h-3.5 text-slate-300" />
             <span>上传 PDF / Word / 文档</span>
@@ -661,7 +661,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
               className={`px-3.5 py-1.5 text-xs rounded-xl font-medium transition-colors whitespace-nowrap ${
                 activeCategory === cat.key
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'bg-[#2c2c2e]/80 text-slate-400 hover:text-slate-200 hover:bg-[#2c2c2e]'
               }`}
             >
               {cat.label}
@@ -676,7 +676,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             placeholder="搜索书名、考点内容..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-800/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#2c2c2e]/80 border border-[#48484a]/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>
@@ -696,7 +696,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
               key={book.id}
               id={`card-leetbook-${book.id}`}
               onClick={() => handleSelectBook(book)}
-              className="group cursor-pointer rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition-all duration-200 overflow-hidden flex flex-col shadow-sm hover:shadow-xl hover:shadow-blue-500/5"
+              className="group cursor-pointer rounded-2xl bg-[#1d1d1f] border border-[#38383a] hover:border-blue-500/50 transition-all duration-200 overflow-hidden flex flex-col shadow-sm hover:shadow-xl hover:shadow-blue-500/5"
             >
               {/* Card Cover Header */}
               <div
@@ -727,14 +727,14 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 </div>
 
                 {/* Progress bar */}
-                <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                <div className="space-y-1.5 pt-2 border-t border-[#38383a]/80">
                   <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
                     <span>研习进度</span>
-                    <span className="text-blue-400 font-semibold">{progressPercent}%</span>
+                    <span className="text-[#ffa116] font-semibold">{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-[#2c2c2e] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full transition-all duration-300"
+                      className="h-full bg-[#ffa116] rounded-full transition-all duration-300"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -757,8 +757,8 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
       {/* Modal: Create Book */}
       {showCreateBookModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-[#1d1d1f] border border-[#48484a] rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#38383a] pb-3">
               <h3 className="text-base font-bold text-white">创建新知识书册 (LeetBook)</h3>
               <button
                 onClick={() => setShowCreateBookModal(false)}
@@ -777,7 +777,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   placeholder="如：《微服务中台与高可用架构核心实践》"
                   value={newBookTitle}
                   onChange={(e) => setNewBookTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -788,7 +788,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   placeholder="如：击穿服务治理、熔断限流与分库分表"
                   value={newBookSubtitle}
                   onChange={(e) => setNewBookSubtitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -797,7 +797,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 <select
                   value={newBookCategory}
                   onChange={(e: any) => setNewBookCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="backend">后端高并发与架构</option>
                   <option value="frontend">前端性能与工程化</option>
@@ -814,7 +814,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   placeholder="概括该专栏的研习目标与大厂对标岗位..."
                   value={newBookDesc}
                   onChange={(e) => setNewBookDesc(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 resize-none"
                 />
               </div>
 
@@ -822,7 +822,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCreateBookModal(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-[#2c2c2e] rounded-lg"
                 >
                   取消
                 </button>
@@ -841,8 +841,8 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
       {/* Modal: Upload PDF / Word / Document */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-[#1d1d1f] border border-[#48484a] rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#38383a] pb-3">
               <div className="flex items-center space-x-2">
                 <Upload className="w-5 h-5 text-blue-400" />
                 <h3 className="text-base font-bold text-white">导入 PDF / Word / Markdown 文档</h3>
@@ -861,7 +861,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 <select
                   value={uploadBookId}
                   onChange={(e) => setUploadBookId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                 >
                   {books.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -878,12 +878,12 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   placeholder="如：大促高可用保障经验总结"
                   value={uploadChapterTitle}
                   onChange={(e) => setUploadChapterTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-[#2c2c2e] border border-[#48484a] rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               {/* Drag and Drop Box */}
-              <div className="border-2 border-dashed border-slate-700 hover:border-blue-500/80 rounded-xl p-6 text-center space-y-2 bg-slate-800/40 transition-colors">
+              <div className="border-2 border-dashed border-[#48484a] hover:border-blue-500/80 rounded-xl p-6 text-center space-y-2 bg-[#2c2c2e]/40 transition-colors">
                 <FileText className="w-8 h-8 text-slate-500 mx-auto" />
                 <div className="text-xs text-slate-300 font-medium">
                   {uploadFileName ? (
@@ -902,7 +902,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 />
                 <label
                   htmlFor="file-upload-input"
-                  className="inline-block mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-lg cursor-pointer transition-colors"
+                  className="inline-block mt-2 px-3 py-1.5 bg-[#2c2c2e] hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-lg cursor-pointer transition-colors"
                 >
                   选择文件
                 </label>
@@ -912,7 +912,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-[#2c2c2e] rounded-lg"
                 >
                   取消
                 </button>
@@ -932,4 +932,5 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
     </div>
   );
 };
+
 

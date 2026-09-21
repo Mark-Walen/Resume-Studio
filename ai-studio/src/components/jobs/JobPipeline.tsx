@@ -16,7 +16,15 @@ import {
   FileText,
   Clock,
   Sparkles,
-  Link2
+  Link2,
+  Target,
+  Send,
+  ScanSearch,
+  Mic2,
+  BadgeCheck,
+  Archive,
+  Flame,
+  type LucideIcon
 } from 'lucide-react';
 
 interface JobPipelineProps {
@@ -33,13 +41,13 @@ interface JobPipelineProps {
 }
 
 
-const COLUMNS: Array<{ id: ApplicationStatus; title: string; color: string; badgeColor: string }> = [
-  { id: 'wishlist', title: '🎯 预投递目标', color: 'border-slate-300 bg-slate-50/50', badgeColor: 'bg-slate-200 text-slate-700' },
-  { id: 'applied', title: '📨 已投递简历', color: 'border-blue-300 bg-blue-50/30', badgeColor: 'bg-blue-100 text-blue-700' },
-  { id: 'screening', title: '🔎 筛选与初筛', color: 'border-purple-300 bg-purple-50/30', badgeColor: 'bg-purple-100 text-purple-700' },
-  { id: 'interviewing', title: '🎙️ 面试推进中', color: 'border-amber-300 bg-amber-50/30', badgeColor: 'bg-amber-100 text-amber-800' },
-  { id: 'offer', title: '🎉 已斩获 Offer', color: 'border-emerald-300 bg-emerald-50/30', badgeColor: 'bg-emerald-100 text-emerald-800' },
-  { id: 'rejected', title: '📁 未通过/归档', color: 'border-slate-200 bg-slate-50/20', badgeColor: 'bg-slate-100 text-slate-500' }
+const COLUMNS: Array<{ id: ApplicationStatus; title: string; icon: LucideIcon; color: string; badgeColor: string }> = [
+  { id: 'wishlist', title: '预投递目标', icon: Target, color: 'border-slate-300 bg-slate-50/50', badgeColor: 'bg-slate-200 text-slate-700' },
+  { id: 'applied', title: '已投递简历', icon: Send, color: 'border-blue-200 bg-blue-50/30', badgeColor: 'bg-blue-100 text-blue-700' },
+  { id: 'screening', title: '筛选与初筛', icon: ScanSearch, color: 'border-blue-200 bg-blue-50/20', badgeColor: 'bg-blue-100 text-blue-700' },
+  { id: 'interviewing', title: '面试推进中', icon: Mic2, color: 'border-amber-200 bg-amber-50/25', badgeColor: 'bg-amber-100 text-amber-800' },
+  { id: 'offer', title: '已获得 Offer', icon: BadgeCheck, color: 'border-emerald-200 bg-emerald-50/25', badgeColor: 'bg-emerald-100 text-emerald-800' },
+  { id: 'rejected', title: '未通过 / 归档', icon: Archive, color: 'border-slate-200 bg-slate-50/20', badgeColor: 'bg-slate-100 text-slate-500' }
 ];
 
 export const JobPipeline: React.FC<JobPipelineProps> = ({
@@ -112,9 +120,9 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
             className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700"
           >
             <option value="all">全部优先级</option>
-            <option value="high">🔥 重点关注</option>
-            <option value="medium">⚡ 常规意向</option>
-            <option value="low">🌱 储备兜底</option>
+            <option value="high">重点关注</option>
+            <option value="medium">常规意向</option>
+            <option value="low">储备目标</option>
           </select>
         </div>
 
@@ -157,12 +165,13 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3.5 items-start">
         {COLUMNS.map(col => {
           const colJobs = filteredJobs.filter(j => j.status === col.id);
+          const ColumnIcon = col.icon;
 
           return (
             <div key={col.id} className={`rounded-xl border p-3 flex flex-col min-h-[500px] ${col.color}`}>
               {/* Column Header */}
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/80">
-                <span className="text-xs font-bold text-slate-800">{col.title}</span>
+                <span className="text-xs font-bold text-slate-800 inline-flex items-center gap-1.5"><ColumnIcon className="w-3.5 h-3.5" />{col.title}</span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${col.badgeColor}`}>
                   {colJobs.length}
                 </span>
@@ -180,7 +189,7 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
                       <div>
                         <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1">
                           {job.companyName}
-                          {job.priority === 'high' && <span className="text-[10px] text-red-500 font-bold">🔥</span>}
+                          {job.priority === 'high' && <Flame className="w-3 h-3 text-red-500" aria-label="重点关注" />}
                         </h4>
                         <p className="text-slate-600 font-medium text-[11px] mt-0.5">{job.position}</p>
                       </div>
@@ -286,12 +295,12 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
                         onChange={e => onUpdateStatus(job.id, e.target.value as ApplicationStatus)}
                         className="text-[10px] font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5"
                       >
-                        <option value="wishlist">🎯 预投递</option>
-                        <option value="applied">📨 已投递</option>
-                        <option value="screening">🔎 初筛中</option>
-                        <option value="interviewing">🎙️ 面试中</option>
-                        <option value="offer">🎉 Offer</option>
-                        <option value="rejected">📁 归档</option>
+                        <option value="wishlist">预投递</option>
+                        <option value="applied">已投递</option>
+                        <option value="screening">初筛中</option>
+                        <option value="interviewing">面试中</option>
+                        <option value="offer">Offer</option>
+                        <option value="rejected">归档</option>
                       </select>
                     </div>
                   </div>

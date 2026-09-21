@@ -23,9 +23,9 @@ function readBody(req: any): Promise<any> {
 }
 
 function getAiClient(customKey?: string) {
-  const apiKey = customKey || process.env.GEMINI_API_KEY;
+  const apiKey = customKey || process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('未检测到 Gemini API Key。请在设置中配置 API Key，或在环境变量中提供 GEMINI_API_KEY。');
+    throw new Error('未检测到 AI 服务 API Key。请在“AI 服务与隐私设置”中配置个人密钥，或由部署方配置服务端密钥。');
   }
   return new GoogleGenAI({
     apiKey,
@@ -38,14 +38,14 @@ function getAiClient(customKey?: string) {
 }
 
 const apiPlugin: Plugin = {
-  name: 'gemini-api-server',
+  name: 'ai-service-api',
   configureServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const url = req.url?.split('?')[0];
 
       // 1. Health check
       if (url === '/api/health' && req.method === 'GET') {
-        const hasEnvKey = !!process.env.GEMINI_API_KEY;
+        const hasEnvKey = !!(process.env.AI_API_KEY || process.env.GEMINI_API_KEY);
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'ok', hasEnvKey }));
         return;
@@ -55,7 +55,7 @@ const apiPlugin: Plugin = {
       if (url === '/api/generate-resume' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { prompt, existingResume, auxiliaryText } = body;
@@ -151,7 +151,7 @@ ${existingResume ? `【参考现有简历】：\n${JSON.stringify(existingResume
       if (url === '/api/interview-feedback' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { companyName, round, position, interviewNotes, questions } = body;
@@ -225,7 +225,7 @@ ${JSON.stringify(questions, null, 2)}`;
       if (url === '/api/cross-interview-diagnostic' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { interviews } = body;
@@ -303,7 +303,7 @@ ${JSON.stringify(interviews, null, 2)}`;
       if (url === '/api/parse-resume' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { rawContent, format } = body;
@@ -419,7 +419,7 @@ ${JSON.stringify(interviews, null, 2)}`;
       if (url === '/api/proxy-jd' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { url: targetUrl, rawJdText, currentResume } = body;
@@ -560,7 +560,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
       if (url === '/api/recommend-knowledge-points' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { companyName, position, jobDescription, currentResume } = body;
@@ -634,7 +634,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 7000) : '常规高级�
       if (url === '/api/multi-company-resume-optimizer' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { companies, currentResume } = body;
@@ -735,7 +735,7 @@ ${JSON.stringify({
       if (url === '/api/convert-journal-to-resume-bullets' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
           const ai = getAiClient(customKey);
 
           const { journalLogs, targetRole, existingResume } = body;
@@ -838,3 +838,4 @@ export default defineConfig(() => {
     },
   };
 });
+

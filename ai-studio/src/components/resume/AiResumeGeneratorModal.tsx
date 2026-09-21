@@ -300,9 +300,9 @@ export const AiResumeGeneratorModal: React.FC<AiResumeGeneratorModalProps> = ({
                           </div>
                           {scanResult.isSafe ? (
                             <div className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-2">
-                              <span>✓ 后缀白名单校验</span>
-                              <span>✓ 无二进制可执行后门</span>
-                              <span>✓ 无跨站脚本/Prompt注入</span>
+                              <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />后缀白名单校验</span>
+                              <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />无二进制可执行后门</span>
+                              <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />无跨站脚本 / Prompt 注入</span>
                             </div>
                           ) : (
                             <div className="text-[11px] text-red-600 mt-0.5">

@@ -35,11 +35,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMultiOptimize,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-40 bg-white/82 backdrop-blur-xl border-b border-black/8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Logo & Brand */}
         <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-xs tracking-wider text-sm">
+          <div className="w-9 h-9 rounded-[10px] bg-blue-600 text-white flex items-center justify-center font-bold tracking-wide text-sm">
             AI
           </div>
           <div>
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center Tabs Navigation */}
-        <nav className="hidden xl:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl text-xs font-semibold">
+        <nav className="hidden xl:flex items-center gap-1 bg-[#f5f5f7] p-1 rounded-[10px] text-xs font-semibold">
           <button
             id="tab-resume"
             onClick={() => onSelectTab('resume')}
@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenApiKey}
             className="p-2 text-slate-500 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors"
-            title="API Key 与安全设置"
+            title="AI 服务与隐私设置"
           >
             <Key className="w-4 h-4" />
           </button>
@@ -160,7 +160,8 @@ export const Header: React.FC<HeaderProps> = ({
             currentTab === 'resume' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
           }`}
         >
-          📄 简历工坊
+          <FileText className="w-3.5 h-3.5" />
+          简历工坊
         </button>
         <button
           onClick={() => onSelectTab('career')}
@@ -168,7 +169,8 @@ export const Header: React.FC<HeaderProps> = ({
             currentTab === 'career' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
           }`}
         >
-          💼 求职管理
+          <Briefcase className="w-3.5 h-3.5" />
+          求职管理
         </button>
         <button
           onClick={() => onSelectTab('knowledge')}
@@ -176,7 +178,8 @@ export const Header: React.FC<HeaderProps> = ({
             currentTab === 'knowledge' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
           }`}
         >
-          📚 知识与素材
+          <BookOpen className="w-3.5 h-3.5" />
+          知识与素材
         </button>
       </div>
     </header>

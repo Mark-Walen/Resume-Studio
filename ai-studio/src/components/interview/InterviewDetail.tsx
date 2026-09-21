@@ -17,7 +17,9 @@ import {
   ChevronDown,
   ChevronUp,
   FileCheck2,
-  Edit3
+  Edit3,
+  Target,
+  Trophy
 } from 'lucide-react';
 
 interface InterviewDetailProps {
@@ -273,7 +275,7 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
               <ul className="space-y-1 text-emerald-800 pl-1">
                 {record.aiFeedback.strengths.map((s, idx) => (
                   <li key={idx} className="flex items-start gap-1">
-                    <span className="font-bold">✓</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{s}</span>
                   </li>
                 ))}
@@ -400,13 +402,13 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
 
                     {/* Core Concept */}
                     <div>
-                      <div className="font-bold text-indigo-900 text-[11px] mb-0.5">🎯 核心考点剖析 (底层在考察什么):</div>
+                      <div className="font-bold text-indigo-900 text-[11px] mb-0.5 flex items-center gap-1.5"><Target className="w-3.5 h-3.5" />核心考点剖析（底层在考察什么）</div>
                       <p className="text-slate-700 text-xs leading-relaxed">{solution.coreConcept}</p>
                     </div>
 
                     {/* Model Answer */}
                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <div className="font-bold text-slate-900 text-[11px] mb-1">🏆 标准高分回答架构:</div>
+                      <div className="font-bold text-slate-900 text-[11px] mb-1 flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5" />标准高分回答架构</div>
                       <p className="text-slate-800 text-xs whitespace-pre-wrap leading-relaxed font-sans">
                         {solution.modelAnswer}
                       </p>
@@ -429,7 +431,7 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
 
                     {/* Next time strategy */}
                     <div className="bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100 text-xs">
-                      <div className="font-bold text-emerald-900 text-[11px] mb-0.5">💡 下次遇到同类题的应对策略:</div>
+                      <div className="font-bold text-emerald-900 text-[11px] mb-0.5 flex items-center gap-1.5"><Lightbulb className="w-3.5 h-3.5" />下次遇到同类题的应对策略</div>
                       <p className="text-emerald-900 text-[11px] leading-relaxed">{solution.strategyNextTime}</p>
                     </div>
 

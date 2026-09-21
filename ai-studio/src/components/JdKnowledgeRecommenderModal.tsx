@@ -284,10 +284,11 @@ export const JdKnowledgeRecommenderModal: React.FC<JdKnowledgeRecommenderModalPr
 
                     const urgencyLabel =
                       rec.urgency === 'critical'
-                        ? '🔥 必考红线'
+                        ? '必考红线'
                         : rec.urgency === 'high'
-                        ? '⚡ 核心重点'
-                        : '✨ 突出亮点';
+                        ? '核心重点'
+                        : '突出亮点';
+                    const UrgencyIcon = rec.urgency === 'critical' ? ShieldAlert : rec.urgency === 'high' ? AlertTriangle : Sparkles;
 
                     return (
                       <div
@@ -296,8 +297,8 @@ export const JdKnowledgeRecommenderModal: React.FC<JdKnowledgeRecommenderModalPr
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center space-x-2">
-                            <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${urgencyBadge}`}>
-                              {urgencyLabel}
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded border ${urgencyBadge}`}>
+                              <UrgencyIcon className="w-3 h-3" />{urgencyLabel}
                             </span>
                             <h5 className="text-sm font-bold text-white">{rec.title}</h5>
                           </div>
@@ -357,7 +358,7 @@ export const JdKnowledgeRecommenderModal: React.FC<JdKnowledgeRecommenderModalPr
 
                         {/* Preparation Action */}
                         <div className="text-xs text-emerald-300/90 bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-500/20">
-                          <span className="font-semibold text-emerald-300">💡 面试标准回答思路：</span>
+                          <span className="font-semibold text-emerald-300 inline-flex items-center gap-1.5"><Lightbulb className="w-3.5 h-3.5" />面试标准回答思路：</span>
                           <span className="ml-1">{rec.keyPreparationAction}</span>
                         </div>
                       </div>

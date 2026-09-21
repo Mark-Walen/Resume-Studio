@@ -20,7 +20,9 @@ import {
   ExternalLink,
   FileCheck,
   BookmarkPlus,
-  HelpCircle
+  HelpCircle,
+  X,
+  Target
 } from 'lucide-react';
 
 interface JobSiteProxyModalProps {
@@ -131,7 +133,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 text-lg leading-none"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -201,7 +203,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
             <div className="p-8 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-center space-y-3 animate-pulse">
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto" />
               <div className="font-bold text-slate-800 text-sm">
-                正在通过服务器安全代理抓取网页并进行 Gemini AI 人岗匹配诊断...
+                正在通过安全代理获取网页并进行 AI 人岗匹配诊断...
               </div>
               <p className="text-[11px] text-slate-500 max-w-md mx-auto">
                 解析核心职责、必备技能、计算候选人契合度并撰写针对性自荐信
@@ -323,7 +325,8 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {result.matchAnalysis.recommendedInterviewPrep.map((prep, idx) => (
                       <span key={idx} className="px-2.5 py-1 bg-white border border-purple-200 text-purple-900 rounded-lg font-medium text-[11px]">
-                        🎯 {prep}
+                        <Target className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                        <span>{prep}</span>
                       </span>
                     ))}
                   </div>

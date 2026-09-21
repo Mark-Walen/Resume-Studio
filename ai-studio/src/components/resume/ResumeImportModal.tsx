@@ -14,7 +14,10 @@ import {
   UserCheck,
   Briefcase,
   Code2,
-  GraduationCap
+  GraduationCap,
+  FileUp,
+  ClipboardPaste,
+  X
 } from 'lucide-react';
 
 interface ResumeImportModalProps {
@@ -141,7 +144,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 text-lg leading-none"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -152,19 +155,21 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
             <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
               <button
                 onClick={() => { setActiveTab('file'); resetState(); }}
-                className={`flex-1 py-2 rounded-lg font-bold transition-all ${
+                className={`flex-1 py-2 rounded-lg font-bold transition-all inline-flex items-center justify-center gap-2 ${
                   activeTab === 'file' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📂 导入已有文件 (MD / TXT / JSON)
+                <FileUp className="w-4 h-4" />
+                导入已有文件（MD / TXT / JSON）
               </button>
               <button
                 onClick={() => { setActiveTab('paste'); resetState(); }}
-                className={`flex-1 py-2 rounded-lg font-bold transition-all ${
+                className={`flex-1 py-2 rounded-lg font-bold transition-all inline-flex items-center justify-center gap-2 ${
                   activeTab === 'paste' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📝 直接粘贴简历正文 / 格式文本
+                <ClipboardPaste className="w-4 h-4" />
+                直接粘贴简历正文
               </button>
             </div>
           )}
@@ -267,7 +272,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
             <div className="p-8 bg-blue-50/50 rounded-2xl border border-blue-100 text-center space-y-3 animate-pulse">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
               <div className="font-bold text-slate-800 text-sm">
-                {isScanning ? '正在执行文件安全排毒与防注入检查...' : 'Gemini AI 正在将原始简历结构化重构 (STAR提炼)...'}
+                {isScanning ? '正在执行文件安全检查与防注入处理...' : 'AI 服务正在结构化整理简历并提炼 STAR 成果...'}
               </div>
               <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
                 {isScanning

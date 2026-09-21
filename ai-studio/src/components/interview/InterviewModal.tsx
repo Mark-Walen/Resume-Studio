@@ -148,7 +148,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
               {editingRecord ? '编辑面试复盘记录' : '新增面试面经与录音录像'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+          <button onClick={onClose} aria-label="关闭" className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -323,9 +323,9 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                           : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                       }`}
                     >
-                      <option value="unanswered">❌ 未答上 / 卡壳</option>
-                      <option value="struggled">⚠️ 勉强 / 答得一般</option>
-                      <option value="mastered">✅ 流利掌握 / 亮点</option>
+                      <option value="unanswered">未答上 / 卡壳</option>
+                      <option value="struggled">勉强 / 答得一般</option>
+                      <option value="mastered">流利掌握 / 亮点</option>
                     </select>
                     <button
                       type="button"

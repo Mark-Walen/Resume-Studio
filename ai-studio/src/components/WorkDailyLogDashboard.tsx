@@ -16,7 +16,8 @@ import {
   FileText,
   ShieldCheck,
   ArrowRight,
-  BookmarkPlus
+  BookmarkPlus,
+  BarChart3
 } from 'lucide-react';
 import { WorkDailyLog, WorkCategory, EvidenceProof, GeneratedResumeBullet, JournalExtractResponse } from '../types/journal';
 import { ResumeData } from '../types/resume';
@@ -450,7 +451,7 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
 
                   {log.quantifiableMetrics && (
                     <div className="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/20 text-emerald-300">
-                      <span className="font-semibold">📊 量化业务指标：</span>
+                      <span className="font-semibold inline-flex items-center gap-1.5"><BarChart3 className="w-3.5 h-3.5" />量化业务指标：</span>
                       <span className="ml-1 text-emerald-200/90">{log.quantifiableMetrics}</span>
                     </div>
                   )}

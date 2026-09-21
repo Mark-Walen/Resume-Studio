@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getCustomApiKey, saveCustomApiKey } from '../utils/db';
 import { checkApiHealth } from '../services/geminiService';
-import { Key, ShieldCheck, Check, X, ExternalLink, Sparkles, AlertCircle } from 'lucide-react';
+import { KeyRound, ShieldCheck, Check, X } from 'lucide-react';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -45,10 +45,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
       <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
-            <Key className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-bold text-slate-900">Gemini API Key 与安全设置</h2>
+            <KeyRound className="w-5 h-5 text-blue-600" />
+            <h2 className="text-base font-bold text-slate-900">AI 服务与隐私设置</h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+          <button onClick={onClose} aria-label="关闭" className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -57,25 +57,25 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
           {/* Status banner */}
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
             <div>
-              <span className="font-bold text-slate-800">系统环境 API Key 状态: </span>
+              <span className="font-bold text-slate-800">服务端 AI 凭据：</span>
               <span className={hasEnvKey ? 'text-emerald-600 font-bold' : 'text-slate-500 font-medium'}>
-                {hasEnvKey ? '已在环境变量注入 (GEMINI_API_KEY)' : '未配置系统全局 Key'}
+                {hasEnvKey ? '已安全配置' : '未配置'}
               </span>
             </div>
             {hasEnvKey && <ShieldCheck className="w-4 h-4 text-emerald-600" />}
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">自定义 Google Gemini API Key</label>
+            <label className="block font-semibold text-slate-700 mb-1">个人 AI 服务 API Key</label>
             <input
               type="password"
-              placeholder="AIzaSy..."
+              placeholder="输入所选 AI 服务提供的 API Key"
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 font-mono"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              密钥仅保存在当前浏览器本地，用于驱动简历语音/文本生成、面试复盘与未答题解法生成。
+              密钥仅保存在当前浏览器，用于简历生成、面试复盘和知识整理。平台文案不绑定特定模型品牌。
             </p>
           </div>
 

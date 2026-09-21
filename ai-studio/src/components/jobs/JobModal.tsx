@@ -64,7 +64,7 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
               {editingJob ? '编辑投递与目标公司' : '新建预投递/投递记录'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+          <button onClick={onClose} aria-label="关闭" className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -103,12 +103,12 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
                 onChange={e => setFormData({ ...formData, status: e.target.value as ApplicationStatus })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500 bg-white"
               >
-                <option value="wishlist">🎯 预投递目标 (Wishlist)</option>
-                <option value="applied">📨 已投递简历 (Applied)</option>
-                <option value="screening">🔎 简历筛选通过 (Screening)</option>
-                <option value="interviewing">🎙️ 面试中 (Interviewing)</option>
-                <option value="offer">🎉 已拿 Offer (Offer)</option>
-                <option value="rejected">📁 未通过/归档 (Archived)</option>
+                <option value="wishlist">预投递目标</option>
+                <option value="applied">已投递简历</option>
+                <option value="screening">简历筛选通过</option>
+                <option value="interviewing">面试中</option>
+                <option value="offer">已获得 Offer</option>
+                <option value="rejected">未通过 / 归档</option>
               </select>
             </div>
             <div>
@@ -118,9 +118,9 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
                 onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500 bg-white"
               >
-                <option value="high">🔥 重点关注 (High)</option>
-                <option value="medium">⚡ 常规意向 (Medium)</option>
-                <option value="low">🌱 储备兜底 (Low)</option>
+                <option value="high">重点关注</option>
+                <option value="medium">常规意向</option>
+                <option value="low">储备目标</option>
               </select>
             </div>
           </div>

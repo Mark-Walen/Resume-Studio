@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Play
+  Play,
+  X
 } from 'lucide-react';
 import { JobApplication } from '../types/job';
 
@@ -331,7 +332,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                 onClick={() => setShowScheduleModal(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-white"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

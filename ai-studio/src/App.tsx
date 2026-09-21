@@ -60,7 +60,12 @@ import {
   Video,
   BarChart3,
   BookOpen,
-  PenTool
+  PenTool,
+  UserRound,
+  Landmark,
+  Code2,
+  Palette,
+  FileText
 } from 'lucide-react';
 
 type CareerSection = 'pipeline' | 'optimize' | 'calendar' | 'interviews' | 'diagnostics';
@@ -237,7 +242,7 @@ export default function App() {
   const selectedInterview = interviews.find(iv => iv.id === selectedInterviewId);
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* Top Header */}
       <Header
         currentTab={currentTab}
@@ -274,7 +279,8 @@ export default function App() {
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  👔 现代轻简 (推荐)
+                  <UserRound className="w-3.5 h-3.5 inline mr-1.5" />
+                  现代轻简（推荐）
                 </button>
                 <button
                   onClick={() => setTemplateId('classic')}
@@ -284,7 +290,8 @@ export default function App() {
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  🏛️ 经典精炼 (传统大厂)
+                  <Landmark className="w-3.5 h-3.5 inline mr-1.5" />
+                  经典精炼（传统大厂）
                 </button>
                 <button
                   onClick={() => setTemplateId('tech-sidebar')}
@@ -294,7 +301,8 @@ export default function App() {
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  ⚡ 极客双栏 (技能密集)
+                  <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
+                  极客双栏（技能密集）
                 </button>
                 <button
                   onClick={() => setTemplateId('creative')}
@@ -304,7 +312,8 @@ export default function App() {
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  🎨 创意活力 (活力视觉)
+                  <Palette className="w-3.5 h-3.5 inline mr-1.5" />
+                  创意活力（视觉表达）
                 </button>
                 <button
                   onClick={() => setTemplateId('compact')}
@@ -314,7 +323,8 @@ export default function App() {
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  📄 紧凑一页 (高密度排版)
+                  <FileText className="w-3.5 h-3.5 inline mr-1.5" />
+                  紧凑一页（高密度排版）
                 </button>
               </div>
 

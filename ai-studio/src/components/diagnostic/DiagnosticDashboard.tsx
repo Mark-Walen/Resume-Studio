@@ -139,13 +139,14 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
                         alertItem.severity === 'critical'
                           ? 'bg-red-600 text-white'
                           : 'bg-amber-500 text-white'
                       }`}
                     >
-                      {alertItem.severity === 'critical' ? '🚨 致命红线' : '⚠️ 关键短板'}
+                      {alertItem.severity === 'critical' ? <AlertOctagon className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                      {alertItem.severity === 'critical' ? '致命红线' : '关键短板'}
                     </span>
                     <h4 className="font-bold text-sm text-slate-900">{alertItem.title}</h4>
                   </div>

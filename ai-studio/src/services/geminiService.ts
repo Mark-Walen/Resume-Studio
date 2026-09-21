@@ -36,7 +36,7 @@ export async function requestGenerateResume(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         ...params,
@@ -81,7 +81,7 @@ export async function requestInterviewFeedback(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         ...params,
@@ -110,7 +110,7 @@ export async function requestCrossInterviewDiagnostic(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         interviews,
@@ -148,7 +148,7 @@ export async function parseResumeWithAi(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         rawContent,
@@ -183,7 +183,7 @@ export async function fetchAndAnalyzeJd(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         ...params,
@@ -523,7 +523,7 @@ export async function requestRecommendKnowledgePoints(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         ...params,
@@ -554,7 +554,7 @@ export async function requestMultiCompanyResumeOptimizer(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         ...params,
@@ -586,7 +586,7 @@ export async function requestConvertJournalToResumeBullets(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+        ...(customKey ? { 'x-ai-api-key': customKey } : {})
       },
       body: JSON.stringify({
         ...params,
@@ -731,4 +731,5 @@ function fallbackConvertJournalToBullets(logs: WorkDailyLog[], targetRole?: stri
     }))
   };
 }
+
 

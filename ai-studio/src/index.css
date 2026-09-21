@@ -1,1 +1,88 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --color-blue-50: #f0f7ff;
+  --color-blue-100: #e2f0ff;
+  --color-blue-200: #b9dcff;
+  --color-blue-300: #86c2ff;
+  --color-blue-400: #409cff;
+  --color-blue-500: #0a84ff;
+  --color-blue-600: #0071e3;
+  --color-blue-700: #0064c8;
+  --color-blue-800: #004f9e;
+  --color-blue-900: #003b73;
+  --color-blue-950: #001f3f;
+  --color-indigo-50: #f0f7ff;
+  --color-indigo-100: #e2f0ff;
+  --color-indigo-200: #b9dcff;
+  --color-indigo-300: #86c2ff;
+  --color-indigo-400: #409cff;
+  --color-indigo-500: #0a84ff;
+  --color-indigo-600: #0071e3;
+  --color-indigo-700: #0064c8;
+  --color-indigo-800: #004f9e;
+  --color-indigo-900: #003b73;
+  --color-indigo-950: #001f3f;
+}
+
+@layer base {
+  html {
+    background: #f5f5f7;
+    color-scheme: light;
+  }
+
+  body {
+    min-width: 320px;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  a:focus-visible {
+    outline: 3px solid rgba(0, 113, 227, 0.28);
+    outline-offset: 2px;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  select,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+  }
+}
+
+@layer utilities {
+  .text-\[10px\] {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .text-\[11px\] {
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+  }
+}

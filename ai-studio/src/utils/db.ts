@@ -14,7 +14,8 @@ const RESUME_KEY = 'ai_resume_data_v2';
 const JOBS_KEY = 'ai_jobs_data_v2';
 const INTERVIEWS_KEY = 'ai_interviews_data_v2';
 const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v2';
-const API_KEY_STORAGE = 'custom_gemini_api_key_v1';
+const API_KEY_STORAGE = 'custom_ai_api_key_v2';
+const LEGACY_API_KEY_STORAGE = 'custom_gemini_api_key_v1';
 const KNOWLEDGE_KEY = 'ai_knowledge_items_v1';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v1';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v1';
@@ -126,7 +127,7 @@ export function saveInterviewRecords(records: InterviewRecord[]): void {
 
 export function getCustomApiKey(): string {
   try {
-    return localStorage.getItem(API_KEY_STORAGE) || '';
+    return localStorage.getItem(API_KEY_STORAGE) || localStorage.getItem(LEGACY_API_KEY_STORAGE) || '';
   } catch {
     return '';
   }
@@ -136,8 +137,10 @@ export function setCustomApiKey(key: string): void {
   try {
     if (key.trim()) {
       localStorage.setItem(API_KEY_STORAGE, key.trim());
+      localStorage.removeItem(LEGACY_API_KEY_STORAGE);
     } else {
       localStorage.removeItem(API_KEY_STORAGE);
+      localStorage.removeItem(LEGACY_API_KEY_STORAGE);
     }
   } catch (err) {
     console.warn('Failed to save custom api key:', err);
@@ -217,5 +220,4 @@ export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
     console.warn('Failed to save work daily logs:', err);
   }
 }
-
 
