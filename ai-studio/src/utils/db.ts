@@ -17,6 +17,7 @@ const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v3_embedded';
 const API_KEY_STORAGE = 'custom_ai_api_key_v2';
 const LEGACY_API_KEY_STORAGE = 'custom_gemini_api_key_v1';
 const AI_SERVICE_SETTINGS_STORAGE = 'ai_service_settings_v1';
+const AI_SERVICE_PROFILES_STORAGE = 'ai_service_profiles_v2';
 const KNOWLEDGE_KEY = 'ai_knowledge_items_v2_embedded';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v2_embedded';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v2_embedded';
@@ -158,6 +159,16 @@ export interface AiServiceSettings {
   compatibility?: 'openai' | 'anthropic';
 }
 
+export interface AiServiceProfile extends AiServiceSettings {
+  id: string;
+  name: string;
+}
+
+export interface AiServiceProfileStore {
+  activeProfileId: string;
+  profiles: AiServiceProfile[];
+}
+
 const DEFAULT_AI_SETTINGS: AiServiceSettings = {
   provider: 'google',
   model: 'gemini-3.8-flash',
@@ -165,17 +176,66 @@ const DEFAULT_AI_SETTINGS: AiServiceSettings = {
   compatibility: 'openai',
 };
 
-export function getAiServiceSettings(): AiServiceSettings {
+const DEFAULT_AI_PROFILE: AiServiceProfile = {
+  ...DEFAULT_AI_SETTINGS,
+  id: 'default',
+  name: '默认 AI 服务',
+};
+
+function normalizeAiProfile(profile: AiServiceProfile): AiServiceProfile {
+  return {
+    ...DEFAULT_AI_PROFILE,
+    ...profile,
+    id: profile.id || `profile-${Date.now()}`,
+    name: profile.name?.trim() || '未命名配置',
+    apiKey: profile.apiKey?.trim() || '',
+    model: profile.model?.trim() || '',
+    baseUrl: profile.baseUrl?.trim(),
+  };
+}
+
+export function getAiServiceProfileStore(): AiServiceProfileStore {
   try {
-    const raw = localStorage.getItem(AI_SERVICE_SETTINGS_STORAGE);
-    if (raw) return { ...DEFAULT_AI_SETTINGS, ...JSON.parse(raw) };
-    return {
+    const rawProfiles = localStorage.getItem(AI_SERVICE_PROFILES_STORAGE);
+    if (rawProfiles) {
+      const parsed = JSON.parse(rawProfiles) as AiServiceProfileStore;
+      const profiles = (parsed.profiles || []).map(normalizeAiProfile);
+      if (profiles.length) {
+        const activeProfileId = profiles.some(profile => profile.id === parsed.activeProfileId) ? parsed.activeProfileId : profiles[0].id;
+        return { activeProfileId, profiles };
+      }
+    }
+
+    const rawLegacy = localStorage.getItem(AI_SERVICE_SETTINGS_STORAGE);
+    const legacySettings = rawLegacy ? { ...DEFAULT_AI_SETTINGS, ...JSON.parse(rawLegacy) } : {
       ...DEFAULT_AI_SETTINGS,
       apiKey: localStorage.getItem(API_KEY_STORAGE) || localStorage.getItem(LEGACY_API_KEY_STORAGE) || '',
     };
+    return { activeProfileId: DEFAULT_AI_PROFILE.id, profiles: [normalizeAiProfile({ ...DEFAULT_AI_PROFILE, ...legacySettings })] };
   } catch {
-    return DEFAULT_AI_SETTINGS;
+    return { activeProfileId: DEFAULT_AI_PROFILE.id, profiles: [DEFAULT_AI_PROFILE] };
   }
+}
+
+export function saveAiServiceProfileStore(store: AiServiceProfileStore): void {
+  try {
+    const profiles = store.profiles.map(normalizeAiProfile);
+    const activeProfileId = profiles.some(profile => profile.id === store.activeProfileId) ? store.activeProfileId : profiles[0]?.id;
+    if (!profiles.length || !activeProfileId) return;
+    const normalized = { activeProfileId, profiles };
+    localStorage.setItem(AI_SERVICE_PROFILES_STORAGE, JSON.stringify(normalized));
+    const active = profiles.find(profile => profile.id === activeProfileId)!;
+    localStorage.setItem(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(active));
+    if (active.apiKey) localStorage.setItem(API_KEY_STORAGE, active.apiKey); else localStorage.removeItem(API_KEY_STORAGE);
+    localStorage.removeItem(LEGACY_API_KEY_STORAGE);
+  } catch (err) {
+    console.warn('Failed to save AI service profiles:', err);
+  }
+}
+
+export function getAiServiceSettings(): AiServiceSettings {
+  const store = getAiServiceProfileStore();
+  return store.profiles.find(profile => profile.id === store.activeProfileId) || store.profiles[0] || DEFAULT_AI_SETTINGS;
 }
 
 export function setCustomApiKey(key: string): void {
@@ -183,14 +243,12 @@ export function setCustomApiKey(key: string): void {
 }
 
 export function saveAiServiceSettings(settings: AiServiceSettings): void {
-  try {
-    const normalized = { ...settings, apiKey: settings.apiKey.trim(), model: settings.model.trim(), baseUrl: settings.baseUrl?.trim() };
-    localStorage.setItem(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(normalized));
-    if (normalized.apiKey) localStorage.setItem(API_KEY_STORAGE, normalized.apiKey); else localStorage.removeItem(API_KEY_STORAGE);
-    localStorage.removeItem(LEGACY_API_KEY_STORAGE);
-  } catch (err) {
-    console.warn('Failed to save AI service settings:', err);
-  }
+  const store = getAiServiceProfileStore();
+  const activeIndex = store.profiles.findIndex(profile => profile.id === store.activeProfileId);
+  const current = store.profiles[activeIndex] || DEFAULT_AI_PROFILE;
+  const updated = normalizeAiProfile({ ...current, ...settings });
+  if (activeIndex >= 0) store.profiles[activeIndex] = updated; else store.profiles.push(updated);
+  saveAiServiceProfileStore(store);
 }
 
 export const saveCustomApiKey = setCustomApiKey;
