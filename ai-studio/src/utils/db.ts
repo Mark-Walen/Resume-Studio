@@ -155,12 +155,14 @@ export interface AiServiceSettings {
   model: string;
   apiKey: string;
   baseUrl?: string;
+  compatibility?: 'openai' | 'anthropic';
 }
 
 const DEFAULT_AI_SETTINGS: AiServiceSettings = {
   provider: 'google',
   model: 'gemini-3.8-flash',
   apiKey: '',
+  compatibility: 'openai',
 };
 
 export function getAiServiceSettings(): AiServiceSettings {

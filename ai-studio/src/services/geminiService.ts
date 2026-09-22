@@ -15,6 +15,7 @@ async function requestAiApi(path: string, init: RequestInit): Promise<Response> 
       ...(init.headers || {}),
       'x-ai-provider': settings.provider,
       'x-ai-model': settings.model,
+      'x-ai-compatibility': settings.compatibility || 'openai',
       ...(settings.baseUrl ? { 'x-ai-base-url': settings.baseUrl } : {}),
     },
   });

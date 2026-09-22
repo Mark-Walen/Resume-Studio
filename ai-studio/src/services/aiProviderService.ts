@@ -16,7 +16,7 @@ export const AI_PROVIDERS: AiProviderDefinition[] = [
   { id: 'google', name: 'Gemini', description: 'Google AI API', defaultModel: 'gemini-3.8-flash', fallbackModels: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'], baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
   { id: 'deepseek', name: 'DeepSeek', description: 'DeepSeek API', defaultModel: 'deepseek-flash', fallbackModels: ['deepseek-flash', 'deepseek-v4-pro'], baseUrl: 'https://api.deepseek.com' },
   { id: 'zai', name: 'Z.ai / GLM', description: 'Z.ai API', defaultModel: 'glm-4.5', fallbackModels: ['glm-4.5', 'glm-4.5-air'], baseUrl: 'https://api.z.ai/api/paas/v4' },
-  { id: 'custom', name: '自定义兼容服务', description: 'OpenAI 兼容 API', defaultModel: '', fallbackModels: [] },
+  { id: 'custom', name: '自定义兼容服务', description: 'OpenAI / Anthropic', defaultModel: '', fallbackModels: [] },
 ];
 
 export function getProviderDefinition(provider: AiProviderId): AiProviderDefinition {
@@ -34,7 +34,7 @@ export async function fetchProviderModels(settings: AiServiceSettings): Promise<
 
   if (settings.provider === 'google') {
     url = `${baseUrl}/models?key=${encodeURIComponent(settings.apiKey.trim())}&pageSize=1000`;
-  } else if (settings.provider === 'anthropic') {
+  } else if (settings.provider === 'anthropic' || (settings.provider === 'custom' && settings.compatibility === 'anthropic')) {
     headers['x-api-key'] = settings.apiKey.trim();
     headers['anthropic-version'] = '2023-06-01';
     headers['anthropic-dangerous-direct-browser-access'] = 'true';

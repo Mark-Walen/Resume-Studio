@@ -67,8 +67,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
       </div></section>
     );
     if (key === 'certificates') return resume.certificates.length ? (
-      <section key={key} className={blockSpace}><Heading>证书与荣誉</Heading><ul className={`${bodySize} grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-slate-700`}>
-        {resume.certificates.map(item => <li key={item.id}>• <strong>{item.name}</strong>{item.issuer ? ` · ${item.issuer}` : ''}{item.date ? ` · ${item.date}` : ''}</li>)}
+      <section key={key} className={blockSpace}><Heading>证书与荣誉</Heading><ul className={`${bodySize} space-y-1 text-slate-700`}>
+        {resume.certificates.map(item => <li key={item.id} className="flex items-baseline gap-1.5"><span aria-hidden="true">•</span><span><strong>{item.name}</strong>{item.issuer ? ` · ${item.issuer}` : ''}{item.date ? ` · ${item.date}` : ''}</span></li>)}
       </ul></section>
     ) : null;
     if (key.startsWith('custom:')) {

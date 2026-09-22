@@ -16,6 +16,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
   const [isSaved, setIsSaved] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [modelMessage, setModelMessage] = useState('');
+  const [isManualModel, setIsManualModel] = useState(false);
   const provider = useMemo(() => getProviderDefinition(settings.provider), [settings.provider]);
 
   useEffect(() => {
@@ -24,12 +25,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
     const selectedProvider = getProviderDefinition(stored.provider);
     setSettings(stored);
     setModels([...new Set([stored.model, ...selectedProvider.fallbackModels].filter(Boolean))]);
+    setIsManualModel(!stored.model);
     setModelMessage('');
     checkApiHealth().then(res => setHasEnvKey(res.hasEnvKey));
     if (stored.apiKey) {
       setIsLoadingModels(true);
       fetchProviderModels(stored)
-        .then(fetched => { setModels([...new Set([stored.model, ...fetched].filter(Boolean))]); setModelMessage(`已自动获取 ${fetched.length} 个可用模型`); })
+        .then(fetched => { setModels([...new Set([stored.model, ...fetched].filter(Boolean))]); setIsManualModel(!stored.model && fetched.length === 0); setModelMessage(`已自动获取 ${fetched.length} 个可用模型`); })
         .catch(() => setModelMessage('实时模型列表暂不可用，已显示推荐模型，也可手动输入。'))
         .finally(() => setIsLoadingModels(false));
     }
@@ -40,9 +42,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
   const updateSettings = (patch: Partial<AiServiceSettings>) => setSettings(current => ({ ...current, ...patch }));
   const handleProviderChange = (providerId: AiServiceSettings['provider']) => {
     const nextProvider = getProviderDefinition(providerId);
-    const nextSettings = { ...settings, provider: providerId, model: nextProvider.defaultModel, apiKey: '', baseUrl: providerId === 'custom' ? settings.baseUrl : undefined };
+    const nextSettings = { ...settings, provider: providerId, model: nextProvider.defaultModel, apiKey: '', baseUrl: providerId === 'custom' ? settings.baseUrl : undefined, compatibility: providerId === 'custom' ? (settings.compatibility || 'openai') : settings.compatibility };
     setSettings(nextSettings);
     setModels(nextProvider.fallbackModels);
+    setIsManualModel(providerId === 'custom');
     setModelMessage('');
   };
 
@@ -52,7 +55,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
     try {
       const fetched = await fetchProviderModels(settings);
       setModels([...new Set([settings.model, ...fetched].filter(Boolean))]);
-      if (!settings.model && fetched[0]) updateSettings({ model: fetched[0] });
+      if (!settings.model && fetched[0]) {
+        updateSettings({ model: fetched[0] });
+        setIsManualModel(false);
+      }
       setModelMessage(`已获取 ${fetched.length} 个可用模型`);
     } catch (error) {
       setModels([...new Set([settings.model, ...provider.fallbackModels].filter(Boolean))]);
@@ -85,9 +91,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
 
           <section className="space-y-4">
             <div><label className="mb-1.5 block font-semibold text-slate-700">Model Provider</label><select className={inputClass} value={settings.provider} onChange={event => handleProviderChange(event.target.value as AiServiceSettings['provider'])}>{AI_PROVIDERS.map(item => <option key={item.id} value={item.id}>{item.name} · {item.description}</option>)}</select></div>
-            {settings.provider === 'custom' && <div><label className="mb-1.5 block font-semibold text-slate-700">Base URL</label><input className={inputClass} value={settings.baseUrl || ''} onChange={event => updateSettings({ baseUrl: event.target.value })} placeholder="https://example.com/v1" /></div>}
+            {settings.provider === 'custom' && <><div><label className="mb-1.5 block font-semibold text-slate-700">兼容协议</label><select className={inputClass} value={settings.compatibility || 'openai'} onChange={event => { updateSettings({ compatibility: event.target.value as 'openai' | 'anthropic', apiKey: '' }); setModels(settings.model ? [settings.model] : []); setModelMessage(''); }}><option value="openai">OpenAI 兼容</option><option value="anthropic">Anthropic 兼容</option></select></div><div><label className="mb-1.5 block font-semibold text-slate-700">Base URL</label><input className={inputClass} value={settings.baseUrl || ''} onChange={event => updateSettings({ baseUrl: event.target.value })} placeholder="https://example.com/v1" /></div></>}
+            <div><div className="mb-1.5 flex items-center justify-between"><label className="font-semibold text-slate-700">Model Name</label><button type="button" onClick={handleLoadModels} disabled={isLoadingModels} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60">{isLoadingModels ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}获取模型列表</button></div><select className={inputClass} value={isManualModel ? '__manual__' : settings.model} onChange={event => { if (event.target.value === '__manual__') { setIsManualModel(true); updateSettings({ model: '' }); } else { setIsManualModel(false); updateSettings({ model: event.target.value }); } }}><option value="" disabled>请选择模型</option>{models.map(model => <option key={model} value={model}>{model}</option>)}<option value="__manual__">手动输入模型名称…</option></select>{isManualModel && <input className={`${inputClass} mt-2`} value={settings.model} onChange={event => updateSettings({ model: event.target.value })} placeholder="输入模型名称" autoFocus />}{modelMessage && <p className={`mt-1.5 text-[11px] ${modelMessage.startsWith('已') ? 'text-emerald-600' : 'text-amber-700'}`}>{modelMessage}</p>}</div>
             <div><label className="mb-1.5 block font-semibold text-slate-700">API Key</label><div className="relative"><input type={showKey ? 'text' : 'password'} className={`${inputClass} pr-10 font-mono`} value={settings.apiKey} onChange={event => updateSettings({ apiKey: event.target.value })} onBlur={() => settings.apiKey.trim() && handleLoadModels()} placeholder={`输入 ${provider.name} API Key`} /><button type="button" onClick={() => setShowKey(value => !value)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700" aria-label={showKey ? '隐藏密钥' : '显示密钥'}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1 text-[11px] text-slate-400">密钥仅保存在当前浏览器；输入后会向所选 Provider 获取可用模型。</p></div>
-            <div><div className="mb-1.5 flex items-center justify-between"><label className="font-semibold text-slate-700">Model Name</label><button type="button" onClick={handleLoadModels} disabled={isLoadingModels} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60">{isLoadingModels ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}获取模型列表</button></div><input className={inputClass} list="ai-model-options" value={settings.model} onChange={event => updateSettings({ model: event.target.value })} placeholder="选择或输入模型名称" /><datalist id="ai-model-options">{models.map(model => <option key={model} value={model} />)}</datalist>{modelMessage && <p className={`mt-1.5 text-[11px] ${modelMessage.startsWith('已') ? 'text-emerald-600' : 'text-amber-700'}`}>{modelMessage}</p>}</div>
           </section>
 
           <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-[11px] text-blue-900"><div className="flex items-center gap-1.5 font-bold text-blue-950"><ShieldCheck className="h-4 w-4 text-blue-600" />隐私与文件安全</div><ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-blue-800"><li>上传资料仅接受允许的文件类型，并检查文件头与危险内容</li><li>API Key 保存在本机浏览器，不写入简历或附件</li><li>音视频保存在本地 IndexedDB；AI 摘要仅在用户主动生成时调用所选服务</li></ul></div>
