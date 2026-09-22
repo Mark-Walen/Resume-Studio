@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ResumeData, WorkExperience, ProjectExperience, SkillCategory, Education } from '../../types/resume';
-import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, User, Briefcase, FolderGit2, GraduationCap, Wrench } from 'lucide-react';
+import { ResumeData, WorkExperience, ProjectExperience, SkillCategory, Education, CustomResumeSection } from '../../types/resume';
+import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, User, Briefcase, FolderGit2, GraduationCap, Wrench, LayoutList, GripVertical, Upload, X, WalletCards } from 'lucide-react';
+import { RichTextEditor } from './RichTextEditor';
 
 interface ResumeEditorProps {
   resume: ResumeData;
@@ -13,7 +14,64 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
   onChange,
   onOpenAiGenerator,
 }) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'skills' | 'experience' | 'projects' | 'education'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'skills' | 'experience' | 'projects' | 'education' | 'custom'>('info');
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
+
+  const builtInOrder = ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+  const customSections = resume.customSections || [];
+  const sectionOrder = resume.sectionOrder || [...builtInOrder, ...customSections.map(section => `custom:${section.id}`)];
+  const sectionLabels: Record<string, string> = {
+    summary: '个人总结', skills: '专业技能', workExperience: '工作经历', projects: '项目经历', education: '教育背景', certificates: '证书与荣誉'
+  };
+
+  const markChanged = (patch: Partial<ResumeData>) => onChange({ ...resume, ...patch, lastModified: new Date().toISOString().split('T')[0] });
+
+  const handleAvatarUpload = (file?: File) => {
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type) || file.size > 2 * 1024 * 1024) {
+      window.alert('头像仅支持 JPG、PNG 或 WebP，文件大小不超过 2 MB。');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => updatePersonalInfo('avatarUrl', String(reader.result || ''));
+    reader.readAsDataURL(file);
+  };
+
+  const reorderSection = (target: string) => {
+    if (!draggedSection || draggedSection === target) return;
+    const next = [...sectionOrder];
+    const sourceIndex = next.indexOf(draggedSection);
+    const targetIndex = next.indexOf(target);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, draggedSection);
+    markChanged({ sectionOrder: next });
+    setDraggedSection(null);
+  };
+
+  const moveSection = (key: string, direction: -1 | 1) => {
+    const currentIndex = sectionOrder.indexOf(key);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= sectionOrder.length) return;
+    const next = [...sectionOrder];
+    [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
+    markChanged({ sectionOrder: next });
+  };
+
+  const addCustomSection = () => {
+    const section: CustomResumeSection = { id: `custom-${Date.now()}`, title: '自定义模块', content: '<p>在这里填写补充经历、开源贡献、个人作品或其他信息。</p>' };
+    markChanged({ customSections: [...customSections, section], sectionOrder: [...sectionOrder, `custom:${section.id}`] });
+  };
+
+  const updateCustomSection = (id: string, patch: Partial<CustomResumeSection>) => markChanged({
+    customSections: customSections.map(section => section.id === id ? { ...section, ...patch } : section)
+  });
+
+  const removeCustomSection = (id: string) => markChanged({
+    customSections: customSections.filter(section => section.id !== id),
+    sectionOrder: sectionOrder.filter(key => key !== `custom:${id}`)
+  });
 
   const updatePersonalInfo = (field: string, value: string) => {
     onChange({
@@ -156,6 +214,15 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
           <GraduationCap className="w-3.5 h-3.5" />
           教育与证书
         </button>
+        <button
+          onClick={() => setActiveTab('custom')}
+          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
+            activeTab === 'custom' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <LayoutList className="w-3.5 h-3.5" />
+          模块与排版 ({customSections.length})
+        </button>
       </div>
 
       {/* Editor Content Area */}
@@ -163,6 +230,23 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         {/* Tab: Info & Summary */}
         {activeTab === 'info' && (
           <div className="space-y-3.5">
+            <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center text-slate-400 flex-shrink-0">
+                {resume.personalInfo.avatarUrl ? <img src={resume.personalInfo.avatarUrl} alt="简历头像" className="w-full h-full object-cover" /> : <User className="w-8 h-8" />}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 mb-1">个人头像</div>
+                <p className="text-[11px] text-slate-500 mb-2">支持 JPG、PNG、WebP，最大 2 MB。头像会同步到预览和 Word 导出。</p>
+                <div className="flex flex-wrap gap-2">
+                  <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:border-blue-300 cursor-pointer">
+                    <Upload className="w-3.5 h-3.5" />
+                    {resume.personalInfo.avatarUrl ? '更换头像' : '添加头像'}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={event => handleAvatarUpload(event.target.files?.[0])} />
+                  </label>
+                  {resume.personalInfo.avatarUrl && <button type="button" onClick={() => updatePersonalInfo('avatarUrl', '')} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-red-600"><X className="w-3.5 h-3.5" />移除</button>}
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">姓名</label>
@@ -210,6 +294,16 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 />
               </div>
               <div>
+                <label className="flex items-center gap-1 block text-xs font-semibold text-slate-700 mb-1"><WalletCards className="w-3.5 h-3.5" />期望薪资</label>
+                <input
+                  type="text"
+                  value={resume.personalInfo.expectedSalary || ''}
+                  onChange={e => updatePersonalInfo('expectedSalary', e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                  placeholder="例如：18–20K / 面议"
+                />
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">GitHub / 作品集主页</label>
                 <input
                   type="text"
@@ -223,13 +317,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">专业优势与职业总结 (Summary)</label>
-              <textarea
-                rows={4}
-                value={resume.summary}
-                onChange={e => onChange({ ...resume, summary: e.target.value })}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500 leading-relaxed"
-                placeholder="总结您的多年经验、擅长的核心技术架构、攻坚成果与软技能..."
-              />
+              <RichTextEditor value={resume.summary} onChange={summary => markChanged({ summary })} placeholder="总结核心技术、攻坚成果与岗位优势；可像 Notion 一样设置标题、列表和重点。" />
             </div>
           </div>
         )}
@@ -610,6 +698,65 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'custom' && (
+          <div className="space-y-5">
+            <section>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">模块顺序</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">拖动模块调整简历展示顺序，头像与基本信息始终位于顶部。</p>
+                </div>
+                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-full">拖动排序</span>
+              </div>
+              <div className="space-y-2">
+                {sectionOrder.map((key, index) => {
+                  const custom = key.startsWith('custom:') ? customSections.find(section => `custom:${section.id}` === key) : undefined;
+                  return (
+                    <div key={key} draggable onDragStart={() => setDraggedSection(key)} onDragEnd={() => setDraggedSection(null)} onDragOver={event => event.preventDefault()} onDrop={() => reorderSection(key)} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${draggedSection === key ? 'border-blue-400 bg-blue-50 opacity-60' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                      <GripVertical className="w-4 h-4 text-slate-400 cursor-grab" />
+                      <span className="w-5 h-5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-500 flex items-center justify-center">{index + 1}</span>
+                      <span className="flex-1 text-xs font-semibold text-slate-700">{custom?.title || sectionLabels[key] || '自定义模块'}</span>
+                      {custom && <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">自定义</span>}
+                      <div className="flex items-center gap-0.5">
+                        <button type="button" onClick={() => moveSection(key, -1)} disabled={index === 0} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-25" title="上移"><ChevronUp className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => moveSection(key, 1)} disabled={index === sectionOrder.length - 1} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-25" title="下移"><ChevronDown className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">自定义模块</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">适合开源贡献、作品、语言能力、专利或自我评价。</p>
+                </div>
+                <button type="button" onClick={addCustomSection} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">
+                  <Plus className="w-3.5 h-3.5" />添加模块
+                </button>
+              </div>
+
+              {customSections.length === 0 ? (
+                <button type="button" onClick={addCustomSection} className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600">添加第一个自定义模块</button>
+              ) : (
+                <div className="space-y-4">
+                  {customSections.map(section => (
+                    <div key={section.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input value={section.title} onChange={event => updateCustomSection(section.id, { title: event.target.value })} className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold focus:outline-none focus:border-blue-500" placeholder="模块名称" />
+                        <button type="button" onClick={() => removeCustomSection(section.id)} className="p-1.5 text-slate-400 hover:text-red-600" title="删除模块"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <RichTextEditor value={section.content} onChange={content => updateCustomSection(section.id, { content })} placeholder="像 Notion 或语雀一样编辑模块内容…" minHeight="150px" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </div>

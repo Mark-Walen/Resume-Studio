@@ -10,6 +10,15 @@ export interface PersonalInfo {
   github?: string;
   linkedin?: string;
   avatarUrl?: string;
+  expectedSalary?: string;
+}
+
+export type BuiltInResumeSection = 'summary' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates';
+
+export interface CustomResumeSection {
+  id: string;
+  title: string;
+  content: string;
 }
 
 export interface WorkExperience {
@@ -72,6 +81,8 @@ export interface ResumeData {
   projects: ProjectExperience[];
   education: Education[];
   certificates: Certificate[];
+  customSections?: CustomResumeSection[];
+  sectionOrder?: string[];
 }
 
 export interface ResumeTheme {

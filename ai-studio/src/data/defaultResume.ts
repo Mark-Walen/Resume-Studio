@@ -10,6 +10,7 @@ export const DEFAULT_RESUME: ResumeData = {
     email: 'mark_walen@qq.com',
     phone: '+110 xx11703136',
     location: '深圳 / 上海',
+    expectedSalary: '18–20K',
   },
   summary: '4.4 年嵌入式软件开发经验，主要使用 C/C++ 与 Python，熟悉 RISC-V/TL321x、STM32、FreeRTOS、BLE/Coded PHY、私有 Mesh、Bootloader/OTA 与嵌入式存储。能够从底层驱动、无线协议栈和时序调度延伸到 CMake/Kconfig 构建系统、CLI 与 PC 测试工具，并通过链路测试、压力测试和抓包分析推动问题闭环。',
   skills: [
@@ -84,7 +85,9 @@ export const DEFAULT_RESUME: ResumeData = {
   certificates: [
     { id: 'cert-cet4', name: 'CET-4', issuer: '全国大学英语四、六级考试委员会', date: '' },
     { id: 'award-math-2019', name: '湖南城市学院数学竞赛三等奖', issuer: '湖南城市学院', date: '2019-03' }
-  ]
+  ],
+  customSections: [],
+  sectionOrder: ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates']
 };
 
 export const defaultResume = DEFAULT_RESUME;

@@ -72,13 +72,27 @@ export async function getMediaBlob(id: string): Promise<Blob | null> {
 
 // --- Local Storage Helpers ---
 export function loadResumeData(fallback?: ResumeData): ResumeData {
+  const defaults = fallback || DEFAULT_RESUME;
   try {
     const raw = localStorage.getItem(RESUME_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const stored = JSON.parse(raw) as ResumeData;
+      const customSections = stored.customSections || [];
+      const baseOrder = stored.sectionOrder || defaults.sectionOrder || ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+      const validCustomKeys = customSections.map((section) => `custom:${section.id}`);
+      const sectionOrder = [...baseOrder.filter((key) => !key.startsWith('custom:') || validCustomKeys.includes(key)), ...validCustomKeys.filter((key) => !baseOrder.includes(key))];
+      return {
+        ...defaults,
+        ...stored,
+        personalInfo: { ...defaults.personalInfo, ...stored.personalInfo },
+        customSections,
+        sectionOrder,
+      };
+    }
   } catch {
     // fallback
   }
-  return fallback || DEFAULT_RESUME;
+  return defaults;
 }
 
 export function saveResumeData(data: ResumeData): void {
