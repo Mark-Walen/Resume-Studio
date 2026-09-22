@@ -10,7 +10,7 @@ interface ResumeEditorProps {
 }
 
 type ModalKey = 'info' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates' | `custom:${string}`;
-const builtInOrder = ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+const builtInOrder = ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
 const inputClass = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100';
 
 const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
@@ -32,10 +32,13 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
   const [draft, setDraft] = useState<ResumeData | null>(null);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const customSections = resume.customSections || [];
-  const sectionOrder = resume.sectionOrder || [...builtInOrder, ...customSections.map(section => `custom:${section.id}`)];
+  const requestedOrder = [...(resume.sectionOrder || builtInOrder)];
+  if (!requestedOrder.includes('jobIntent')) requestedOrder.splice(Math.max(0, requestedOrder.indexOf('summary')), 0, 'jobIntent');
+  const sectionOrder = [...requestedOrder, ...builtInOrder.filter(key => !requestedOrder.includes(key)), ...customSections.map(section => `custom:${section.id}`).filter(key => !requestedOrder.includes(key))];
 
   const labels: Record<string, { title: string; description: string; icon: React.ElementType }> = {
-    summary: { title: '基本信息与总结', description: '个人资料、求职意向、头像与职业总结', icon: User },
+    jobIntent: { title: '求职意向', description: '目标岗位、意向城市、薪资与到岗时间', icon: Briefcase },
+    summary: { title: '基本信息与个人总结', description: '个人资料、头像与职业总结', icon: User },
     skills: { title: '专业技能', description: `${resume.skills.length} 个技能分类`, icon: Wrench },
     workExperience: { title: '工作经历', description: `${resume.workExperience.length} 段工作经历`, icon: Briefcase },
     projects: { title: '项目经历', description: `${resume.projects.length} 个项目`, icon: FolderGit2 },
@@ -45,7 +48,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
 
   const openModal = (key: string) => {
     setDraft(JSON.parse(JSON.stringify(resume)));
-    setModalKey(key === 'summary' ? 'info' : key as ModalKey);
+    setModalKey(key === 'summary' || key === 'jobIntent' ? 'info' : key as ModalKey);
   };
   const closeModal = () => { setModalKey(null); setDraft(null); };
   const saveModal = () => {

@@ -23,7 +23,7 @@ export interface PersonalInfo {
   availability?: string;
 }
 
-export type BuiltInResumeSection = 'summary' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates';
+export type BuiltInResumeSection = 'jobIntent' | 'summary' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates';
 
 export interface CustomResumeSection {
   id: string;

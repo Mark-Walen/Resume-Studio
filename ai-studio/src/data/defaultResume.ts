@@ -93,7 +93,7 @@ export const DEFAULT_RESUME: ResumeData = {
     { id: 'award-math-2019', name: '湖南城市学院数学竞赛三等奖', issuer: '湖南城市学院', date: '2019-03' }
   ],
   customSections: [],
-  sectionOrder: ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates']
+  sectionOrder: ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates']
 };
 
 export const defaultResume = DEFAULT_RESUME;

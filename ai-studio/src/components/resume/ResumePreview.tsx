@@ -1,11 +1,11 @@
 import React from 'react';
 import { ResumeData, ResumeTemplateId } from '../../types/resume';
-import { Mail, Phone, MapPin, Github, WalletCards } from 'lucide-react';
+import { Mail, Phone, MapPin, Github } from 'lucide-react';
 import { sanitizeRichText, toRichHtml } from '../../utils/richText';
 
 interface ResumePreviewProps { resume: ResumeData; templateId: ResumeTemplateId; }
 
-const builtInSections = ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+const builtInSections = ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
 const templateStyles: Record<ResumeTemplateId, { accent: string; heading: string; rule: string; surface: string; compact?: boolean; centered?: boolean }> = {
   modern: { accent: 'text-blue-600', heading: 'text-slate-900', rule: 'border-blue-500', surface: 'border-slate-200' },
   classic: { accent: 'text-slate-700', heading: 'text-slate-950 uppercase tracking-wider', rule: 'border-slate-800', surface: 'border-slate-300', centered: true },
@@ -18,7 +18,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
   const style = templateStyles[templateId];
   const customSections = resume.customSections || [];
   const customKeys = customSections.map(section => `custom:${section.id}`);
-  const requestedOrder = resume.sectionOrder || builtInSections;
+  const requestedOrder = [...(resume.sectionOrder || builtInSections)];
+  if (!requestedOrder.includes('jobIntent')) requestedOrder.splice(Math.max(0, requestedOrder.indexOf('summary')), 0, 'jobIntent');
   const sectionOrder = [...requestedOrder.filter(key => builtInSections.includes(key) || customKeys.includes(key)), ...builtInSections.filter(key => !requestedOrder.includes(key)), ...customKeys.filter(key => !requestedOrder.includes(key))];
   const bodySize = style.compact ? 'text-[10.5px]' : 'text-xs';
   const blockSpace = style.compact ? 'mb-3' : 'mb-6';
@@ -27,6 +28,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
   const RichContent = ({ value }: { value: string }) => <div className={`resume-rich-text text-slate-700 leading-relaxed ${bodySize}`} dangerouslySetInnerHTML={{ __html: sanitizeRichText(toRichHtml(value)) }} />;
 
   const renderSection = (key: string) => {
+    if (key === 'jobIntent') {
+      const salary = resume.personalInfo.salaryMin && resume.personalInfo.salaryMax ? `${resume.personalInfo.salaryMin}–${resume.personalInfo.salaryMax}` : resume.personalInfo.expectedSalary || '面议';
+      return <section key={key} className={blockSpace}><Heading>求职意向</Heading><div className={`grid grid-cols-2 gap-x-8 gap-y-2 ${bodySize} text-slate-700`}><div><span className="text-slate-500">目标岗位：</span><strong className="text-slate-900">{resume.personalInfo.jobTitle}</strong></div><div><span className="text-slate-500">意向城市：</span>{resume.personalInfo.targetCities || resume.personalInfo.location}</div><div><span className="text-slate-500">期望薪资：</span>{salary}</div><div><span className="text-slate-500">到岗时间：</span>{resume.personalInfo.availability || '需协商'}</div></div></section>;
+    }
     if (key === 'summary') return <section key={key} className={blockSpace}><Heading>个人总结</Heading><RichContent value={resume.summary} /></section>;
     if (key === 'skills') return (
       <section key={key} className={blockSpace}><Heading>专业技能</Heading><div className={`${bodySize} space-y-1.5`}>
@@ -80,7 +85,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
           </div>
           <div className={`${style.compact ? 'text-[10px]' : 'text-xs'} space-y-1 ${style.centered ? 'flex flex-wrap justify-center gap-x-4' : 'sm:text-right'}`}>
             <div className="flex items-center gap-1.5 sm:justify-end"><Mail className="w-3.5 h-3.5" />{resume.personalInfo.email}</div><div className="flex items-center gap-1.5 sm:justify-end"><Phone className="w-3.5 h-3.5" />{resume.personalInfo.phone}</div><div className="flex items-center gap-1.5 sm:justify-end"><MapPin className="w-3.5 h-3.5" />{resume.personalInfo.location}</div>
-            {(resume.personalInfo.salaryMin || resume.personalInfo.expectedSalary) && <div className="flex items-center gap-1.5 sm:justify-end"><WalletCards className="w-3.5 h-3.5" />期望薪资 {resume.personalInfo.salaryMin && resume.personalInfo.salaryMax ? `${resume.personalInfo.salaryMin}–${resume.personalInfo.salaryMax}` : resume.personalInfo.expectedSalary}</div>}{resume.personalInfo.github && <div className="flex items-center gap-1.5 sm:justify-end"><Github className="w-3.5 h-3.5" />{resume.personalInfo.github.replace('https://', '')}</div>}
+            {resume.personalInfo.github && <div className="flex items-center gap-1.5 sm:justify-end"><Github className="w-3.5 h-3.5" />{resume.personalInfo.github.replace('https://', '')}</div>}
           </div>
         </div>
       </header>

@@ -78,7 +78,11 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
     if (raw) {
       const stored = JSON.parse(raw) as ResumeData;
       const customSections = stored.customSections || [];
-      const baseOrder = stored.sectionOrder || defaults.sectionOrder || ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+      const baseOrder = [...(stored.sectionOrder || defaults.sectionOrder || ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'])];
+      if (!baseOrder.includes('jobIntent')) {
+        const summaryIndex = baseOrder.indexOf('summary');
+        baseOrder.splice(summaryIndex >= 0 ? summaryIndex : 0, 0, 'jobIntent');
+      }
       const validCustomKeys = customSections.map((section) => `custom:${section.id}`);
       const sectionOrder = [...baseOrder.filter((key) => !key.startsWith('custom:') || validCustomKeys.includes(key)), ...validCustomKeys.filter((key) => !baseOrder.includes(key))];
       return {
