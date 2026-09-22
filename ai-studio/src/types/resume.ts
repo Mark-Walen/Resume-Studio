@@ -11,6 +11,16 @@ export interface PersonalInfo {
   linkedin?: string;
   avatarUrl?: string;
   expectedSalary?: string;
+  gender?: string;
+  birthDate?: string;
+  workStartDate?: string;
+  ethnicity?: string;
+  politicalStatus?: string;
+  highestEducation?: string;
+  targetCities?: string;
+  salaryMin?: string;
+  salaryMax?: string;
+  availability?: string;
 }
 
 export type BuiltInResumeSection = 'summary' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates';

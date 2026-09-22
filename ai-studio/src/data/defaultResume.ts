@@ -11,6 +11,12 @@ export const DEFAULT_RESUME: ResumeData = {
     phone: '+110 xx11703136',
     location: '深圳 / 上海',
     expectedSalary: '18–20K',
+    workStartDate: '2022-04',
+    highestEducation: '本科',
+    targetCities: '深圳 / 上海',
+    salaryMin: '18K',
+    salaryMax: '20K',
+    availability: '随时到岗',
   },
   summary: '4.4 年嵌入式软件开发经验，主要使用 C/C++ 与 Python，熟悉 RISC-V/TL321x、STM32、FreeRTOS、BLE/Coded PHY、私有 Mesh、Bootloader/OTA 与嵌入式存储。能够从底层驱动、无线协议栈和时序调度延伸到 CMake/Kconfig 构建系统、CLI 与 PC 测试工具，并通过链路测试、压力测试和抓包分析推动问题闭环。',
   skills: [

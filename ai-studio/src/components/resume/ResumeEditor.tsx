@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ResumeData, WorkExperience, ProjectExperience, SkillCategory, Education, CustomResumeSection } from '../../types/resume';
-import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, User, Briefcase, FolderGit2, GraduationCap, Wrench, LayoutList, GripVertical, Upload, X, WalletCards } from 'lucide-react';
+import { ResumeData, WorkExperience, ProjectExperience, SkillCategory, CustomResumeSection } from '../../types/resume';
+import { Briefcase, ChevronDown, ChevronUp, FileBadge, FolderGit2, GraduationCap, GripVertical, LayoutList, Plus, Sparkles, Trash2, Upload, User, Wrench, X } from 'lucide-react';
 import { RichTextEditor } from './RichTextEditor';
 
 interface ResumeEditorProps {
@@ -9,757 +9,133 @@ interface ResumeEditorProps {
   onOpenAiGenerator: () => void;
 }
 
-export const ResumeEditor: React.FC<ResumeEditorProps> = ({
-  resume,
-  onChange,
-  onOpenAiGenerator,
-}) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'skills' | 'experience' | 'projects' | 'education' | 'custom'>('info');
-  const [draggedSection, setDraggedSection] = useState<string | null>(null);
+type ModalKey = 'info' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates' | `custom:${string}`;
+const builtInOrder = ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+const inputClass = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100';
 
-  const builtInOrder = ['summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
+  <label className="block"><span className="mb-1.5 block text-[11px] font-medium text-slate-500">{label}{required && <span className="ml-1 text-slate-400">（必填）</span>}</span>{children}</label>
+);
+
+const ModalShell = ({ title, onClose, onSave, children, danger }: { title: string; onClose: () => void; onSave: () => void; children: React.ReactNode; danger?: React.ReactNode }) => (
+  <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+    <div role="dialog" aria-modal="true" aria-label={title} className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4"><h2 className="text-lg font-bold text-slate-950">{title}</h2><button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" title="关闭"><X className="h-5 w-5" /></button></div>
+      <div className="overflow-y-auto px-6 py-5">{children}</div>
+      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/70 px-6 py-4"><div>{danger}</div><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">取消</button><button type="button" onClick={onSave} className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700">完成</button></div></div>
+    </div>
+  </div>
+);
+
+export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, onOpenAiGenerator }) => {
+  const [modalKey, setModalKey] = useState<ModalKey | null>(null);
+  const [draft, setDraft] = useState<ResumeData | null>(null);
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const customSections = resume.customSections || [];
   const sectionOrder = resume.sectionOrder || [...builtInOrder, ...customSections.map(section => `custom:${section.id}`)];
-  const sectionLabels: Record<string, string> = {
-    summary: '个人总结', skills: '专业技能', workExperience: '工作经历', projects: '项目经历', education: '教育背景', certificates: '证书与荣誉'
+
+  const labels: Record<string, { title: string; description: string; icon: React.ElementType }> = {
+    summary: { title: '基本信息与总结', description: '个人资料、求职意向、头像与职业总结', icon: User },
+    skills: { title: '专业技能', description: `${resume.skills.length} 个技能分类`, icon: Wrench },
+    workExperience: { title: '工作经历', description: `${resume.workExperience.length} 段工作经历`, icon: Briefcase },
+    projects: { title: '项目经历', description: `${resume.projects.length} 个项目`, icon: FolderGit2 },
+    education: { title: '教育背景', description: `${resume.education.length} 段教育经历`, icon: GraduationCap },
+    certificates: { title: '证书与荣誉', description: `${resume.certificates.length} 项证书或荣誉`, icon: FileBadge },
   };
 
-  const markChanged = (patch: Partial<ResumeData>) => onChange({ ...resume, ...patch, lastModified: new Date().toISOString().split('T')[0] });
+  const openModal = (key: string) => {
+    setDraft(JSON.parse(JSON.stringify(resume)));
+    setModalKey(key === 'summary' ? 'info' : key as ModalKey);
+  };
+  const closeModal = () => { setModalKey(null); setDraft(null); };
+  const saveModal = () => {
+    if (!draft) return;
+    const personalInfo = { ...draft.personalInfo };
+    if (personalInfo.salaryMin || personalInfo.salaryMax) personalInfo.expectedSalary = [personalInfo.salaryMin, personalInfo.salaryMax].filter(Boolean).join('–');
+    onChange({ ...draft, personalInfo, lastModified: new Date().toISOString().split('T')[0] });
+    closeModal();
+  };
+  const updateDraft = (patch: Partial<ResumeData>) => draft && setDraft({ ...draft, ...patch });
+  const updatePersonal = (field: string, value: string) => draft && setDraft({ ...draft, personalInfo: { ...draft.personalInfo, [field]: value } });
 
-  const handleAvatarUpload = (file?: File) => {
+  const handleAvatar = (file?: File) => {
     if (!file) return;
-    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowed.includes(file.type) || file.size > 2 * 1024 * 1024) {
-      window.alert('头像仅支持 JPG、PNG 或 WebP，文件大小不超过 2 MB。');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => updatePersonalInfo('avatarUrl', String(reader.result || ''));
-    reader.readAsDataURL(file);
-  };
-
-  const reorderSection = (target: string) => {
-    if (!draggedSection || draggedSection === target) return;
-    const next = [...sectionOrder];
-    const sourceIndex = next.indexOf(draggedSection);
-    const targetIndex = next.indexOf(target);
-    if (sourceIndex < 0 || targetIndex < 0) return;
-    next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, draggedSection);
-    markChanged({ sectionOrder: next });
-    setDraggedSection(null);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) { window.alert('头像仅支持 JPG、PNG 或 WebP，文件大小不超过 2 MB。'); return; }
+    const reader = new FileReader(); reader.onload = () => updatePersonal('avatarUrl', String(reader.result || '')); reader.readAsDataURL(file);
   };
 
   const moveSection = (key: string, direction: -1 | 1) => {
-    const currentIndex = sectionOrder.indexOf(key);
-    const nextIndex = currentIndex + direction;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= sectionOrder.length) return;
-    const next = [...sectionOrder];
-    [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
-    markChanged({ sectionOrder: next });
+    const index = sectionOrder.indexOf(key); const target = index + direction;
+    if (index < 0 || target < 0 || target >= sectionOrder.length) return;
+    const next = [...sectionOrder]; [next[index], next[target]] = [next[target], next[index]];
+    onChange({ ...resume, sectionOrder: next });
+  };
+  const dropSection = (target: string) => {
+    if (!draggedSection || draggedSection === target) return;
+    const next = [...sectionOrder]; const from = next.indexOf(draggedSection); const to = next.indexOf(target);
+    if (from < 0 || to < 0) return; next.splice(from, 1); next.splice(to, 0, draggedSection);
+    onChange({ ...resume, sectionOrder: next }); setDraggedSection(null);
+  };
+  const addCustom = () => {
+    const section: CustomResumeSection = { id: `custom-${Date.now()}`, title: '自定义模块', content: '<p>填写开源贡献、个人作品、语言能力或其他补充信息。</p>' };
+    const next = { ...resume, customSections: [...customSections, section], sectionOrder: [...sectionOrder, `custom:${section.id}`] };
+    setDraft(JSON.parse(JSON.stringify(next))); setModalKey(`custom:${section.id}`);
   };
 
-  const addCustomSection = () => {
-    const section: CustomResumeSection = { id: `custom-${Date.now()}`, title: '自定义模块', content: '<p>在这里填写补充经历、开源贡献、个人作品或其他信息。</p>' };
-    markChanged({ customSections: [...customSections, section], sectionOrder: [...sectionOrder, `custom:${section.id}`] });
-  };
-
-  const updateCustomSection = (id: string, patch: Partial<CustomResumeSection>) => markChanged({
-    customSections: customSections.map(section => section.id === id ? { ...section, ...patch } : section)
-  });
-
-  const removeCustomSection = (id: string) => markChanged({
-    customSections: customSections.filter(section => section.id !== id),
-    sectionOrder: sectionOrder.filter(key => key !== `custom:${id}`)
-  });
-
-  const updatePersonalInfo = (field: string, value: string) => {
-    onChange({
-      ...resume,
-      personalInfo: {
-        ...resume.personalInfo,
-        [field]: value
-      },
-      lastModified: new Date().toISOString().split('T')[0]
-    });
-  };
-
-  // Work Experience
-  const addExperience = () => {
-    const newExp: WorkExperience = {
-      id: 'exp-' + Date.now(),
-      company: '新公司名称',
-      position: '职位头衔',
-      startDate: '2024-01',
-      endDate: '至今',
-      current: true,
-      highlights: ['主导核心功能开发，提升系统稳定性与业务吞吐量。']
-    };
-    onChange({
-      ...resume,
-      workExperience: [newExp, ...resume.workExperience]
-    });
-  };
-
-  const removeExperience = (id: string) => {
-    onChange({
-      ...resume,
-      workExperience: resume.workExperience.filter(e => e.id !== id)
-    });
-  };
-
-  const updateExperience = (id: string, field: keyof WorkExperience, value: any) => {
-    onChange({
-      ...resume,
-      workExperience: resume.workExperience.map(e => e.id === id ? { ...e, [field]: value } : e)
-    });
-  };
-
-  // Project Experience
-  const addProject = () => {
-    const newProj: ProjectExperience = {
-      id: 'proj-' + Date.now(),
-      name: '新项目名称',
-      role: '主导研发',
-      startDate: '2024-01',
-      endDate: '2024-06',
-      description: '简要说明项目背景与核心目标。',
-      highlights: ['完成核心驱动或协议模块设计、联调与异常路径验证。'],
-      techStack: ['C/C++', 'FreeRTOS', 'STM32']
-    };
-    onChange({
-      ...resume,
-      projects: [newProj, ...resume.projects]
-    });
-  };
-
-  const removeProject = (id: string) => {
-    onChange({
-      ...resume,
-      projects: resume.projects.filter(p => p.id !== id)
-    });
-  };
-
-  const updateProject = (id: string, field: keyof ProjectExperience, value: any) => {
-    onChange({
-      ...resume,
-      projects: resume.projects.map(p => p.id === id ? { ...p, [field]: value } : p)
-    });
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-      {/* Editor Header */}
-      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900">简历内容编辑</h2>
-          <p className="text-xs text-slate-500">实时同步预览，支持多模块增删改</p>
+  const renderInfo = () => draft && (
+    <div className="space-y-7">
+      <section><h3 className="mb-4 text-sm font-bold text-slate-950">个人信息</h3><div className="grid gap-5 md:grid-cols-[1fr_112px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="姓名" required><input className={inputClass} value={draft.personalInfo.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></Field>
+          <Field label="性别"><select className={inputClass} value={draft.personalInfo.gender || ''} onChange={e => updatePersonal('gender', e.target.value)}><option value="">请选择</option><option>男</option><option>女</option><option>不展示</option></select></Field>
+          <Field label="出生年月"><input type="month" className={inputClass} value={draft.personalInfo.birthDate || ''} onChange={e => updatePersonal('birthDate', e.target.value)} /></Field>
+          <Field label="参加工作时间"><input type="month" className={inputClass} value={draft.personalInfo.workStartDate || ''} onChange={e => updatePersonal('workStartDate', e.target.value)} /></Field>
+          <Field label="手机号" required><input className={inputClass} value={draft.personalInfo.phone} onChange={e => updatePersonal('phone', e.target.value)} /></Field>
+          <Field label="邮箱" required><input type="email" className={inputClass} value={draft.personalInfo.email} onChange={e => updatePersonal('email', e.target.value)} /></Field>
+          <Field label="籍贯 / 民族"><input className={inputClass} value={draft.personalInfo.ethnicity || ''} onChange={e => updatePersonal('ethnicity', e.target.value)} placeholder="按需填写" /></Field>
+          <Field label="政治面貌"><select className={inputClass} value={draft.personalInfo.politicalStatus || ''} onChange={e => updatePersonal('politicalStatus', e.target.value)}><option value="">不展示</option><option>群众</option><option>共青团员</option><option>中共党员</option></select></Field>
+          <Field label="所在地"><input className={inputClass} value={draft.personalInfo.location} onChange={e => updatePersonal('location', e.target.value)} /></Field>
+          <Field label="最高学历"><select className={inputClass} value={draft.personalInfo.highestEducation || ''} onChange={e => updatePersonal('highestEducation', e.target.value)}><option value="">请选择</option><option>大专</option><option>本科</option><option>硕士</option><option>博士</option></select></Field>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            id="btn-open-ai-generator"
-            onClick={onOpenAiGenerator}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            AI 语音/经历生成
-          </button>
-        </div>
-      </div>
-
-      {/* Editor Sub-Tabs */}
-      <div className="flex border-b border-slate-200 bg-white px-2 overflow-x-auto text-xs font-medium">
-        <button
-          onClick={() => setActiveTab('info')}
-          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === 'info' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <User className="w-3.5 h-3.5" />
-          基本信息与总结
-        </button>
-        <button
-          onClick={() => setActiveTab('skills')}
-          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === 'skills' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Wrench className="w-3.5 h-3.5" />
-          专业技能 ({resume.skills.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('experience')}
-          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === 'experience' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Briefcase className="w-3.5 h-3.5" />
-          工作经历 ({resume.workExperience.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('projects')}
-          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === 'projects' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <FolderGit2 className="w-3.5 h-3.5" />
-          项目经历 ({resume.projects.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('education')}
-          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === 'education' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <GraduationCap className="w-3.5 h-3.5" />
-          教育与证书
-        </button>
-        <button
-          onClick={() => setActiveTab('custom')}
-          className={`flex items-center gap-1.5 py-2.5 px-3 border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === 'custom' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <LayoutList className="w-3.5 h-3.5" />
-          模块与排版 ({customSections.length})
-        </button>
-      </div>
-
-      {/* Editor Content Area */}
-      <div className="p-4 overflow-y-auto max-h-[720px] space-y-4">
-        {/* Tab: Info & Summary */}
-        {activeTab === 'info' && (
-          <div className="space-y-3.5">
-            <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center text-slate-400 flex-shrink-0">
-                {resume.personalInfo.avatarUrl ? <img src={resume.personalInfo.avatarUrl} alt="简历头像" className="w-full h-full object-cover" /> : <User className="w-8 h-8" />}
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-slate-900 mb-1">个人头像</div>
-                <p className="text-[11px] text-slate-500 mb-2">支持 JPG、PNG、WebP，最大 2 MB。头像会同步到预览和 Word 导出。</p>
-                <div className="flex flex-wrap gap-2">
-                  <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:border-blue-300 cursor-pointer">
-                    <Upload className="w-3.5 h-3.5" />
-                    {resume.personalInfo.avatarUrl ? '更换头像' : '添加头像'}
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={event => handleAvatarUpload(event.target.files?.[0])} />
-                  </label>
-                  {resume.personalInfo.avatarUrl && <button type="button" onClick={() => updatePersonalInfo('avatarUrl', '')} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-red-600"><X className="w-3.5 h-3.5" />移除</button>}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">姓名</label>
-                <input
-                  type="text"
-                  value={resume.personalInfo.fullName}
-                  onChange={e => updatePersonalInfo('fullName', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">求职岗位 / 头衔</label>
-                <input
-                  type="text"
-                  value={resume.personalInfo.jobTitle}
-                  onChange={e => updatePersonalInfo('jobTitle', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">电子邮箱</label>
-                <input
-                  type="email"
-                  value={resume.personalInfo.email}
-                  onChange={e => updatePersonalInfo('email', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">联系电话</label>
-                <input
-                  type="tel"
-                  value={resume.personalInfo.phone}
-                  onChange={e => updatePersonalInfo('phone', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">所在城市 / 偏好</label>
-                <input
-                  type="text"
-                  value={resume.personalInfo.location}
-                  onChange={e => updatePersonalInfo('location', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="flex items-center gap-1 block text-xs font-semibold text-slate-700 mb-1"><WalletCards className="w-3.5 h-3.5" />期望薪资</label>
-                <input
-                  type="text"
-                  value={resume.personalInfo.expectedSalary || ''}
-                  onChange={e => updatePersonalInfo('expectedSalary', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                  placeholder="例如：18–20K / 面议"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">GitHub / 作品集主页</label>
-                <input
-                  type="text"
-                  value={resume.personalInfo.github || ''}
-                  onChange={e => updatePersonalInfo('github', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                  placeholder="https://github.com/..."
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">专业优势与职业总结 (Summary)</label>
-              <RichTextEditor value={resume.summary} onChange={summary => markChanged({ summary })} placeholder="总结核心技术、攻坚成果与岗位优势；可像 Notion 一样设置标题、列表和重点。" />
-            </div>
-          </div>
-        )}
-
-        {/* Tab: Skills */}
-        {activeTab === 'skills' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-500">将技能按类别分组展示，便于 HR / 技术面试官快速匹配岗位</span>
-              <button
-                onClick={() => {
-                  const newCat: SkillCategory = {
-                    id: 'skill-' + Date.now(),
-                    category: '新技能类别',
-                    skills: ['技能1', '技能2']
-                  };
-                  onChange({ ...resume, skills: [...resume.skills, newCat] });
-                }}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                添加技能分类
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {resume.skills.map((cat, idx) => (
-                <div key={cat.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 relative">
-                  <div className="flex items-center justify-between mb-2">
-                    <input
-                      type="text"
-                      value={cat.category}
-                      onChange={e => {
-                        const updated = [...resume.skills];
-                        updated[idx].category = e.target.value;
-                        onChange({ ...resume, skills: updated });
-                      }}
-                      className="font-bold text-xs bg-white px-2 py-1 rounded border border-slate-300 w-44"
-                    />
-                    <button
-                      onClick={() => {
-                        onChange({ ...resume, skills: resume.skills.filter(s => s.id !== cat.id) });
-                      }}
-                      className="text-slate-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <label className="block text-[11px] text-slate-500 mb-1">具体技能点 (英文逗号或换行分隔):</label>
-                  <textarea
-                    rows={2}
-                    value={cat.skills.join(', ')}
-                    onChange={e => {
-                      const list = e.target.value.split(/[,，、\n]/).map(s => s.trim()).filter(Boolean);
-                      const updated = [...resume.skills];
-                      updated[idx].skills = list;
-                      onChange({ ...resume, skills: updated });
-                    }}
-                    className="w-full text-xs p-2 bg-white rounded border border-slate-200"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab: Experience */}
-        {activeTab === 'experience' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-500">按倒序记录工作经历，遵循 STAR 原则突出量化指标</span>
-              <button
-                onClick={addExperience}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                添加经历
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {resume.workExperience.map(exp => (
-                <div key={exp.id} className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
-                  <div className="flex justify-between items-center">
-                    <div className="grid grid-cols-2 gap-2 flex-1 mr-2">
-                      <input
-                        type="text"
-                        placeholder="公司名称"
-                        value={exp.company}
-                        onChange={e => updateExperience(exp.id, 'company', e.target.value)}
-                        className="px-2 py-1 text-xs font-bold bg-white border border-slate-300 rounded"
-                      />
-                      <input
-                        type="text"
-                        placeholder="岗位头衔"
-                        value={exp.position}
-                        onChange={e => updateExperience(exp.id, 'position', e.target.value)}
-                        className="px-2 py-1 text-xs bg-white border border-slate-300 rounded"
-                      />
-                    </div>
-                    <button
-                      onClick={() => removeExperience(exp.id)}
-                      className="text-slate-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <input
-                      type="text"
-                      placeholder="开始时间 (如: 2023-03)"
-                      value={exp.startDate}
-                      onChange={e => updateExperience(exp.id, 'startDate', e.target.value)}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="结束时间 (如: 至今)"
-                      value={exp.endDate}
-                      onChange={e => updateExperience(exp.id, 'endDate', e.target.value)}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="部门与城市"
-                      value={exp.department || ''}
-                      onChange={e => updateExperience(exp.id, 'department', e.target.value)}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">主要产出与职责 (每行一条):</label>
-                    <textarea
-                      rows={3}
-                      value={exp.highlights.join('\n')}
-                      onChange={e => {
-                        const lines = e.target.value.split('\n').filter(Boolean);
-                        updateExperience(exp.id, 'highlights', lines);
-                      }}
-                      className="w-full text-xs p-2 bg-white rounded border border-slate-200 leading-relaxed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-500 mb-1">关联核心技术 (逗号分隔):</label>
-                    <input
-                      type="text"
-                      value={(exp.technologies || []).join(', ')}
-                      onChange={e => {
-                        const list = e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-                        updateExperience(exp.id, 'technologies', list);
-                      }}
-                      className="w-full px-2 py-1 text-xs bg-white rounded border border-slate-200"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab: Projects */}
-        {activeTab === 'projects' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-500">重点项目经验 (突出架构设计、难点攻关与量化结果)</span>
-              <button
-                onClick={addProject}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                添加项目
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {resume.projects.map(proj => (
-                <div key={proj.id} className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="grid grid-cols-2 gap-2 flex-1 mr-2">
-                      <input
-                        type="text"
-                        placeholder="项目名称"
-                        value={proj.name}
-                        onChange={e => updateProject(proj.id, 'name', e.target.value)}
-                        className="px-2 py-1 text-xs font-bold bg-white border border-slate-300 rounded"
-                      />
-                      <input
-                        type="text"
-                        placeholder="担任角色"
-                        value={proj.role}
-                        onChange={e => updateProject(proj.id, 'role', e.target.value)}
-                        className="px-2 py-1 text-xs bg-white border border-slate-300 rounded"
-                      />
-                    </div>
-                    <button
-                      onClick={() => removeProject(proj.id)}
-                      className="text-slate-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <input
-                      type="text"
-                      placeholder="开始时间"
-                      value={proj.startDate}
-                      onChange={e => updateProject(proj.id, 'startDate', e.target.value)}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="结束时间"
-                      value={proj.endDate}
-                      onChange={e => updateProject(proj.id, 'endDate', e.target.value)}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-500 mb-1">项目简介:</label>
-                    <input
-                      type="text"
-                      value={proj.description}
-                      onChange={e => updateProject(proj.id, 'description', e.target.value)}
-                      className="w-full px-2 py-1 text-xs bg-white rounded border border-slate-200"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">核心亮点与攻关难点 (每行一条):</label>
-                    <textarea
-                      rows={2}
-                      value={proj.highlights.join('\n')}
-                      onChange={e => {
-                        const lines = e.target.value.split('\n').filter(Boolean);
-                        updateProject(proj.id, 'highlights', lines);
-                      }}
-                      className="w-full text-xs p-2 bg-white rounded border border-slate-200"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-500 mb-1">项目技术栈 (逗号分隔):</label>
-                    <input
-                      type="text"
-                      value={proj.techStack.join(', ')}
-                      onChange={e => {
-                        const list = e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-                        updateProject(proj.id, 'techStack', list);
-                      }}
-                      className="w-full px-2 py-1 text-xs bg-white rounded border border-slate-200"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab: Education */}
-        {activeTab === 'education' && (
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-900">学历背景</h3>
-              {resume.education.map(edu => (
-                <div key={edu.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      placeholder="院校名称"
-                      value={edu.school}
-                      onChange={e => {
-                        const updated = resume.education.map(ed => ed.id === edu.id ? { ...ed, school: e.target.value } : ed);
-                        onChange({ ...resume, education: updated });
-                      }}
-                      className="px-2 py-1 text-xs font-bold bg-white border border-slate-300 rounded"
-                    />
-                    <input
-                      type="text"
-                      placeholder="学位学历"
-                      value={edu.degree}
-                      onChange={e => {
-                        const updated = resume.education.map(ed => ed.id === edu.id ? { ...ed, degree: e.target.value } : ed);
-                        onChange({ ...resume, education: updated });
-                      }}
-                      className="px-2 py-1 text-xs bg-white border border-slate-300 rounded"
-                    />
-                    <input
-                      type="text"
-                      placeholder="主修专业"
-                      value={edu.major}
-                      onChange={e => {
-                        const updated = resume.education.map(ed => ed.id === edu.id ? { ...ed, major: e.target.value } : ed);
-                        onChange({ ...resume, education: updated });
-                      }}
-                      className="px-2 py-1 text-xs bg-white border border-slate-300 rounded"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="起止时间"
-                      value={`${edu.startDate} ~ ${edu.endDate}`}
-                      onChange={e => {
-                        const parts = e.target.value.split('~').map(s => s.trim());
-                        const updated = resume.education.map(ed => ed.id === edu.id ? { ...ed, startDate: parts[0] || '', endDate: parts[1] || '' } : ed);
-                        onChange({ ...resume, education: updated });
-                      }}
-                      className="px-2 py-1 text-xs bg-white border border-slate-200 rounded"
-                    />
-                    <input
-                      type="text"
-                      placeholder="GPA / 成绩"
-                      value={edu.gpa || ''}
-                      onChange={e => {
-                        const updated = resume.education.map(ed => ed.id === edu.id ? { ...ed, gpa: e.target.value } : ed);
-                        onChange({ ...resume, education: updated });
-                      }}
-                      className="px-2 py-1 text-xs bg-white border border-slate-200 rounded"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-2 pt-2 border-t border-slate-200">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xs font-bold text-slate-900">专业证书与荣誉</h3>
-                <button
-                  onClick={() => {
-                    const newCert = {
-                      id: 'cert-' + Date.now(),
-                      name: '新证书名称',
-                      issuer: '颁发机构',
-                      date: '2024'
-                    };
-                    onChange({ ...resume, certificates: [...resume.certificates, newCert] });
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
-                >
-                  + 添加证书
-                </button>
-              </div>
-              {resume.certificates.map(c => (
-                <div key={c.id} className="flex gap-2 items-center bg-slate-50 p-2 rounded border border-slate-200">
-                  <input
-                    type="text"
-                    value={c.name}
-                    onChange={e => {
-                      const updated = resume.certificates.map(ct => ct.id === c.id ? { ...ct, name: e.target.value } : ct);
-                      onChange({ ...resume, certificates: updated });
-                    }}
-                    className="flex-1 px-2 py-1 text-xs bg-white border border-slate-200 rounded"
-                    placeholder="证书名称"
-                  />
-                  <input
-                    type="text"
-                    value={c.issuer}
-                    onChange={e => {
-                      const updated = resume.certificates.map(ct => ct.id === c.id ? { ...ct, issuer: e.target.value } : ct);
-                      onChange({ ...resume, certificates: updated });
-                    }}
-                    className="w-32 px-2 py-1 text-xs bg-white border border-slate-200 rounded"
-                    placeholder="颁发机构"
-                  />
-                  <button
-                    onClick={() => {
-                      onChange({ ...resume, certificates: resume.certificates.filter(ct => ct.id !== c.id) });
-                    }}
-                    className="text-slate-400 hover:text-red-500"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'custom' && (
-          <div className="space-y-5">
-            <section>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900">模块顺序</h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">拖动模块调整简历展示顺序，头像与基本信息始终位于顶部。</p>
-                </div>
-                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-full">拖动排序</span>
-              </div>
-              <div className="space-y-2">
-                {sectionOrder.map((key, index) => {
-                  const custom = key.startsWith('custom:') ? customSections.find(section => `custom:${section.id}` === key) : undefined;
-                  return (
-                    <div key={key} draggable onDragStart={() => setDraggedSection(key)} onDragEnd={() => setDraggedSection(null)} onDragOver={event => event.preventDefault()} onDrop={() => reorderSection(key)} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${draggedSection === key ? 'border-blue-400 bg-blue-50 opacity-60' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                      <GripVertical className="w-4 h-4 text-slate-400 cursor-grab" />
-                      <span className="w-5 h-5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-500 flex items-center justify-center">{index + 1}</span>
-                      <span className="flex-1 text-xs font-semibold text-slate-700">{custom?.title || sectionLabels[key] || '自定义模块'}</span>
-                      {custom && <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">自定义</span>}
-                      <div className="flex items-center gap-0.5">
-                        <button type="button" onClick={() => moveSection(key, -1)} disabled={index === 0} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-25" title="上移"><ChevronUp className="w-3.5 h-3.5" /></button>
-                        <button type="button" onClick={() => moveSection(key, 1)} disabled={index === sectionOrder.length - 1} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-25" title="下移"><ChevronDown className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="pt-4 border-t border-slate-200">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900">自定义模块</h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">适合开源贡献、作品、语言能力、专利或自我评价。</p>
-                </div>
-                <button type="button" onClick={addCustomSection} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">
-                  <Plus className="w-3.5 h-3.5" />添加模块
-                </button>
-              </div>
-
-              {customSections.length === 0 ? (
-                <button type="button" onClick={addCustomSection} className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600">添加第一个自定义模块</button>
-              ) : (
-                <div className="space-y-4">
-                  {customSections.map(section => (
-                    <div key={section.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <input value={section.title} onChange={event => updateCustomSection(section.id, { title: event.target.value })} className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold focus:outline-none focus:border-blue-500" placeholder="模块名称" />
-                        <button type="button" onClick={() => removeCustomSection(section.id)} className="p-1.5 text-slate-400 hover:text-red-600" title="删除模块"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                      <RichTextEditor value={section.content} onChange={content => updateCustomSection(section.id, { content })} placeholder="像 Notion 或语雀一样编辑模块内容…" minHeight="150px" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
-        )}
-      </div>
+        <div><div className="mb-1.5 text-[11px] font-medium text-slate-500">照片</div><div className="aspect-[5/7] w-[96px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-inner">{draft.personalInfo.avatarUrl ? <img src={draft.personalInfo.avatarUrl} alt="证件照预览" className="h-full w-full object-cover object-center" /> : <div className="flex h-full items-center justify-center text-slate-300"><User className="h-9 w-9" /></div>}</div><label className="mt-2 inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-blue-600"><Upload className="h-3.5 w-3.5" />上传照片<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => handleAvatar(e.target.files?.[0])} /></label><div className="mt-1 text-[10px] leading-4 text-slate-400">自动按 5:7 证件照比例居中裁切</div></div>
+      </div></section>
+      <section className="border-t border-slate-100 pt-6"><h3 className="mb-4 text-sm font-bold text-slate-950">求职意向</h3><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="求职岗位" required><input className={inputClass} value={draft.personalInfo.jobTitle} onChange={e => updatePersonal('jobTitle', e.target.value)} /></Field>
+        <Field label="意向城市"><input className={inputClass} value={draft.personalInfo.targetCities || ''} onChange={e => updatePersonal('targetCities', e.target.value)} placeholder="深圳 / 上海" /></Field>
+        <Field label="最低期望薪资"><input className={inputClass} value={draft.personalInfo.salaryMin || ''} onChange={e => updatePersonal('salaryMin', e.target.value)} placeholder="18K" /></Field>
+        <Field label="最高期望薪资"><input className={inputClass} value={draft.personalInfo.salaryMax || ''} onChange={e => updatePersonal('salaryMax', e.target.value)} placeholder="20K" /></Field>
+        <div className="sm:col-span-2"><Field label="到岗时间"><select className={inputClass} value={draft.personalInfo.availability || ''} onChange={e => updatePersonal('availability', e.target.value)}><option value="">请选择</option><option>随时到岗</option><option>一周内</option><option>两周内</option><option>一个月内</option><option>需协商</option></select></Field></div>
+      </div></section>
+      <section className="border-t border-slate-100 pt-6"><h3 className="mb-1 text-sm font-bold text-slate-950">个人总结</h3><p className="mb-3 text-[11px] text-slate-500">突出与目标岗位最相关的技术能力、项目结果和职业优势。</p><RichTextEditor value={draft.summary} onChange={summary => updateDraft({ summary })} minHeight="160px" /></section>
     </div>
   );
+
+  const renderSkills = () => draft && <div className="space-y-3">{draft.skills.map(group => <div key={group.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex gap-2"><input className={`${inputClass} font-semibold`} value={group.category} onChange={e => updateDraft({ skills: draft.skills.map(item => item.id === group.id ? { ...item, category: e.target.value } : item) })} /><button onClick={() => updateDraft({ skills: draft.skills.filter(item => item.id !== group.id) })} className="p-2 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div><textarea rows={2} className={`${inputClass} mt-2`} value={group.skills.join('、')} onChange={e => updateDraft({ skills: draft.skills.map(item => item.id === group.id ? { ...item, skills: e.target.value.split(/[、,，]/).map(value => value.trim()).filter(Boolean) } : item) })} /></div>)}<button onClick={() => updateDraft({ skills: [...draft.skills, { id: `skill-${Date.now()}`, category: '新技能分类', skills: ['技能一', '技能二'] } as SkillCategory] })} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600"><Plus className="h-4 w-4" />添加技能分类</button></div>;
+
+  const renderExperience = () => draft && <div className="space-y-4">{draft.workExperience.map(item => <div key={item.id} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex justify-between"><strong className="text-xs text-slate-800">工作经历</strong><button onClick={() => updateDraft({ workExperience: draft.workExperience.filter(value => value.id !== item.id) })} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div><div className="grid gap-3 sm:grid-cols-2"><input className={inputClass} value={item.company} onChange={e => updateDraft({ workExperience: draft.workExperience.map(value => value.id === item.id ? { ...value, company: e.target.value } : value) })} placeholder="公司名称" /><input className={inputClass} value={item.position} onChange={e => updateDraft({ workExperience: draft.workExperience.map(value => value.id === item.id ? { ...value, position: e.target.value } : value) })} placeholder="职位" /><input className={inputClass} value={item.startDate} onChange={e => updateDraft({ workExperience: draft.workExperience.map(value => value.id === item.id ? { ...value, startDate: e.target.value } : value) })} placeholder="开始时间" /><input className={inputClass} value={item.endDate} onChange={e => updateDraft({ workExperience: draft.workExperience.map(value => value.id === item.id ? { ...value, endDate: e.target.value } : value) })} placeholder="结束时间" /></div><textarea rows={4} className={inputClass} value={item.highlights.join('\n')} onChange={e => updateDraft({ workExperience: draft.workExperience.map(value => value.id === item.id ? { ...value, highlights: e.target.value.split('\n').filter(Boolean) } : value) })} placeholder="每行一条成果" /></div>)}<button onClick={() => { const item: WorkExperience = { id: `exp-${Date.now()}`, company: '新公司', position: '嵌入式软件工程师', startDate: '', endDate: '', current: false, highlights: ['填写职责与量化成果。'] }; updateDraft({ workExperience: [item, ...draft.workExperience] }); }} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600"><Plus className="h-4 w-4" />添加工作经历</button></div>;
+
+  const renderProjects = () => draft && <div className="space-y-4">{draft.projects.map(item => <div key={item.id} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex justify-between"><strong className="text-xs text-slate-800">项目经历</strong><button onClick={() => updateDraft({ projects: draft.projects.filter(value => value.id !== item.id) })} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div><div className="grid gap-3 sm:grid-cols-2"><input className={inputClass} value={item.name} onChange={e => updateDraft({ projects: draft.projects.map(value => value.id === item.id ? { ...value, name: e.target.value } : value) })} placeholder="项目名称" /><input className={inputClass} value={item.role} onChange={e => updateDraft({ projects: draft.projects.map(value => value.id === item.id ? { ...value, role: e.target.value } : value) })} placeholder="角色" /></div><input className={inputClass} value={item.description} onChange={e => updateDraft({ projects: draft.projects.map(value => value.id === item.id ? { ...value, description: e.target.value } : value) })} placeholder="项目简介" /><textarea rows={3} className={inputClass} value={item.highlights.join('\n')} onChange={e => updateDraft({ projects: draft.projects.map(value => value.id === item.id ? { ...value, highlights: e.target.value.split('\n').filter(Boolean) } : value) })} placeholder="每行一条亮点" /></div>)}<button onClick={() => { const item: ProjectExperience = { id: `project-${Date.now()}`, name: '新项目', role: '核心开发', startDate: '', endDate: '', description: '', highlights: ['填写项目成果。'], techStack: ['C', 'FreeRTOS'] }; updateDraft({ projects: [item, ...draft.projects] }); }} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600"><Plus className="h-4 w-4" />添加项目</button></div>;
+
+  const renderEducation = () => draft && <div className="space-y-4">{draft.education.map(item => <div key={item.id} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2"><input className={inputClass} value={item.school} onChange={e => updateDraft({ education: draft.education.map(value => value.id === item.id ? { ...value, school: e.target.value } : value) })} placeholder="学校" /><input className={inputClass} value={item.major} onChange={e => updateDraft({ education: draft.education.map(value => value.id === item.id ? { ...value, major: e.target.value } : value) })} placeholder="专业" /><input className={inputClass} value={item.degree} onChange={e => updateDraft({ education: draft.education.map(value => value.id === item.id ? { ...value, degree: e.target.value } : value) })} placeholder="学历" /><input className={inputClass} value={item.gpa || ''} onChange={e => updateDraft({ education: draft.education.map(value => value.id === item.id ? { ...value, gpa: e.target.value } : value) })} placeholder="成绩 / 排名" /></div>)}</div>;
+  const renderCertificates = () => draft && <div className="space-y-3">{draft.certificates.map(item => <div key={item.id} className="flex gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3"><input className={inputClass} value={item.name} onChange={e => updateDraft({ certificates: draft.certificates.map(value => value.id === item.id ? { ...value, name: e.target.value } : value) })} /><input className={inputClass} value={item.issuer} onChange={e => updateDraft({ certificates: draft.certificates.map(value => value.id === item.id ? { ...value, issuer: e.target.value } : value) })} /><button onClick={() => updateDraft({ certificates: draft.certificates.filter(value => value.id !== item.id) })} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div>)}<button onClick={() => updateDraft({ certificates: [...draft.certificates, { id: `cert-${Date.now()}`, name: '新证书', issuer: '颁发机构', date: '' }] })} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600"><Plus className="h-4 w-4" />添加证书</button></div>;
+
+  const renderCustom = () => {
+    if (!draft || !modalKey?.startsWith('custom:')) return null;
+    const id = modalKey.slice(7); const section = (draft.customSections || []).find(item => item.id === id); if (!section) return null;
+    return <div className="space-y-4"><Field label="模块名称"><input className={inputClass} value={section.title} onChange={e => updateDraft({ customSections: (draft.customSections || []).map(item => item.id === id ? { ...item, title: e.target.value } : item) })} /></Field><Field label="模块内容"><RichTextEditor value={section.content} onChange={content => updateDraft({ customSections: (draft.customSections || []).map(item => item.id === id ? { ...item, content } : item) })} minHeight="240px" /></Field></div>;
+  };
+
+  const modalTitle = modalKey === 'info' ? '基本信息与总结' : modalKey === 'skills' ? '专业技能' : modalKey === 'workExperience' ? '工作经历' : modalKey === 'projects' ? '项目经历' : modalKey === 'education' ? '教育背景' : modalKey === 'certificates' ? '证书与荣誉' : '自定义模块';
+  const modalBody = modalKey === 'info' ? renderInfo() : modalKey === 'skills' ? renderSkills() : modalKey === 'workExperience' ? renderExperience() : modalKey === 'projects' ? renderProjects() : modalKey === 'education' ? renderEducation() : modalKey === 'certificates' ? renderCertificates() : renderCustom();
+
+  return <>
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 p-4"><div><h2 className="text-sm font-bold text-slate-900">模块与排版</h2><p className="text-xs text-slate-500">拖动调整顺序，单击模块打开编辑弹窗</p></div><button id="btn-open-ai-generator" onClick={onOpenAiGenerator} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"><Sparkles className="h-3.5 w-3.5" />AI 生成</button></div>
+      <div className="max-h-[720px] flex-1 space-y-2 overflow-y-auto p-4">
+        {sectionOrder.map((key, index) => { const custom = key.startsWith('custom:') ? customSections.find(section => `custom:${section.id}` === key) : undefined; const meta = custom ? { title: custom.title || '自定义模块', description: '自定义富文本内容', icon: LayoutList } : labels[key]; if (!meta) return null; const Icon = meta.icon; return <div key={key} role="button" tabIndex={0} aria-label={`编辑${meta.title}`} draggable onDragStart={() => setDraggedSection(key)} onDragEnd={() => setDraggedSection(null)} onDragOver={e => e.preventDefault()} onDrop={() => dropSection(key)} onClick={() => openModal(key)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(key); } }} className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${draggedSection === key ? 'border-blue-400 bg-blue-50 opacity-60' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}><GripVertical className="h-4 w-4 cursor-grab text-slate-300 group-hover:text-slate-500" onClick={e => e.stopPropagation()} /><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Icon className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-bold text-slate-800">{meta.title}</div><div className="truncate text-[11px] text-slate-500">{meta.description}</div></div><div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}><button onClick={() => moveSection(key, -1)} disabled={index === 0} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20"><ChevronUp className="h-3.5 w-3.5" /></button><button onClick={() => moveSection(key, 1)} disabled={index === sectionOrder.length - 1} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20"><ChevronDown className="h-3.5 w-3.5" /></button></div></div>; })}
+        <button type="button" onClick={addCustom} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-blue-600"><Plus className="h-4 w-4" />添加自定义模块</button>
+      </div>
+    </div>
+    {modalKey && draft && <ModalShell title={modalTitle} onClose={closeModal} onSave={saveModal} danger={modalKey.startsWith('custom:') ? <button type="button" onClick={() => { const id = modalKey.slice(7); onChange({ ...resume, customSections: customSections.filter(item => item.id !== id), sectionOrder: sectionOrder.filter(key => key !== modalKey) }); closeModal(); }} className="inline-flex items-center gap-1 text-xs text-red-600"><Trash2 className="h-3.5 w-3.5" />删除模块</button> : undefined}>{modalBody}</ModalShell>}
+  </>;
 };

@@ -80,7 +80,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
           </div>
           <div className={`${style.compact ? 'text-[10px]' : 'text-xs'} space-y-1 ${style.centered ? 'flex flex-wrap justify-center gap-x-4' : 'sm:text-right'}`}>
             <div className="flex items-center gap-1.5 sm:justify-end"><Mail className="w-3.5 h-3.5" />{resume.personalInfo.email}</div><div className="flex items-center gap-1.5 sm:justify-end"><Phone className="w-3.5 h-3.5" />{resume.personalInfo.phone}</div><div className="flex items-center gap-1.5 sm:justify-end"><MapPin className="w-3.5 h-3.5" />{resume.personalInfo.location}</div>
-            {resume.personalInfo.expectedSalary && <div className="flex items-center gap-1.5 sm:justify-end"><WalletCards className="w-3.5 h-3.5" />期望薪资 {resume.personalInfo.expectedSalary}</div>}{resume.personalInfo.github && <div className="flex items-center gap-1.5 sm:justify-end"><Github className="w-3.5 h-3.5" />{resume.personalInfo.github.replace('https://', '')}</div>}
+            {(resume.personalInfo.salaryMin || resume.personalInfo.expectedSalary) && <div className="flex items-center gap-1.5 sm:justify-end"><WalletCards className="w-3.5 h-3.5" />期望薪资 {resume.personalInfo.salaryMin && resume.personalInfo.salaryMax ? `${resume.personalInfo.salaryMin}–${resume.personalInfo.salaryMax}` : resume.personalInfo.expectedSalary}</div>}{resume.personalInfo.github && <div className="flex items-center gap-1.5 sm:justify-end"><Github className="w-3.5 h-3.5" />{resume.personalInfo.github.replace('https://', '')}</div>}
           </div>
         </div>
       </header>
