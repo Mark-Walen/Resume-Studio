@@ -1,122 +1,99 @@
-import React, { useState, useEffect } from 'react';
-import { getCustomApiKey, saveCustomApiKey } from '../utils/db';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AiServiceSettings, getAiServiceSettings, saveAiServiceSettings } from '../utils/db';
 import { checkApiHealth } from '../services/geminiService';
-import { KeyRound, ShieldCheck, Check, X } from 'lucide-react';
+import { AI_PROVIDERS, fetchProviderModels, getProviderDefinition } from '../services/aiProviderService';
+import { Check, Eye, EyeOff, KeyRound, LoaderCircle, RefreshCw, ShieldCheck, X } from 'lucide-react';
 
-interface ApiKeyModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+interface ApiKeyModalProps { isOpen: boolean; onClose: () => void; }
+
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
 
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
-  const [apiKey, setApiKey] = useState('');
+  const [settings, setSettings] = useState<AiServiceSettings>(getAiServiceSettings());
+  const [models, setModels] = useState<string[]>([]);
   const [hasEnvKey, setHasEnvKey] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelMessage, setModelMessage] = useState('');
+  const provider = useMemo(() => getProviderDefinition(settings.provider), [settings.provider]);
 
   useEffect(() => {
-    if (isOpen) {
-      const stored = getCustomApiKey();
-      if (stored) setApiKey(stored);
-
-      checkApiHealth().then(res => {
-        setHasEnvKey(res.hasEnvKey);
-      });
+    if (!isOpen) return;
+    const stored = getAiServiceSettings();
+    const selectedProvider = getProviderDefinition(stored.provider);
+    setSettings(stored);
+    setModels([...new Set([stored.model, ...selectedProvider.fallbackModels].filter(Boolean))]);
+    setModelMessage('');
+    checkApiHealth().then(res => setHasEnvKey(res.hasEnvKey));
+    if (stored.apiKey) {
+      setIsLoadingModels(true);
+      fetchProviderModels(stored)
+        .then(fetched => { setModels([...new Set([stored.model, ...fetched].filter(Boolean))]); setModelMessage(`已自动获取 ${fetched.length} 个可用模型`); })
+        .catch(() => setModelMessage('实时模型列表暂不可用，已显示推荐模型，也可手动输入。'))
+        .finally(() => setIsLoadingModels(false));
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    saveCustomApiKey(apiKey.trim());
-    setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-      onClose();
-    }, 1000);
+  const updateSettings = (patch: Partial<AiServiceSettings>) => setSettings(current => ({ ...current, ...patch }));
+  const handleProviderChange = (providerId: AiServiceSettings['provider']) => {
+    const nextProvider = getProviderDefinition(providerId);
+    const nextSettings = { ...settings, provider: providerId, model: nextProvider.defaultModel, apiKey: '', baseUrl: providerId === 'custom' ? settings.baseUrl : undefined };
+    setSettings(nextSettings);
+    setModels(nextProvider.fallbackModels);
+    setModelMessage('');
   };
 
+  const handleLoadModels = async () => {
+    setIsLoadingModels(true);
+    setModelMessage('');
+    try {
+      const fetched = await fetchProviderModels(settings);
+      setModels([...new Set([settings.model, ...fetched].filter(Boolean))]);
+      if (!settings.model && fetched[0]) updateSettings({ model: fetched[0] });
+      setModelMessage(`已获取 ${fetched.length} 个可用模型`);
+    } catch (error) {
+      setModels([...new Set([settings.model, ...provider.fallbackModels].filter(Boolean))]);
+      setModelMessage(`${error instanceof Error ? error.message : '无法获取模型列表'}；已显示推荐模型，也可手动输入。`);
+    } finally { setIsLoadingModels(false); }
+  };
+
+  const handleSave = () => {
+    saveAiServiceSettings(settings);
+    setIsSaved(true);
+    window.setTimeout(() => { setIsSaved(false); onClose(); }, 700);
+  };
   const handleClear = () => {
-    saveCustomApiKey('');
-    setApiKey('');
+    const cleared = { ...settings, apiKey: '' };
+    saveAiServiceSettings(cleared);
+    setSettings(cleared);
+    setModelMessage('已清除当前浏览器保存的密钥');
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-bold text-slate-900">AI 服务与隐私设置</h2>
-          </div>
-          <button onClick={onClose} aria-label="关闭" className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 p-4 sm:p-5">
+          <div className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-blue-600" /><div><h2 className="text-base font-bold text-slate-900">AI 服务与隐私设置</h2><p className="mt-0.5 text-[11px] text-slate-500">选择 Model Provider、模型及凭据</p></div></div>
+          <button onClick={onClose} aria-label="关闭" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="p-5 space-y-4 text-xs">
-          {/* Status banner */}
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-            <div>
-              <span className="font-bold text-slate-800">服务端 AI 凭据：</span>
-              <span className={hasEnvKey ? 'text-emerald-600 font-bold' : 'text-slate-500 font-medium'}>
-                {hasEnvKey ? '已安全配置' : '未配置'}
-              </span>
-            </div>
-            {hasEnvKey && <ShieldCheck className="w-4 h-4 text-emerald-600" />}
-          </div>
+        <div className="space-y-5 overflow-y-auto p-5 text-xs">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3"><div><span className="font-bold text-slate-800">平台内置 AI 服务：</span><span className={hasEnvKey ? 'font-bold text-emerald-600' : 'font-medium text-slate-500'}>{hasEnvKey ? '已安全配置' : '未配置'}</span></div>{hasEnvKey && <ShieldCheck className="h-4 w-4 text-emerald-600" />}</div>
 
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">个人 AI 服务 API Key</label>
-            <input
-              type="password"
-              placeholder="输入所选 AI 服务提供的 API Key"
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 font-mono"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">
-              密钥仅保存在当前浏览器，用于简历生成、面试复盘和知识整理。平台文案不绑定特定模型品牌。
-            </p>
-          </div>
+          <section className="space-y-4">
+            <div><label className="mb-1.5 block font-semibold text-slate-700">Model Provider</label><select className={inputClass} value={settings.provider} onChange={event => handleProviderChange(event.target.value as AiServiceSettings['provider'])}>{AI_PROVIDERS.map(item => <option key={item.id} value={item.id}>{item.name} · {item.description}</option>)}</select></div>
+            {settings.provider === 'custom' && <div><label className="mb-1.5 block font-semibold text-slate-700">Base URL</label><input className={inputClass} value={settings.baseUrl || ''} onChange={event => updateSettings({ baseUrl: event.target.value })} placeholder="https://example.com/v1" /></div>}
+            <div><label className="mb-1.5 block font-semibold text-slate-700">API Key</label><div className="relative"><input type={showKey ? 'text' : 'password'} className={`${inputClass} pr-10 font-mono`} value={settings.apiKey} onChange={event => updateSettings({ apiKey: event.target.value })} onBlur={() => settings.apiKey.trim() && handleLoadModels()} placeholder={`输入 ${provider.name} API Key`} /><button type="button" onClick={() => setShowKey(value => !value)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700" aria-label={showKey ? '隐藏密钥' : '显示密钥'}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1 text-[11px] text-slate-400">密钥仅保存在当前浏览器；输入后会向所选 Provider 获取可用模型。</p></div>
+            <div><div className="mb-1.5 flex items-center justify-between"><label className="font-semibold text-slate-700">Model Name</label><button type="button" onClick={handleLoadModels} disabled={isLoadingModels} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60">{isLoadingModels ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}获取模型列表</button></div><input className={inputClass} list="ai-model-options" value={settings.model} onChange={event => updateSettings({ model: event.target.value })} placeholder="选择或输入模型名称" /><datalist id="ai-model-options">{models.map(model => <option key={model} value={model} />)}</datalist>{modelMessage && <p className={`mt-1.5 text-[11px] ${modelMessage.startsWith('已') ? 'text-emerald-600' : 'text-amber-700'}`}>{modelMessage}</p>}</div>
+          </section>
 
-          {/* Security details */}
-          <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-200 text-[11px] text-blue-900 space-y-1.5">
-            <div className="font-bold flex items-center gap-1.5 text-blue-950">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-              文件防病毒与入侵防御机制已生效:
-            </div>
-            <ul className="space-y-0.5 text-blue-800 pl-4 list-disc">
-              <li>上传文件严格基于后缀白名单校验，拒绝一切二进制脚本与危险宏</li>
-              <li>检查文件前导 Magic Number 二进制特征头，严防假冒伪装木马</li>
-              <li>深度过滤包含恶意命令、注入提权及 Prompt Jailbreak 绕过字符</li>
-              <li>音视频采用本地 IndexedDB 浏览器沙盒持久化隔离，不上传未知公网</li>
-            </ul>
-          </div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-[11px] text-blue-900"><div className="flex items-center gap-1.5 font-bold text-blue-950"><ShieldCheck className="h-4 w-4 text-blue-600" />隐私与文件安全</div><ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-blue-800"><li>上传资料仅接受允许的文件类型，并检查文件头与危险内容</li><li>API Key 保存在本机浏览器，不写入简历或附件</li><li>音视频保存在本地 IndexedDB；AI 摘要仅在用户主动生成时调用所选服务</li></ul></div>
         </div>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-          <button
-            onClick={handleClear}
-            className="text-xs text-red-500 hover:text-red-700 font-medium"
-          >
-            清空已存密钥
-          </button>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl"
-            >
-              取消
-            </button>
-            <button
-              onClick={handleSave}
-              className="inline-flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
-            >
-              {isSaved ? <Check className="w-3.5 h-3.5" /> : null}
-              {isSaved ? '已保存' : '保存设置'}
-            </button>
-          </div>
-        </div>
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 p-4"><button onClick={handleClear} className="text-xs font-medium text-red-500 hover:text-red-700">清空已存密钥</button><div className="flex gap-2"><button onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">取消</button><button onClick={handleSave} disabled={!settings.model.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{isSaved && <Check className="h-3.5 w-3.5" />}{isSaved ? '已保存' : '保存设置'}</button></div></div>
       </div>
     </div>
   );

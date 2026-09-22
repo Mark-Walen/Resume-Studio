@@ -22,19 +22,69 @@ function readBody(req: any): Promise<any> {
   });
 }
 
-function getAiClient(customKey?: string) {
+type ProviderId = 'anthropic' | 'openai' | 'xai' | 'google' | 'deepseek' | 'zai' | 'custom';
+
+const PROVIDER_BASE_URLS: Record<Exclude<ProviderId, 'custom'>, string> = {
+  anthropic: 'https://api.anthropic.com/v1',
+  openai: 'https://api.openai.com/v1',
+  xai: 'https://api.x.ai/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+  deepseek: 'https://api.deepseek.com',
+  zai: 'https://api.z.ai/api/paas/v4',
+};
+
+function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string) {
   const apiKey = customKey || process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('未检测到 AI 服务 API Key。请在“AI 服务与隐私设置”中配置个人密钥，或由部署方配置服务端密钥。');
   }
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
+  if (provider === 'custom') throw new Error('自定义兼容服务请通过浏览器直连；本地代理不转发任意地址。');
+
+  if (provider === 'google') {
+    const client = new GoogleGenAI({ apiKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+    return { models: { generateContent: (request: any) => client.models.generateContent({ ...request, model: selectedModel || request.model }) } };
+  }
+
+  return {
+    models: {
+      generateContent: async (request: any) => {
+        const model = selectedModel || request.model;
+        const systemInstruction = request.config?.systemInstruction || '';
+        const wantsJson = request.config?.responseMimeType === 'application/json';
+        let response: Response;
+
+        if (provider === 'anthropic') {
+          response = await fetch(`${PROVIDER_BASE_URLS.anthropic}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({ model, max_tokens: 8192, system: systemInstruction, messages: [{ role: 'user', content: request.contents }] }),
+          });
+        } else {
+          response = await fetch(`${PROVIDER_BASE_URLS[provider]}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({ model, messages: [{ role: 'system', content: systemInstruction }, { role: 'user', content: request.contents }], ...(wantsJson ? { response_format: { type: 'json_object' } } : {}) }),
+          });
+        }
+
+        const payload: any = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error?.message || payload?.message || `AI 服务请求失败（${response.status}）`);
+        const text = provider === 'anthropic' ? payload?.content?.map((item: any) => item.text || '').join('') : payload?.choices?.[0]?.message?.content;
+        return { text: text || '' };
       },
     },
-  });
+  };
+}
+
+function getProviderConfig(req: any): { provider: ProviderId; model?: string } {
+  const rawProvider = String(req.headers['x-ai-provider'] || 'google') as ProviderId;
+  const provider = (rawProvider in PROVIDER_BASE_URLS || rawProvider === 'custom') ? rawProvider : 'google';
+  return { provider, model: String(req.headers['x-ai-model'] || '') || undefined };
+}
+
+function getConfiguredAiClient(customKey: string | undefined, req: any) {
+  const { provider, model } = getProviderConfig(req);
+  return getAiClient(customKey, provider, model);
 }
 
 const apiPlugin: Plugin = {
@@ -56,7 +106,7 @@ const apiPlugin: Plugin = {
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { prompt, existingResume, auxiliaryText } = body;
 
@@ -152,7 +202,7 @@ ${existingResume ? `【参考现有简历】：\n${JSON.stringify(existingResume
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { companyName, round, position, interviewNotes, questions } = body;
 
@@ -226,7 +276,7 @@ ${JSON.stringify(questions, null, 2)}`;
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { interviews } = body;
 
@@ -304,7 +354,7 @@ ${JSON.stringify(interviews, null, 2)}`;
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { rawContent, format } = body;
           if (!rawContent || typeof rawContent !== 'string' || rawContent.trim().length === 0) {
@@ -420,7 +470,7 @@ ${JSON.stringify(interviews, null, 2)}`;
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { url: targetUrl, rawJdText, currentResume } = body;
 
@@ -561,7 +611,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { companyName, position, jobDescription, currentResume } = body;
 
@@ -635,7 +685,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 7000) : '常规高级�
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { companies, currentResume } = body;
 
@@ -736,7 +786,7 @@ ${JSON.stringify({
         try {
           const body = await readBody(req);
           const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { journalLogs, targetRole, existingResume } = body;
 

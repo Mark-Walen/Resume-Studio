@@ -16,6 +16,7 @@ const INTERVIEWS_KEY = 'ai_interviews_data_v3_embedded';
 const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v3_embedded';
 const API_KEY_STORAGE = 'custom_ai_api_key_v2';
 const LEGACY_API_KEY_STORAGE = 'custom_gemini_api_key_v1';
+const AI_SERVICE_SETTINGS_STORAGE = 'ai_service_settings_v1';
 const KNOWLEDGE_KEY = 'ai_knowledge_items_v2_embedded';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v2_embedded';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v2_embedded';
@@ -144,24 +145,49 @@ export function saveInterviewRecords(records: InterviewRecord[]): void {
 }
 
 export function getCustomApiKey(): string {
+  return getAiServiceSettings().apiKey;
+}
+
+export type AiProviderId = 'anthropic' | 'openai' | 'xai' | 'google' | 'deepseek' | 'zai' | 'custom';
+
+export interface AiServiceSettings {
+  provider: AiProviderId;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+const DEFAULT_AI_SETTINGS: AiServiceSettings = {
+  provider: 'google',
+  model: 'gemini-3.8-flash',
+  apiKey: '',
+};
+
+export function getAiServiceSettings(): AiServiceSettings {
   try {
-    return localStorage.getItem(API_KEY_STORAGE) || localStorage.getItem(LEGACY_API_KEY_STORAGE) || '';
+    const raw = localStorage.getItem(AI_SERVICE_SETTINGS_STORAGE);
+    if (raw) return { ...DEFAULT_AI_SETTINGS, ...JSON.parse(raw) };
+    return {
+      ...DEFAULT_AI_SETTINGS,
+      apiKey: localStorage.getItem(API_KEY_STORAGE) || localStorage.getItem(LEGACY_API_KEY_STORAGE) || '',
+    };
   } catch {
-    return '';
+    return DEFAULT_AI_SETTINGS;
   }
 }
 
 export function setCustomApiKey(key: string): void {
+  saveAiServiceSettings({ ...getAiServiceSettings(), apiKey: key.trim() });
+}
+
+export function saveAiServiceSettings(settings: AiServiceSettings): void {
   try {
-    if (key.trim()) {
-      localStorage.setItem(API_KEY_STORAGE, key.trim());
-      localStorage.removeItem(LEGACY_API_KEY_STORAGE);
-    } else {
-      localStorage.removeItem(API_KEY_STORAGE);
-      localStorage.removeItem(LEGACY_API_KEY_STORAGE);
-    }
+    const normalized = { ...settings, apiKey: settings.apiKey.trim(), model: settings.model.trim(), baseUrl: settings.baseUrl?.trim() };
+    localStorage.setItem(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(normalized));
+    if (normalized.apiKey) localStorage.setItem(API_KEY_STORAGE, normalized.apiKey); else localStorage.removeItem(API_KEY_STORAGE);
+    localStorage.removeItem(LEGACY_API_KEY_STORAGE);
   } catch (err) {
-    console.warn('Failed to save custom api key:', err);
+    console.warn('Failed to save AI service settings:', err);
   }
 }
 
