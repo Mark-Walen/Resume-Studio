@@ -247,15 +247,9 @@ export default function App() {
       <Header
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
-        onOpenExport={() => setIsExportOpen(true)}
         onOpenApiKey={() => setIsApiKeyOpen(true)}
         onOpenAiGenerator={() => setIsAiResumeOpen(true)}
-        onOpenImportResume={() => setIsResumeImportOpen(true)}
         onOpenJobProxy={() => setIsJobProxyOpen(true)}
-        onOpenMultiOptimize={() => {
-          setCurrentTab('career');
-          setCareerSection('optimize');
-        }}
       />
 
       {/* Main Workspace */}
@@ -404,7 +398,6 @@ export default function App() {
                     resume={resume}
                     onChange={setResume}
                     onOpenAiGenerator={() => setIsAiResumeOpen(true)}
-                    onOpenImportResume={() => setIsResumeImportOpen(true)}
                   />
                 </div>
               )}

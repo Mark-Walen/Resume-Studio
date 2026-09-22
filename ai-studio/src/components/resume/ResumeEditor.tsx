@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { ResumeData, WorkExperience, ProjectExperience, SkillCategory, Education } from '../../types/resume';
-import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, User, Briefcase, FolderGit2, GraduationCap, Wrench, Upload } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, User, Briefcase, FolderGit2, GraduationCap, Wrench } from 'lucide-react';
 
 interface ResumeEditorProps {
   resume: ResumeData;
   onChange: (updated: ResumeData) => void;
   onOpenAiGenerator: () => void;
-  onOpenImportResume?: () => void;
 }
 
 export const ResumeEditor: React.FC<ResumeEditorProps> = ({
   resume,
   onChange,
   onOpenAiGenerator,
-  onOpenImportResume,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'skills' | 'experience' | 'projects' | 'education'>('info');
 
@@ -100,17 +98,6 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
           <p className="text-xs text-slate-500">实时同步预览，支持多模块增删改</p>
         </div>
         <div className="flex items-center gap-2">
-          {onOpenImportResume && (
-            <button
-              id="btn-open-resume-import"
-              onClick={onOpenImportResume}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold shadow-2xs transition-colors"
-              title="导入已有简历文件 (MD/JSON/TXT)"
-            >
-              <Upload className="w-3.5 h-3.5 text-blue-600" />
-              导入已有简历
-            </button>
-          )}
           <button
             id="btn-open-ai-generator"
             onClick={onOpenAiGenerator}

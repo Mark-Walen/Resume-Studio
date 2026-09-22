@@ -3,11 +3,8 @@ import {
   FileText,
   Briefcase,
   BookOpen,
-  Download,
-  Upload,
   Globe,
   Key,
-  SlidersHorizontal
 } from 'lucide-react';
 
 export type MainTab = 'resume' | 'career' | 'knowledge';
@@ -15,24 +12,18 @@ export type MainTab = 'resume' | 'career' | 'knowledge';
 interface HeaderProps {
   currentTab: MainTab;
   onSelectTab: (tab: MainTab) => void;
-  onOpenExport: () => void;
   onOpenApiKey: () => void;
   onOpenAiGenerator: () => void;
-  onOpenImportResume?: () => void;
   onOpenJobProxy?: () => void;
-  onOpenMultiOptimize?: () => void;
 }
 
 
 export const Header: React.FC<HeaderProps> = ({
   currentTab,
   onSelectTab,
-  onOpenExport,
   onOpenApiKey,
   onOpenAiGenerator,
-  onOpenImportResume,
   onOpenJobProxy,
-  onOpenMultiOptimize,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/82 backdrop-blur-xl border-b border-black/8">
@@ -97,36 +88,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right action buttons */}
         <div className="flex items-center gap-2">
-          {currentTab === 'resume' && (
-            <>
-              <button
-                onClick={onOpenMultiOptimize}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-xs hover:from-blue-700 hover:to-indigo-700 transition-all"
-                title="针对最多3家意向公司的JD做针对性精修"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>3家公司JD精修</span>
-              </button>
-              {onOpenImportResume && (
-                <button
-                  onClick={onOpenImportResume}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors"
-                  title="导入已有简历文件或文本"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">导入简历</span>
-                </button>
-              )}
-              <button
-                onClick={onOpenExport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">导出与发送</span>
-              </button>
-            </>
-          )}
-
           {currentTab === 'career' && (
             <>
               {onOpenJobProxy && (

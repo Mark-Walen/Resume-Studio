@@ -46,7 +46,7 @@ const DIFFICULTY_CONFIG: Record<KnowledgeDifficulty, { label: string; color: str
   foundation: { label: '基础通用', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   advanced: { label: '进阶实战', color: 'bg-slate-100 text-slate-800 border-slate-300 font-medium' },
   big_tech_must: { label: '大厂必考', color: 'bg-blue-50 text-blue-700 border-blue-200 font-semibold' },
-  architecture: { label: '架构深度', color: 'bg-[#1d1d1f] text-slate-100 border-[#38383a] font-semibold' },
+  architecture: { label: '架构深度', color: 'bg-white text-slate-900 border-slate-200 font-semibold' },
 };
 
 export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
@@ -141,16 +141,16 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner */}
-      <div className="bg-[#1d1d1f] text-white p-5 sm:p-6 rounded-2xl border border-[#38383a] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white text-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono uppercase bg-[#2c2c2e] text-slate-300 border border-[#48484a]">
+            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono uppercase bg-slate-100 text-slate-700 border border-slate-200">
               Tech Knowledge Base
             </span>
-            <span className="text-xs text-slate-400">大厂高频考点 · LeetBook体系专栏 · 针对性攻坚</span>
+            <span className="text-xs text-slate-500">大厂高频考点 · LeetBook体系专栏 · 针对性攻坚</span>
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-white">程序员技术面试基础知识库 & LeetBook</h2>
-          <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">程序员技术面试知识库</h2>
+          <p className="text-xs text-slate-700 mt-1 max-w-2xl leading-relaxed">
             结构化 LeetBook 专栏研读、分类考点闪卡速记、PDF/Word 上传解析与在线撰写，支持基于目标公司智能对齐推荐必考要点。
           </p>
         </div>
@@ -160,7 +160,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             <button
               id="btn-open-jd-recommend-kb"
               onClick={() => onOpenJdRecommender()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#2c2c2e] hover:bg-slate-700 text-slate-200 border border-[#48484a] rounded-xl text-xs font-medium transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-medium transition-colors flex-shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
               <span>根据目标公司推荐考点</span>
@@ -188,12 +188,12 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             onClick={() => setViewMode('leetbook')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               viewMode === 'leetbook'
-                ? 'bg-[#1d1d1f] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <Library className="w-4 h-4" />
-            <span>LeetBook 深度知识书库（推荐 · 树状章节 / PDF / Word / 在线撰写）</span>
+            <span>深度知识书库</span>
           </button>
 
           <button
@@ -201,7 +201,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             onClick={() => setViewMode('flashcards')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               viewMode === 'flashcards'
-                ? 'bg-[#1d1d1f] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -210,7 +210,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
           </button>
         </div>
 
-        <span className="text-xs text-slate-400 font-mono hidden sm:inline-block pr-2">
+        <span className="text-xs text-slate-500 font-mono hidden sm:inline-block pr-2">
           {viewMode === 'leetbook' ? `共 ${books.length} 本专栏书籍` : `共 ${filtered.length} 条闪卡`}
         </span>
       </div>
@@ -229,7 +229,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Search box */}
           <div className="relative w-full sm:w-96">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="搜索知识点、考题、框架、大厂、答题模板..."
@@ -251,7 +251,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
               <Bookmark className={`w-3.5 h-3.5 ${onlyBookmarked ? 'fill-blue-500 text-blue-500' : ''}`} />
               仅看重点收藏 ({items.filter(i => i.isBookmarked).length})
             </button>
-            <span className="text-xs text-slate-400 font-medium">
+            <span className="text-xs text-slate-500 font-medium">
               共 {filtered.length} 个条目
             </span>
           </div>
@@ -286,11 +286,11 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
 
         {/* Difficulty Filter */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-slate-400 text-[11px] font-medium mr-1">深度层级:</span>
+          <span className="text-slate-500 text-[11px] font-medium mr-1">深度层级:</span>
           <button
             onClick={() => setActiveDifficulty('all')}
             className={`px-2.5 py-0.5 rounded-md text-[11px] border ${
-              activeDifficulty === 'all' ? 'bg-[#2c2c2e] text-white border-[#38383a]' : 'bg-white text-slate-500 border-slate-200'
+              activeDifficulty === 'all' ? 'bg-slate-100 text-slate-900 border-slate-200' : 'bg-white text-slate-500 border-slate-200'
             }`}
           >
             全部层级
@@ -334,7 +334,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${diffCfg.color}`}>
                       {diffCfg.label}
                     </span>
-                    <span className="text-[11px] text-slate-400 font-medium">
+                    <span className="text-[11px] text-slate-500 font-medium">
                       {CATEGORY_NAMES[item.category]}
                     </span>
                     <h3 className="text-sm sm:text-base font-bold text-slate-900 hover:text-blue-600 transition-colors">
@@ -349,7 +349,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     {item.tags.map((t, idx) => (
                       <span key={idx} className="bg-slate-100 text-slate-600 px-2 py-0.2 rounded text-[10px] flex items-center gap-1">
-                        <Tag className="w-2.5 h-2.5 text-slate-400" />
+                        <Tag className="w-2.5 h-2.5 text-slate-500" />
                         {t}
                       </span>
                     ))}
@@ -365,12 +365,12 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     onClick={(e) => toggleBookmark(item.id, e)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 transition-colors"
+                    className="p-2 rounded-lg text-slate-500 hover:text-blue-500 hover:bg-slate-100 transition-colors"
                     title={item.isBookmarked ? '取消收藏' : '重点攻关收藏'}
                   >
                     <Bookmark className={`w-4 h-4 ${item.isBookmarked ? 'fill-blue-500 text-blue-500' : ''}`} />
                   </button>
-                  <div className="p-2 text-slate-400">
+                  <div className="p-2 text-slate-500">
                     {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </div>
@@ -455,9 +455,9 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
 
         {filtered.length === 0 && (
           <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center space-y-3">
-            <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
+            <BookOpen className="w-8 h-8 text-slate-700 mx-auto" />
             <div className="text-sm font-bold text-slate-700">未找到相关知识点</div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               您可以切换上方筛选条件，或点击“新增攻关知识点”沉淀您自己的高频考点备忘录。
             </p>
           </div>
@@ -466,14 +466,14 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
 
       {/* Add Custom Knowledge Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#1d1d1f]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-6">
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-blue-600" />
                 <h3 className="text-base font-bold text-slate-900">新增自定义攻关知识点</h3>
               </div>
-              <button onClick={() => setIsAddModalOpen(false)} aria-label="关闭" className="text-slate-400 hover:text-slate-600 text-lg">
+              <button onClick={() => setIsAddModalOpen(false)} aria-label="关闭" className="text-slate-500 hover:text-slate-600 text-lg">
                 <X className="w-4 h-4" />
               </button>
             </div>

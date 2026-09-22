@@ -91,18 +91,18 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
   return (
     <div id="interview-calendar-view" className="space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-6 rounded-2xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200">
         <div>
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-blue-600">
               <CalendarIcon className="w-5 h-5" />
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">面试日历与开考提醒</h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">面试日历与开考提醒</h2>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-blue-600 border border-indigo-500/20 font-medium">
               日程管理 & 提醒
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
             聚合所有投递记录中的面试排期，提供时间倒计时、视频会议直达与提前开考提醒，临考随时发起针对性模拟面试。
           </p>
         </div>
@@ -113,7 +113,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
             if (jobApplications.length > 0) setSelectedAppId(jobApplications[0].id);
             setShowScheduleModal(true);
           }}
-          className="flex items-center space-x-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
+          className="flex items-center space-x-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>登记新面试排期</span>
@@ -122,22 +122,22 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
 
       {/* Next Upcoming Highlight Card */}
       {nextInterview && (
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-indigo-950/40 border border-indigo-500/40 shadow-xl space-y-4">
+        <div className="p-6 rounded-2xl bg-blue-50 border border-blue-200 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-400">
+              <div className="p-2.5 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-600">
                 <BellRing className="w-6 h-6 animate-pulse" />
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 font-bold border border-amber-500/30">
                     下一场临近面试
                   </span>
-                  <span className="text-xs text-amber-400 font-mono font-semibold">
+                  <span className="text-xs text-amber-600 font-mono font-semibold">
                     {calculateCountdown(nextInterview.scheduledInterviewDate!)}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-white mt-1">
+                <h3 className="text-lg font-bold text-slate-900 mt-1">
                   {nextInterview.companyName} · {nextInterview.scheduledInterviewRound || '技术面试'}
                 </h3>
               </div>
@@ -153,7 +153,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                       nextInterview.position
                     )
                   }
-                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>临考全真模拟</span>
@@ -165,7 +165,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                   href={nextInterview.scheduledInterviewMeetingUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
                 >
                   <Video className="w-3.5 h-3.5" />
                   <span>进入会议室</span>
@@ -176,8 +176,8 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-indigo-500/20 text-xs">
-            <div className="flex items-center space-x-2 text-slate-300">
-              <Clock className="w-4 h-4 text-indigo-400" />
+            <div className="flex items-center space-x-2 text-slate-700">
+              <Clock className="w-4 h-4 text-blue-600" />
               <span>
                 时间：{new Date(nextInterview.scheduledInterviewDate!).toLocaleString('zh-CN', {
                   month: 'numeric',
@@ -188,11 +188,11 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                 })}
               </span>
             </div>
-            <div className="flex items-center space-x-2 text-slate-300">
-              <Video className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center space-x-2 text-slate-700">
+              <Video className="w-4 h-4 text-emerald-600" />
               <span>形式：{nextInterview.scheduledInterviewFormat || '线上视频'}</span>
             </div>
-            <div className="flex items-center space-x-2 text-slate-300">
+            <div className="flex items-center space-x-2 text-slate-700">
               <Bell className="w-4 h-4 text-purple-400" />
               <span>
                 提醒：
@@ -206,9 +206,9 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
       )}
 
       {/* Scheduled Interviews Timeline List */}
-      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 className="text-sm font-bold text-white">所有已排期面试日程 ({scheduledApps.length})</h3>
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <h3 className="text-sm font-bold text-slate-900">所有已排期面试日程 ({scheduledApps.length})</h3>
           <span className="text-xs text-slate-500">按时间先后排序</span>
         </div>
 
@@ -222,13 +222,13 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                   key={app.id}
                   className={`p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                     isUpcoming
-                      ? 'bg-slate-800/60 border-slate-700/80 hover:border-indigo-500/50'
-                      : 'bg-slate-900/40 border-slate-800/80 opacity-70'
+                      ? 'bg-slate-50 border-slate-200 hover:border-indigo-500/50'
+                      : 'bg-slate-50 border-slate-200/80 opacity-70'
                   }`}
                 >
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-blue-600 border border-indigo-500/20 font-mono">
                         {new Date(app.scheduledInterviewDate!).toLocaleString('zh-CN', {
                           month: 'numeric',
                           day: 'numeric',
@@ -240,8 +240,8 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                       <span
                         className={`text-[11px] px-2 py-0.5 rounded font-mono ${
                           isUpcoming
-                            ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
-                            : 'bg-slate-800 text-slate-500'
+                            ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                            : 'bg-slate-100 text-slate-500'
                         }`}
                       >
                         {calculateCountdown(app.scheduledInterviewDate!)}
@@ -249,11 +249,11 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <h4 className="text-base font-bold text-white">{app.companyName}</h4>
-                      <span className="text-xs text-slate-400">· {app.position}</span>
+                      <h4 className="text-base font-bold text-slate-900">{app.companyName}</h4>
+                      <span className="text-xs text-slate-500">· {app.position}</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                       <span className="flex items-center space-x-1">
                         <Clock className="w-3.5 h-3.5 text-slate-500" />
                         <span>轮次：{app.scheduledInterviewRound || '常规技术面'}</span>
@@ -263,7 +263,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                         <span>形式：{app.scheduledInterviewFormat || '线上视频'}</span>
                       </span>
                       {app.reminderEnabled && (
-                        <span className="flex items-center space-x-1 text-emerald-400 font-mono">
+                        <span className="flex items-center space-x-1 text-emerald-600 font-mono">
                           <Bell className="w-3.5 h-3.5" />
                           <span>开考前 {app.reminderMinutesBefore || 30}m 提醒</span>
                         </span>
@@ -276,7 +276,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                     {onOpenDossier && (
                       <button
                         onClick={() => onOpenDossier(app)}
-                        className="px-3 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
+                        className="px-3 py-1.5 text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
                       >
                         查看企业背调
                       </button>
@@ -291,7 +291,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                             app.position
                           )
                         }
-                        className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
+                        className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
                       >
                         <Play className="w-3 h-3 fill-current" />
                         <span>模拟此轮面试</span>
@@ -315,7 +315,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
             })}
           </div>
         ) : (
-          <div className="text-center py-12 text-slate-400 space-y-3">
+          <div className="text-center py-12 text-slate-500 space-y-3">
             <CalendarIcon className="w-10 h-10 text-slate-600 mx-auto" />
             <p className="text-sm">暂无已登记的面试排期，点击上方按钮登记即将到来的面试吧！</p>
           </div>
@@ -325,12 +325,12 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
       {/* Schedule Interview Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white">登记 / 修改面试排期</h3>
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-base font-bold text-slate-900">登记 / 修改面试排期</h3>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-500 hover:text-slate-900"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -338,11 +338,11 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
 
             <form onSubmit={handleSaveSchedule} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">选择目标投递公司</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">选择目标投递公司</label>
                 <select
                   value={selectedAppId}
                   onChange={(e) => setSelectedAppId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                 >
                   {jobApplications.map((j) => (
                     <option key={j.id} value={j.id}>
@@ -354,21 +354,21 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">面试时间</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">面试时间</label>
                   <input
                     type="datetime-local"
                     required
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">面试形式</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">面试形式</label>
                   <select
                     value={formFormat}
                     onChange={(e: any) => setFormFormat(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   >
                     <option value="线上视频">线上视频 (飞书/腾讯/钉钉)</option>
                     <option value="电话面试">电话面试</option>
@@ -378,18 +378,18 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">面试轮次名称</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">面试轮次名称</label>
                 <input
                   type="text"
                   placeholder="如：二面技术深度面 / 三面总监交叉面"
                   value={formRound}
                   onChange={(e) => setFormRound(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   视频会议链接或电话号码
                 </label>
                 <input
@@ -397,28 +397,28 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                   placeholder="如：https://meeting.feishu.cn/j/829102938"
                   value={formMeetingUrl}
                   onChange={(e) => setFormMeetingUrl(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               {/* Reminder Settings */}
-              <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700/60 space-y-2">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-slate-200 flex items-center space-x-1.5">
-                    <Bell className="w-3.5 h-3.5 text-indigo-400" />
+                  <label className="text-xs font-medium text-slate-700 flex items-center space-x-1.5">
+                    <Bell className="w-3.5 h-3.5 text-blue-600" />
                     <span>开启面试开考提醒</span>
                   </label>
                   <input
                     type="checkbox"
                     checked={formReminderEnabled}
                     onChange={(e) => setFormReminderEnabled(e.target.checked)}
-                    className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-slate-200 text-indigo-600 focus:ring-indigo-500"
                   />
                 </div>
 
                 {formReminderEnabled && (
                   <div className="flex items-center space-x-2 pt-1 text-xs">
-                    <span className="text-slate-400">提前：</span>
+                    <span className="text-slate-500">提前：</span>
                     {[15, 30, 60, 1440].map((mins) => (
                       <button
                         key={mins}
@@ -427,7 +427,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                         className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-colors ${
                           formReminderMinutes === mins
                             ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                            : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                         }`}
                       >
                         {mins < 60 ? `${mins}m` : mins === 60 ? '1h' : '1天'}
@@ -441,7 +441,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+                  className="px-4 py-2 text-xs text-slate-500 hover:text-slate-900 bg-slate-100 rounded-lg"
                 >
                   取消
                 </button>

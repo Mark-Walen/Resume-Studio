@@ -161,19 +161,19 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
   return (
     <div id="multi-company-optimizer-view" className="space-y-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-6 rounded-2xl border border-indigo-500/20 shadow-xl space-y-2">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
         <div className="flex items-center space-x-2.5">
-          <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-blue-600">
             <Layers className="w-5 h-5" />
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             多公司 JD 精细化简历优化 (最多支持 3 家)
           </h2>
-          <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+          <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-medium">
             工作经历 + 求学经历深度结合
           </span>
         </div>
-        <p className="text-xs text-slate-400 max-w-3xl leading-relaxed">
+        <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
           不同一线大厂对同一岗位的侧重点截然不同。添加您最期望上岸的 1-3 家目标公司
           JD，AI 将横向拆解各家面试与技术诉求，为您深度改写工作经历中的 STAR
           量化成果，并将您的求学学历、课程及学术背景包装出最具说服力的故事线！
@@ -181,11 +181,11 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
       </div>
 
       {/* Target Companies Configuration Box */}
-      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
           <div className="flex items-center space-x-2">
-            <Building2 className="w-4 h-4 text-indigo-400" />
-            <h3 className="text-sm font-bold text-white">
+            <Building2 className="w-4 h-4 text-blue-600" />
+            <h3 className="text-sm font-bold text-slate-900">
               已配置目标企业 ({targetCompanies.length} / 3)
             </h3>
           </div>
@@ -193,7 +193,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
             <button
               id="btn-add-company-slot"
               onClick={handleAddCompany}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition-colors border border-slate-700"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors border border-slate-200"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>添加第 {targetCompanies.length + 1} 家目标企业</span>
@@ -205,17 +205,17 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
           {targetCompanies.map((comp, idx) => (
             <div
               key={comp.id}
-              className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 space-y-3.5 flex flex-col justify-between relative group"
+              className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3.5 flex flex-col justify-between relative group"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-400 font-mono">
+                  <span className="text-xs font-bold text-blue-600 font-mono">
                     目标企业 #{idx + 1}
                   </span>
                   {targetCompanies.length > 1 && (
                     <button
                       onClick={() => handleRemoveCompany(comp.id)}
-                      className="text-slate-500 hover:text-red-400 p-1"
+                      className="text-slate-500 hover:text-red-600 p-1"
                       title="移除该目标公司"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -226,13 +226,13 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                 {/* Quick select from pipeline */}
                 {jobApplications.length > 0 && (
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">
+                    <label className="block text-[11px] text-slate-500 mb-1">
                       从投递管理快速同步：
                     </label>
                     <select
                       onChange={(e) => handleFillFromApplication(comp.id, e.target.value)}
                       defaultValue=""
-                      className="w-full px-2.5 py-1 text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-300 focus:outline-none"
+                      className="w-full px-2.5 py-1 text-xs bg-slate-100 border border-slate-200 rounded-lg text-slate-700 focus:outline-none"
                     >
                       <option value="" disabled>
                         -- 选择已保存投递目标 --
@@ -247,29 +247,29 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">公司名称</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">公司名称</label>
                   <input
                     type="text"
                     placeholder="如：字节跳动"
                     value={comp.companyName}
                     onChange={(e) => handleUpdateCompany(comp.id, 'companyName', e.target.value)}
-                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">目标岗位</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">目标岗位</label>
                   <input
                     type="text"
                     placeholder="如：资深前端架构师"
                     value={comp.position}
                     onChange={(e) => handleUpdateCompany(comp.id, 'position', e.target.value)}
-                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     岗位 JD (核心要求与职责)
                   </label>
                   <textarea
@@ -279,7 +279,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                     onChange={(e) =>
                       handleUpdateCompany(comp.id, 'jobDescription', e.target.value)
                     }
-                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500 resize-none font-mono"
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 resize-none font-mono"
                   />
                 </div>
               </div>
@@ -288,7 +288,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300">
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-700">
             {errorMsg}
           </div>
         )}
@@ -299,7 +299,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
             id="btn-run-multi-optimizer"
             onClick={handleRunOptimization}
             disabled={isLoading}
-            className="flex items-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-xl shadow-indigo-600/25 transition-all"
+            className="flex items-center space-x-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-sm transition-all"
           >
             <Sparkles className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span>
@@ -315,18 +315,18 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
       {result && (
         <div className="space-y-6">
           {/* Overall Cross-Comparison Box */}
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-950/50 via-slate-900 to-slate-900 border border-indigo-500/30 space-y-3 shadow-lg">
-            <div className="flex items-center space-x-2 text-indigo-400">
+          <div className="p-6 rounded-2xl bg-blue-50 border border-blue-200 space-y-3 shadow-sm">
+            <div className="flex items-center space-x-2 text-blue-600">
               <TrendingUp className="w-5 h-5" />
-              <h3 className="text-sm font-bold text-white tracking-wide">
+              <h3 className="text-sm font-bold text-slate-900 tracking-wide">
                 多企业横向技术侧重点对比分析
               </h3>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-700 leading-relaxed">
               {result.overallCrossComparison}
             </p>
             {result.generalAdvice && (
-              <div className="text-xs text-amber-300/90 pt-2 border-t border-indigo-500/20 flex items-start gap-1.5">
+              <div className="text-xs text-amber-700/90 pt-2 border-t border-indigo-500/20 flex items-start gap-1.5">
                 <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span><span className="font-semibold">求职专家总评建议：</span> {result.generalAdvice}</span>
               </div>
@@ -335,7 +335,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
 
           {/* Company Specific Tabs */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 border-b border-slate-800 pb-2">
+            <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
               {result.companies.map((comp, idx) => (
                 <button
                   key={idx}
@@ -343,7 +343,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                   className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                     activeTabCompanyIdx === idx
                       ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      : 'bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
@@ -357,22 +357,22 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
 
             {/* Active Company Detailed Recommendation */}
             {result.companies[activeTabCompanyIdx] && (
-              <div className="space-y-6 bg-slate-900 p-6 rounded-2xl border border-slate-800">
+              <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200">
                 {/* Company Header & Key Tech Flavors */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
                   <div>
-                    <h4 className="text-base font-bold text-white flex items-center space-x-2">
+                    <h4 className="text-base font-bold text-slate-900 flex items-center space-x-2">
                       <span>{result.companies[activeTabCompanyIdx].companyName}</span>
-                      <span className="text-xs font-normal text-slate-400">
+                      <span className="text-xs font-normal text-slate-500">
                         ({result.companies[activeTabCompanyIdx].position})
                       </span>
                     </h4>
                     <div className="flex items-center space-x-2 mt-2">
-                      <span className="text-xs text-slate-400">核心考察倾向：</span>
+                      <span className="text-xs text-slate-500">核心考察倾向：</span>
                       {result.companies[activeTabCompanyIdx].keyTechFlavors.map((fl, i) => (
                         <span
                           key={i}
-                          className="text-[11px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                          className="text-[11px] px-2 py-0.5 rounded bg-indigo-500/10 text-blue-700 border border-indigo-500/20"
                         >
                           {fl}
                         </span>
@@ -382,8 +382,8 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
 
                   <div className="flex items-center space-x-3">
                     <div className="text-right">
-                      <div className="text-[11px] text-slate-400">针对该岗位契合评级</div>
-                      <div className="text-base font-extrabold text-amber-400 font-mono">
+                      <div className="text-[11px] text-slate-500">针对该岗位契合评级</div>
+                      <div className="text-base font-extrabold text-amber-600 font-mono">
                         {result.companies[activeTabCompanyIdx].matchGrade} (
                         {result.companies[activeTabCompanyIdx].matchScore}分)
                       </div>
@@ -393,8 +393,8 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
 
                 {/* 1. Work Experience Targeted Rewrite */}
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-200">
-                    <Briefcase className="w-4 h-4 text-emerald-400" />
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
+                    <Briefcase className="w-4 h-4 text-emerald-600" />
                     <span>【工作经历精细化改写建议】（突出该企业期望的量化指标）</span>
                   </div>
 
@@ -406,10 +406,10 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                       return (
                         <div
                           key={idx}
-                          className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 space-y-3"
+                          className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3"
                         >
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-slate-300 font-mono">
+                            <span className="font-semibold text-slate-700 font-mono">
                               对应经历 / 项目：{sug.companyOrRole}
                             </span>
                             <span className="text-slate-500 text-[11px]">
@@ -417,9 +417,9 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                             </span>
                           </div>
 
-                          <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                          <div className="p-3 bg-emerald-50 border border-emerald-500/30 rounded-xl space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-emerald-400 flex items-center space-x-1">
+                              <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
                                 <Sparkles className="w-3.5 h-3.5" />
                                 <span>针对 {result.companies[activeTabCompanyIdx].companyName} 的专属 STAR 改写范本：</span>
                               </span>
@@ -428,7 +428,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                                 disabled={isApplied}
                                 className={`flex items-center space-x-1 px-2.5 py-1 text-xs rounded-lg transition-colors ${
                                   isApplied
-                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                    ? 'bg-emerald-500/20 text-emerald-700 border border-emerald-500/40'
                                     : 'bg-emerald-600 hover:bg-emerald-500 text-white'
                                 }`}
                               >
@@ -445,13 +445,13 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                                 )}
                               </button>
                             </div>
-                            <p className="text-xs text-emerald-200/90 leading-relaxed font-mono">
+                            <p className="text-xs text-emerald-700/90 leading-relaxed font-mono">
                               {sug.recommendedRewrite}
                             </p>
                           </div>
 
-                          <div className="text-xs text-slate-400">
-                            <span className="text-indigo-400 font-medium">改写收益分析：</span>
+                          <div className="text-xs text-slate-500">
+                            <span className="text-blue-600 font-medium">改写收益分析：</span>
                             {sug.reason}
                           </div>
                         </div>
@@ -462,7 +462,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
 
                 {/* 2. Education & Academic Background Framing */}
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-200">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
                     <GraduationCap className="w-4 h-4 text-purple-400" />
                     <span>【求学经历与学术背景精细化包装】</span>
                   </div>
@@ -474,14 +474,14 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                       </span>
                     </div>
 
-                    <div className="text-xs text-slate-300 leading-relaxed">
+                    <div className="text-xs text-slate-700 leading-relaxed">
                       <span className="text-purple-300 font-semibold">求学叙事策略：</span>
                       {result.companies[activeTabCompanyIdx].educationFramingAdvice?.framingStrategy}
                     </div>
 
                     {result.companies[activeTabCompanyIdx].educationFramingAdvice?.recommendedCourseHighlights && (
                       <div className="flex items-center space-x-2 text-xs">
-                        <span className="text-slate-400">建议突出的课程与课题：</span>
+                        <span className="text-slate-500">建议突出的课程与课题：</span>
                         {result.companies[activeTabCompanyIdx].educationFramingAdvice.recommendedCourseHighlights.map(
                           (c, i) => (
                             <span
@@ -507,13 +507,13 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                 {/* 3. Essential Keywords & Tailored Pitch */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   {/* Essential Keywords */}
-                  <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 space-y-2.5">
-                    <div className="text-xs font-bold text-slate-300">必填高频技术关键词：</div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="text-xs font-bold text-slate-700">必填高频技术关键词：</div>
                     <div className="flex flex-wrap gap-1.5">
                       {result.companies[activeTabCompanyIdx].essentialKeywords.map((kw, i) => (
                         <span
                           key={i}
-                          className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 text-indigo-300 border border-indigo-500/30 font-mono"
+                          className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 text-blue-700 border border-indigo-500/30 font-mono"
                         >
                           +{kw}
                         </span>
@@ -522,9 +522,9 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                   </div>
 
                   {/* Tailored Elevator Pitch */}
-                  <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 space-y-2.5 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-300 mb-1.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
                         <span>30秒专属打招呼 / 自荐话术</span>
                         <button
                           onClick={() =>
@@ -533,12 +533,12 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                               activeTabCompanyIdx
                             )
                           }
-                          className="flex items-center space-x-1 text-[11px] text-indigo-400 hover:text-indigo-300"
+                          className="flex items-center space-x-1 text-[11px] text-blue-600 hover:text-blue-700"
                         >
                           {copiedPitchIndex === activeTabCompanyIdx ? (
                             <>
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-400">已复制</span>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="text-emerald-600">已复制</span>
                             </>
                           ) : (
                             <>
@@ -548,7 +548,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                           )}
                         </button>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed font-mono">
+                      <p className="text-xs text-slate-700 leading-relaxed font-mono">
                         "{result.companies[activeTabCompanyIdx].tailoredElevatorPitch}"
                       </p>
                     </div>
