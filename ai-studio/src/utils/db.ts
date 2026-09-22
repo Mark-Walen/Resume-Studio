@@ -11,6 +11,7 @@ import { DEFAULT_LEETBOOKS } from '../data/defaultBooks';
 import { INITIAL_WORK_DAILY_LOGS } from '../data/defaultJournals';
 
 const RESUME_KEY = 'ai_resume_data_v3_embedded';
+const CERTIFICATE_DATE_MIGRATION_KEY = 'resume_certificate_date_migration_v1';
 const JOBS_KEY = 'ai_jobs_data_v3_embedded';
 const INTERVIEWS_KEY = 'ai_interviews_data_v3_embedded';
 const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v3_embedded';
@@ -90,14 +91,24 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
       }
       const validCustomKeys = customSections.map((section) => `custom:${section.id}`);
       const sectionOrder = [...baseOrder.filter((key) => !key.startsWith('custom:') || validCustomKeys.includes(key)), ...validCustomKeys.filter((key) => !baseOrder.includes(key))];
-      return {
+      const shouldMigrateCertificateDate = !localStorage.getItem(CERTIFICATE_DATE_MIGRATION_KEY);
+      const certificates = shouldMigrateCertificateDate
+        ? (stored.certificates || defaults.certificates).map(item => item.name === '湖南城市学院数学竞赛三等奖' && item.date === '2019-03' ? { ...item, date: '' } : item)
+        : (stored.certificates || defaults.certificates);
+      const normalized = {
         ...defaults,
         ...stored,
         personalInfo: { ...defaults.personalInfo, ...stored.personalInfo },
+        certificates,
         customSections,
         sectionOrder,
         hiddenSections: (stored.hiddenSections || []).filter((key) => key !== 'summary' && key !== 'basicInfo'),
       };
+      if (shouldMigrateCertificateDate) {
+        localStorage.setItem(RESUME_KEY, JSON.stringify(normalized));
+        localStorage.setItem(CERTIFICATE_DATE_MIGRATION_KEY, '1');
+      }
+      return normalized;
     }
   } catch {
     // fallback

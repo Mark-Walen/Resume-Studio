@@ -90,7 +90,7 @@ export const DEFAULT_RESUME: ResumeData = {
   ],
   certificates: [
     { id: 'cert-cet4', name: 'CET-4', issuer: '全国大学英语四、六级考试委员会', date: '' },
-    { id: 'award-math-2019', name: '湖南城市学院数学竞赛三等奖', issuer: '湖南城市学院', date: '2019-03' }
+    { id: 'award-math-2019', name: '湖南城市学院数学竞赛三等奖', issuer: '湖南城市学院', date: '' }
   ],
   customSections: [],
   sectionOrder: ['jobIntent', 'skills', 'workExperience', 'projects', 'education', 'certificates'],
