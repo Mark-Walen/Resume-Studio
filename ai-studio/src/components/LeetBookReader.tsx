@@ -119,7 +119,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
     const newBook: KnowledgeBook = {
       id: `book-${Date.now()}`,
       title: newBookTitle.trim(),
-      subtitle: newBookSubtitle.trim() || '大厂高频技术攻坚与系统设计全解',
+      subtitle: newBookSubtitle.trim() || '嵌入式高频技术攻坚与系统设计',
       category: newBookCategory,
       author: '我的个人智库',
       badge: '自研智库',
@@ -131,7 +131,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
       chapters: [
         {
           id: `ch-${Date.now()}-1`,
-          title: '第 1 章：核心概念与大厂考察基准',
+          title: '第 1 章：核心概念与工程实践',
           order: 1,
           sections: []
         }
@@ -617,7 +617,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            告别碎片化繁杂考题。按大厂架构体系系统化研读分布式、前端性能突破与大模型全栈等工业级经典，支持上传 PDF/Word 及在线书写专属知识书。
+            按嵌入式工程体系系统研读 C/RTOS、驱动、无线协议、Bootloader 与存储，支持上传 PDF/Word 及在线撰写个人知识书。
           </p>
         </div>
 
@@ -650,10 +650,10 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
         <div className="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-1">
           {[
             { key: 'all', label: '全部书库' },
-            { key: 'backend', label: '后端高并发与架构' },
-            { key: 'frontend', label: '前端性能与工程化' },
-            { key: 'ai_fullstack', label: '大模型与Agent' },
-            { key: 'algorithm', label: '算法破局' }
+            { key: 'backend', label: 'RTOS 与驱动' },
+            { key: 'frontend', label: '嵌入式基础与外设' },
+            { key: 'system_design', label: '无线协议与系统设计' },
+            { key: 'ai_fullstack', label: 'Bootloader 与存储' }
           ].map((cat) => (
             <button
               key={cat.key}
@@ -799,9 +799,10 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   onChange={(e: any) => setNewBookCategory(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 >
-                  <option value="backend">后端高并发与架构</option>
-                  <option value="frontend">前端性能与工程化</option>
-                  <option value="ai_fullstack">大模型与AI Agent全栈</option>
+                  <option value="backend">RTOS 与驱动架构</option>
+                  <option value="frontend">嵌入式基础与外设</option>
+                  <option value="system_design">无线协议与系统设计</option>
+                  <option value="ai_fullstack">Bootloader 与存储</option>
                   <option value="algorithm">算法与数据结构</option>
                   <option value="system_design">高频系统设计</option>
                 </select>

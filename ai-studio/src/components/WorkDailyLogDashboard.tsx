@@ -518,12 +518,12 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
                     onChange={(e: any) => setFormCategory(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="performance">性能攻坚 / 延时优化</option>
-                    <option value="architecture">架构重构 / 底层改造</option>
-                    <option value="ai_infra">AI 智能体 / RAG基建</option>
-                    <option value="feature">核心高并发业务研发</option>
-                    <option value="stability">生产稳定性 / 故障排查</option>
-                    <option value="engineering">CI/CD 与工程效能</option>
+                    <option value="performance">性能 / 功耗 / 链路优化</option>
+                    <option value="architecture">架构重构 / 底层组件</option>
+                    <option value="ai_infra">视觉 / 算法 / 工具</option>
+                    <option value="feature">驱动 / 协议 / 产品功能</option>
+                    <option value="stability">稳定性 / 故障排查</option>
+                    <option value="engineering">构建系统与工程效能</option>
                   </select>
                 </div>
               </div>
@@ -535,7 +535,7 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="如：秒杀交易链路防超卖重构、微前端多实例沙箱改造"
+                  placeholder="如：UART DMA 接收、Mesh 时间同步、双镜像 OTA"
                   value={formProject}
                   onChange={(e) => setFormProject(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
@@ -586,7 +586,7 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Redis, Lua, RocketMQ, Vite, TypeScript"
+                  placeholder="C, FreeRTOS, UART DMA, BLE Mesh, MCUboot"
                   value={formTechs}
                   onChange={(e) => setFormTechs(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-emerald-500"

@@ -2,66 +2,59 @@ import { WorkDailyLog } from '../types/journal';
 
 export const INITIAL_WORK_DAILY_LOGS: WorkDailyLog[] = [
   {
-    id: 'log-1',
-    date: '2026-09-18',
-    projectOrModuleName: '核心电商大促交易链路',
-    category: 'performance',
-    tasksCompleted: '排查并优化大促秒杀订单防超卖与下单接口超时问题，落地分布式限流与动静分离。',
-    challengesAndSolutions: '突发瞬时 QPS 从 1,500 激增至 12,000，MySQL 行级排他锁导致死锁暴增并拖垮连接池。方案：引入 Redis + Lua 脚本在内存中原子扣减预热库存，配合本地双缓存 Guava 拦截非白名单请求；通过 RocketMQ 异步批量落库。',
-    quantifiableMetrics: '秒杀接口 P99 响应延时从 820ms 降至 38ms（降低95%），系统峰值吞吐承载力提升 8 倍，零超卖事故发生。',
-    technologiesUsed: ['Redis', 'Lua', 'RocketMQ', 'Guava Cache', 'MySQL'],
-    evidences: [
-      {
-        id: 'ev-1',
-        type: 'performance_report',
-        title: 'JMeter压测对比报告-秒杀链路优化前后.pdf',
-        summary: '压测数据：12,000 QPS 稳态运行，CPU 负载在 65% 以下'
-      }
-    ],
-    extractedToResume: false,
-    createdAt: '2026-09-18T18:30:00Z',
-    updatedAt: '2026-09-18T18:30:00Z',
-  },
-  {
-    id: 'log-2',
-    date: '2026-09-15',
-    projectOrModuleName: '企业级低代码与微前端架构基建',
-    category: 'architecture',
-    tasksCompleted: '完成主应用与 8 个业务子应用的微前端沙箱迁移改造，解决全局变量污染与CSS样式穿透。',
-    challengesAndSolutions: '多业务团队各自引入不同版本 React (v16 vs v18) 与 Echarts，导致全局 window 冲突及偶发性白屏。方案：基于 Proxy 代理 window 隔离子应用全局运行时，并在打包工具中实现动态命名空间样式隔离与 Module Federation 模块按需共享。',
-    quantifiableMetrics: '子应用独立部署构建耗时由 4.5 分钟缩减至 42 秒，发布回滚耗时缩减 80%，跨团队依赖冲突清零。',
-    technologiesUsed: ['Vite', 'Module Federation', 'ES6 Proxy', 'TypeScript', 'TailwindCSS'],
-    evidences: [
-      {
-        id: 'ev-2',
-        type: 'pr_link',
-        title: 'PR #1208: 架构升级-基于Proxy的微前端多实例沙箱支持',
-        urlOrRef: 'https://github.com/internal-corp/platform/pull/1208'
-      }
-    ],
+    id: 'log-ota',
+    date: '2026-08-18',
+    projectOrModuleName: 'MCUboot / MCUmgr 双槽升级链路',
+    category: 'stability',
+    tasksCompleted: '完成镜像签名、Serial Recovery、双槽升级、image test/confirm、reset 与应用确认流程验证。',
+    challengesAndSolutions: '围绕 header 0x1000、slot 0x68000、Trailer flag 与串口传输边界进行联调；通过分阶段校验和应用确认避免未验证镜像被永久接受。',
+    quantifiableMetrics: '完成 UART2 115200 串口恢复与双槽生命周期测试，覆盖升级、试运行、确认和回滚关键路径。',
+    technologiesUsed: ['MCUboot', 'MCUmgr', 'imgtool', 'UART', 'NOR Flash', 'C'],
+    evidences: [{ id: 'ev-ota', type: 'doc_link', title: 'MCUboot 双槽升级与 Trailer 状态验证记录' }],
     extractedToResume: true,
-    createdAt: '2026-09-15T19:10:00Z',
-    updatedAt: '2026-09-15T19:10:00Z',
+    createdAt: '2026-08-18T18:00:00Z',
+    updatedAt: '2026-08-18T18:00:00Z'
   },
   {
-    id: 'log-3',
-    date: '2026-09-10',
-    projectOrModuleName: 'AI 智能体工作流与文档知识库',
-    category: 'ai_infra',
-    tasksCompleted: '研发企业级 RAG 混合检索与 Function Calling 自动化编排工作流。',
-    challengesAndSolutions: '传统稠密向量在长尾专有名词与编号查询时准确率仅为 54%。方案：搭建 BM25 稀疏检索 + BGE Embedding 双路召回通道，并引入 BGE-Reranker 交叉编码器对候选切片打分重排序。',
-    quantifiableMetrics: '知识库问答检索准确率 Top-3 命中率从 61% 跃升至 92.4%，大模型回答幻觉率降低 47%。',
-    technologiesUsed: ['LLM API', 'VectorDB', 'BM25', 'Reranker', 'Node.js'],
-    evidences: [
-      {
-        id: 'ev-3',
-        type: 'doc_link',
-        title: '企业级RAG检索增强与Agent编排架构白皮书',
-        urlOrRef: 'https://wiki.corp.com/pages/ai-rag-arch'
-      }
-    ],
-    extractedToResume: false,
-    createdAt: '2026-09-10T20:00:00Z',
-    updatedAt: '2026-09-10T20:00:00Z',
+    id: 'log-phy',
+    date: '2026-06-11',
+    projectOrModuleName: 'BLE Coded PHY S=2 链路测试',
+    category: 'performance',
+    tasksCompleted: '完成单信道与多信道室内/户外测试，覆盖 0.5–150 m，记录 RSSI、收发包数和丢包率。',
+    challengesAndSolutions: '设计 START/DATA/END 状态机和 22→34→39→10 跳频序列，识别异常 RSSI 与缺失数据，并按距离和信道整理对比报告。',
+    quantifiableMetrics: 'CH10 丢包率：0.5 m 0.08%、50 m 13.88%、100 m 约 45%、150 m 93%。',
+    technologiesUsed: ['BLE Coded PHY', 'Telink LL', 'Timer0', 'FreeRTOS', 'RSSI / PER', 'Excel'],
+    evidences: [{ id: 'ev-phy', type: 'performance_report', title: 'BLE Coded PHY 室内及户外链路测试报告.xlsx' }],
+    extractedToResume: true,
+    createdAt: '2026-06-11T18:00:00Z',
+    updatedAt: '2026-06-11T18:00:00Z'
+  },
+  {
+    id: 'log-sync',
+    date: '2026-04-22',
+    projectOrModuleName: '私有 Mesh 时间同步与 TDMA 调度',
+    category: 'architecture',
+    tasksCompleted: '实现 200 ms TDMA 超帧、同步帧采集、PLL/EWMA 校时、锁定/失锁检测与 slot 重对齐。',
+    challengesAndSolutions: '样本数组在大规模节点下占用过高，改用 O(1) 在线统计；保留可配置采样缓冲用于调试，并通过 pcapng 与双设备日志还原超帧对齐。',
+    quantifiableMetrics: '面向最多约 1000 个同步样本，将统计存储从线性数组降为常量空间。',
+    technologiesUsed: ['C', 'TDMA', 'PLL', 'EWMA', 'FreeRTOS', 'pcapng'],
+    evidences: [{ id: 'ev-sync', type: 'doc_link', title: 'Mesh Sync 状态机与双设备抓包分析' }],
+    extractedToResume: true,
+    createdAt: '2026-04-22T18:00:00Z',
+    updatedAt: '2026-04-22T18:00:00Z'
+  },
+  {
+    id: 'log-cli',
+    date: '2026-05-28',
+    projectOrModuleName: 'Lynx CLI 2.1 与嵌入式 SDK 工具链',
+    category: 'engineering',
+    tasksCompleted: '接入 CMake/Kconfig、Ninja/Make、Telink 下载工具和 MCUmgr，完成 resolver、backend、flash/device 命令与错误归一化。',
+    challengesAndSolutions: '将板级硬件描述、项目依赖和工作区默认值分层，区分 raw 地址烧录与 image 生命周期更新，并把厂商差异封装在 FlashBackend。',
+    quantifiableMetrics: 'Phase 2/2.1 共 53 项测试通过，覆盖核心命令、能力校验、进度输出和异常路径。',
+    technologiesUsed: ['Python', 'CMake', 'Kconfig', 'Ninja', 'MCUmgr', 'Poetry'],
+    evidences: [{ id: 'ev-cli', type: 'performance_report', title: 'Lynx CLI 2.1 测试结果（53 项）' }],
+    extractedToResume: true,
+    createdAt: '2026-05-28T18:00:00Z',
+    updatedAt: '2026-05-28T18:00:00Z'
   }
 ];

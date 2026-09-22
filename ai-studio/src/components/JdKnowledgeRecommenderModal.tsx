@@ -36,7 +36,7 @@ export const JdKnowledgeRecommenderModal: React.FC<JdKnowledgeRecommenderModalPr
   preselectedSectionTitle,
 }) => {
   const [selectedJobId, setSelectedJobId] = useState<string>(jobApplications[0]?.id || 'custom');
-  const [companyName, setCompanyName] = useState<string>(jobApplications[0]?.companyName || '字节跳动');
+  const [companyName, setCompanyName] = useState<string>(jobApplications[0]?.companyName || '大疆创新');
   const [position, setPosition] = useState<string>(jobApplications[0]?.position || '资深架构研发');
   const [jobDescription, setJobDescription] = useState<string>(jobApplications[0]?.jobDescription || '');
 
@@ -177,7 +177,7 @@ export const JdKnowledgeRecommenderModal: React.FC<JdKnowledgeRecommenderModalPr
                 <label className="block text-xs font-medium text-slate-700 mb-1">目标公司名称</label>
                 <input
                   type="text"
-                  placeholder="如：字节跳动、阿里巴巴、美团..."
+                  placeholder="如：大疆创新、乐鑫科技、Nordic..."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500"

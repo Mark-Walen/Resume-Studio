@@ -115,59 +115,45 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
   };
 
   const handleAiAutoFill = () => {
-    const isByte = application.companyName.includes('字节');
-    const isAli = application.companyName.includes('阿里');
-    const isTencent = application.companyName.includes('腾讯');
+    const isChipCompany = /乐鑫|Nordic|芯片|半导体/i.test(application.companyName);
+    const isDeviceCompany = /大疆|华为|终端|智能/i.test(application.companyName);
 
     setDossier({
       hrIntro:
         dossier.hrIntro ||
-        `${application.companyName}核心业务线，业务增长势头强劲，团队处于高质量扩展期，晋升与技术空间广阔。`,
+        `${application.companyName}嵌入式研发岗位，具体业务线、汇报关系和 HC 原因需要通过正式招聘渠道确认。`,
       compensationStructure:
         dossier.compensationStructure ||
-        `${application.salaryExpectation || '50k-65k'} · 全额五险一金 (12%) · 年终奖 2-4 个月 · 股票期权按年归属。`,
+        `${application.salaryExpectation || '面议'}；薪资结构、年终奖、社保公积金与其他福利待 HR 确认。`,
       teamAndTechStack:
         dossier.teamAndTechStack ||
-        (isByte
-          ? 'React 19 + TypeScript + Go 微服务 + 自研微前端引擎与云原生网关。'
-          : isAli
-          ? '微前端 (qiankun/icestark) + Midway/Node.js BFF + Kubernetes + 分布式中间件。'
-          : '现代前端高并发架构 + WebRTC/音视频 + 消息队列高吞吐集群。'),
+        (isChipCompany
+          ? 'C/C++ + RTOS + BLE/Wi-Fi 协议栈 + SoC 外设驱动 + Bootloader/SDK 工具链。'
+          : isDeviceCompany
+          ? 'C/C++ + ARM/RISC-V MCU + FreeRTOS + 通信协议 + 传感器与电机等硬件联调。'
+          : 'C/C++ + MCU/RTOS + UART/SPI/I²C/CAN + 无线通信 + OTA 与系统调试。'),
       reputationAndWorkLife:
         dossier.reputationAndWorkLife ||
-        '双休正常，核心攻关期略有加班，技术评审严格，团队崇尚数据驱动与工程规范。',
+        '作息、出差、现场支持和量产阶段节奏需要结合具体团队与项目确认。',
       keyInterviewStyle:
         dossier.keyInterviewStyle ||
-        '前两轮手撕高频算法与核心设计模式，三面重系统高可用演进、性能瓶颈排查与跨团队拿结果。',
+        '重点准备 C 语言底层、RTOS 调度与同步、驱动接口、通信协议、内存与并发，以及真实硬件问题定位。',
       reverseQuestions:
         dossier.reverseQuestions && dossier.reverseQuestions.length > 0
           ? dossier.reverseQuestions
           : [
               '请问目前团队在该业务线未来半年最核心的 3 项技术挑战是什么？',
               '对于该岗位入职后，前 3 个月期望达成怎样的标志性交付成果？',
-              '团队在技术选型与新基建（如 AI 智能体/跨端/性能监控）上的容错度与探索机制是怎样的？'
+              '团队当前主要 MCU、RTOS、无线协议和调试工具链是什么？'
             ],
       riskAlerts:
         dossier.riskAlerts && dossier.riskAlerts.length > 0
           ? dossier.riskAlerts
-          : ['大促高峰期保障压力较大，对全链路监控告警敏感度要求高。'],
+          : ['岗位职责、量产节奏、出差与现场支持比例需要在面试中确认。'],
       collectedLinks:
         dossier.collectedLinks && dossier.collectedLinks.length > 0
           ? dossier.collectedLinks
-          : [
-              {
-                id: `dl-ai-1`,
-                title: `${application.companyName} 官方技术公众号与架构文章`,
-                url: 'https://juejin.cn',
-                note: '重点研读其高并发系统与微前端架构演进史'
-              },
-              {
-                id: `dl-ai-2`,
-                title: '脉脉与职场论坛员工风评与面试复盘',
-                url: 'https://maimai.cn',
-                note: '了解部门领导技术偏好与团队稳定性'
-              }
-            ]
+          : []
     });
   };
 

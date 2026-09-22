@@ -66,8 +66,8 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
       startDate: '2024-01',
       endDate: '2024-06',
       description: '简要说明项目背景与核心目标。',
-      highlights: ['设计高可用架构，并实现自动化CI/CD持续交付。'],
-      techStack: ['React', 'TypeScript', 'Node.js']
+      highlights: ['完成核心驱动或协议模块设计、联调与异常路径验证。'],
+      techStack: ['C/C++', 'FreeRTOS', 'STM32']
     };
     onChange({
       ...resume,

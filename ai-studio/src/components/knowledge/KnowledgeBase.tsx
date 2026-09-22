@@ -34,12 +34,12 @@ interface KnowledgeBaseProps {
 }
 
 const CATEGORY_NAMES: Record<KnowledgeCategory, string> = {
-  frontend: '前端工程与Web',
-  backend: '后端架构与并发',
-  algorithm: '高频算法与数据结构',
-  system_design: '大厂系统设计',
-  ai_fullstack: '大模型与AI全栈',
-  behavioral: '软技能与STAR薪资',
+  frontend: '嵌入式基础与外设',
+  backend: 'RTOS 与驱动架构',
+  algorithm: 'C 语言与数据结构',
+  system_design: '无线协议与系统设计',
+  ai_fullstack: 'Bootloader 与存储',
+  behavioral: '项目表达与职业发展',
 };
 
 const DIFFICULTY_CONFIG: Record<KnowledgeDifficulty, { label: string; color: string }> = {
@@ -147,11 +147,11 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
             <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono uppercase bg-slate-100 text-slate-700 border border-slate-200">
               Tech Knowledge Base
             </span>
-            <span className="text-xs text-slate-500">大厂高频考点 · LeetBook体系专栏 · 针对性攻坚</span>
+            <span className="text-xs text-slate-500">嵌入式高频考点 · 系统化专栏 · 针对性攻坚</span>
           </div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">程序员技术面试知识库</h2>
           <p className="text-xs text-slate-700 mt-1 max-w-2xl leading-relaxed">
-            结构化 LeetBook 专栏研读、分类考点闪卡速记、PDF/Word 上传解析与在线撰写，支持基于目标公司智能对齐推荐必考要点。
+            系统研读 C/RTOS、驱动、无线协议、Bootloader 与存储，支持闪卡速记、资料导入和基于目标岗位的考点推荐。
           </p>
         </div>
 

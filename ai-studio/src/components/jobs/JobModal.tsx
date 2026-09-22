@@ -76,7 +76,7 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
               <input
                 type="text"
                 required
-                placeholder="如: 字节跳动、腾讯、微软"
+                placeholder="如: 大疆创新、乐鑫科技、Nordic"
                 value={formData.companyName || ''}
                 onChange={e => setFormData({ ...formData, companyName: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
@@ -87,7 +87,7 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
               <input
                 type="text"
                 required
-                placeholder="如: 资深全栈工程师 / 架构师"
+                placeholder="如: 嵌入式软件工程师 / 固件工程师"
                 value={formData.position || ''}
                 onChange={e => setFormData({ ...formData, position: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"

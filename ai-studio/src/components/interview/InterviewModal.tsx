@@ -21,7 +21,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
 }) => {
   const [companyName, setCompanyName] = useState(editingRecord?.companyName || initialCompanyName || '');
   const [round, setRound] = useState(editingRecord?.round || '二面技术');
-  const [position, setPosition] = useState(editingRecord?.position || '资深全栈研发专家');
+  const [position, setPosition] = useState(editingRecord?.position || '嵌入式软件开发工程师');
   const [date, setDate] = useState(editingRecord?.date || new Date().toISOString().split('T')[0]);
   const [durationMinutes, setDurationMinutes] = useState(editingRecord?.durationMinutes || 60);
   const [interviewers, setInterviewers] = useState(editingRecord?.interviewers || '');
@@ -37,17 +37,17 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
     editingRecord?.questions || [
       {
         id: 'q-1',
-        question: '谈谈在大型 React 应用中，如何处理多层嵌套与超大列表的渲染卡顿优化？',
-        category: '前端性能优化',
+        question: 'UART DMA 接收中如何设计 ISR、ring buffer 与协议解析任务的职责边界？',
+        category: '驱动 / DMA / 并发',
         struggleLevel: 'struggled',
-        userNotes: '答了虚拟列表和 useMemo，但面试官深入追问了 Offscreen 离屏渲染与分片调度，没能讲深。'
+        userNotes: '需要结合实际丢字节问题说明缓冲所有权、半包粘包和 ISR 最短路径。'
       },
       {
         id: 'q-2',
-        question: '遇到 Node.js 内存泄漏时，线上生产环境如何不影响用户的前提下排查和取证？',
-        category: '后端稳定性与排障',
+        question: '双镜像 Bootloader 如何保证升级掉电安全、应用确认与失败回滚？',
+        category: 'Bootloader / OTA',
         struggleLevel: 'unanswered',
-        userNotes: '现场卡壳，直接说了 dump heap，被面试官指出线上百万并发全量 dump 会造成 STW 导致雪崩。'
+        userNotes: '重点补充 Trailer 状态、Flash 擦写约束和每个掉电窗口的恢复策略。'
       }
     ]
   );
@@ -160,7 +160,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
               <input
                 type="text"
                 required
-                placeholder="如: 字节跳动、腾讯"
+                placeholder="如: 大疆创新、乐鑫科技"
                 value={companyName}
                 onChange={e => setCompanyName(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"

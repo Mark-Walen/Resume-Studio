@@ -64,7 +64,7 @@ const apiPlugin: Plugin = {
 根据用户提供的经历描述（可能来自语音转文字）、现有简历和通过安全杀毒扫描的辅助材料，生成一份结构完整、用词专业、量化成果突出的简历数据。
 严格返回合法 JSON，格式如下：
 {
-  "title": "简历标题（如：资深全栈架构师）",
+  "title": "简历标题（如：嵌入式软件开发工程师）",
   "personalInfo": {
     "fullName": "姓名",
     "jobTitle": "求职岗位",
@@ -100,7 +100,7 @@ const apiPlugin: Plugin = {
       "endDate": "YYYY-MM",
       "description": "项目简要背景",
       "highlights": ["核心技术攻坚点", "可量化收益"],
-      "techStack": ["React", "TypeScript", "Node.js"]
+      "techStack": ["C/C++", "FreeRTOS", "STM32"]
     }
   ],
   "education": [
@@ -320,7 +320,7 @@ ${JSON.stringify(interviews, null, 2)}`;
 严格输出标准 JSON 格式，不含任何包裹字符：
 {
   "id": "resume-imported-auto",
-  "title": "简历标题（如：资深前端架构师）",
+  "title": "简历标题（如：嵌入式软件开发工程师）",
   "lastModified": "2026-09-21",
   "personalInfo": {
     "fullName": "姓名",
@@ -485,7 +485,7 @@ ${JSON.stringify(interviews, null, 2)}`;
 严格输出合法 JSON，结构如下：
 {
   "parsedJd": {
-    "companyName": "公司名称（如：字节跳动、阿里巴巴，若未能提取写目标企业）",
+    "companyName": "公司名称（如：大疆、乐鑫科技，若未能提取写目标企业）",
     "position": "招聘职位全称",
     "salaryRange": "薪资范围（如：40k-60k · 16薪，未提写面议）",
     "location": "工作地点/城市",
@@ -567,7 +567,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
 
           const systemPrompt = `你是一位精通各大互联网巨头（字节、阿里、腾讯、美团、微软、快手等）技术面风格的高级架构技术面试官兼求职导师。
 根据用户提供的【即将面试的目标公司与岗位JD】以及【当前简历信息】：
-1. 深入剖析该公司的技术风格画像（如：字节重手撕算法与微前端跨端，阿里重分布式事务/高并发/中台，美团重履约/高可用限流/状态机）；
+1. 深入剖析该公司的技术风格画像（如：终端团队重 C/RTOS/驱动与系统调试，芯片团队重 SoC 外设、无线协议与低功耗，IoT 团队重设备接入、OTA 与可靠性）；
 2. 对比候选人简历与该岗位需求，精准推荐 5-8 个最需要重点突击的核心知识点与考题；
 3. 为每个考点标明紧急度（critical: 必考高危 / high: 核心重点 / bonus: 加分亮点），明确指出“为什么针对这家公司必考”、该公司的特有考察侧重点，以及面试前30分钟速记要点与翻车避坑指南。
 
@@ -653,7 +653,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 7000) : '常规高级�
 1. 【横向对比总结】分析这几家公司在技术选型、架构侧重点、业务文化上的异同；
 2. 【分公司精细优化建议】：针对每家目标企业：
    - 计算匹配度评分 (0-100) 与评级 (S/A/B/C)；
-   - 提取该公司的核心技术倾向 (如：对高并发TPS、算法复杂度、微前端沙箱、业务量化结果的不同偏好)；
+   - 提取该公司的核心技术倾向（如：对 C/C++ 基础、RTOS 并发、外设驱动、无线协议、Bootloader/OTA 与硬件调试的不同偏好）；
    - 【工作经历改写指导】：选取候选人最具代表性的工作/项目经历，针对该公司 JD 的关键词提供【量化 STAR 改写范例】，明确改写理由；
    - 【求学经历包装建议】：深度结合候选人的学历、专业、核心课程、学术研究/论文或毕业设计，指导如何讲好“从高校学术思维到工业级工程实战”的故事，贴合该公司对应职位的诉求；
    - 必须在简历中强化的核心关键词清单；
@@ -766,11 +766,11 @@ ${JSON.stringify({
       "id": "bullet-1",
       "targetSection": "workExperience",
       "companyOrProjectTarget": "推荐归属的项目或工作经历名称",
-      "bulletText": "主导大促秒杀链路高可用改造，针对高并发库存超卖痛点，引入 Redis + Lua 内存原子扣减与 Guava 双本地缓存，配合 RocketMQ 异步批量落库，将接口 P99 响应时间从 820ms 压降至 38ms（降幅 95%），实现 12,000 QPS 稳态运行与零超卖事故。",
+      "bulletText": "负责 BLE 到 UART 的 OTA 数据通路，针对无线分包、Flash 写入与掉电恢复问题，采用 FreeRTOS 事件驱动、双槽镜像与完整性校验完成升级闭环，并通过链路和回滚测试验证可靠性。",
       "starBreakdown": {
-        "situation": "大促秒杀流量从 1,500 QPS 激增至 12,000 QPS，MySQL 行锁导致死锁暴增并拖垮连接池",
-        "task": "彻底根治防超卖与接口高延迟，保障秒杀服务高可用",
-        "action": "采用 Redis + Lua 脚本在内存中原子扣减，搭配 Guava 本地缓存降级与 RocketMQ 异步削峰",
+        "situation": "OTA 数据需要跨 BLE 与 UART 传输，并覆盖分包、Flash 写入和异常断电场景",
+        "task": "完成可恢复、可校验的双镜像升级链路",
+        "action": "采用 FreeRTOS 事件驱动、双槽镜像、完整性校验和自动化回滚测试",
         "result": "P99 延时由 820ms 降至 38ms（降幅95%），承载力提升8倍，零故障"
       },
       "evidenceSources": ["2026-09-18 日报"]

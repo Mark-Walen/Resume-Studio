@@ -243,12 +243,12 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
                 <textarea
                   rows={8}
                   placeholder={`例如：
-张三 | 资深前端架构师 | 13800000000 | zhangsan@example.com
-个人总结：8年互联网高并发大厂经历，擅长React架构与全链路性能治理...
+张三 | 嵌入式软件工程师 | 13800000000 | zhangsan@example.com
+个人总结：4年嵌入式开发经验，熟悉C/C++、FreeRTOS、BLE与Bootloader...
 工作经历：
-2022.03-至今 某核心科技 资深研发
-- 主导千万级核心电商前端架构演化，首屏加载降低40%
-- 搭建团队Monorepo基建与发布流水线...`}
+2022.03-至今 某智能硬件公司 嵌入式软件工程师
+- 负责UART DMA驱动与BLE通信协议开发
+- 完成双镜像OTA、异常回滚与链路测试...`}
                   value={pastedText}
                   onChange={e => setPastedText(e.target.value)}
                   className="w-full p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 font-mono text-xs leading-relaxed"

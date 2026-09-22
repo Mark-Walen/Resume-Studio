@@ -1,141 +1,89 @@
 import { ResumeData } from '../types/resume';
 
 export const DEFAULT_RESUME: ResumeData = {
-  id: 'resume-default-001',
-  title: '资深全栈研发工程师 & 架构师',
-  lastModified: '2026-09-20',
+  id: 'resume-embedded-2026',
+  title: '嵌入式软件开发工程师',
+  lastModified: '2026-09-22',
   personalInfo: {
-    fullName: '张伟 (Vincent Zhang)',
-    jobTitle: '资深全栈架构师 / Tech Lead',
-    email: 'vincent.zhang.tech@example.com',
-    phone: '+86 138-0013-8000',
-    location: '北京 / 杭州 (接受远程/混合)',
-    website: 'https://vincentzhang.dev',
-    github: 'https://github.com/vincent-zhang-tech',
-    linkedin: 'https://linkedin.com/in/vincent-zhang',
+    fullName: 'BLUE',
+    jobTitle: '嵌入式软件开发工程师',
+    email: 'mark_walen@qq.com',
+    phone: '+110 xx11703136',
+    location: '深圳 / 上海',
   },
-  summary: '10 年现代 Web、高并发服务端与分布式架构研发经验，负责过多款千万级 DAU 核心业务与 AI 智能系统从 0 到 1 架构落地。深耕 React 19、TypeScript、Node.js/Next.js 以及云原生微服务体系，具备全链路系统性能调优、工程化基建及跨职能团队带领经验。倡导数据驱动与工程卓越，热衷开源与前沿 AI 交互落地。',
+  summary: '4.4 年嵌入式软件开发经验，主要使用 C/C++ 与 Python，熟悉 RISC-V/TL321x、STM32、FreeRTOS、BLE/Coded PHY、私有 Mesh、Bootloader/OTA 与嵌入式存储。能够从底层驱动、无线协议栈和时序调度延伸到 CMake/Kconfig 构建系统、CLI 与 PC 测试工具，并通过链路测试、压力测试和抓包分析推动问题闭环。',
   skills: [
-    {
-      id: 'skill-1',
-      category: '前端工程与框架',
-      skills: ['React 19 / 18', 'TypeScript', 'Next.js (App Router)', 'Vite / Turbopack', 'Tailwind CSS', 'Web Workers / WASM', 'State Machines / Zustand']
-    },
-    {
-      id: 'skill-2',
-      category: '后端与云原生架构',
-      skills: ['Node.js / Express / NestJS', 'Go (Golang)', 'PostgreSQL / MySQL', 'Redis 缓存集群', 'Kafka / RabbitMQ', 'Docker / Kubernetes', 'gRPC / GraphQL']
-    },
-    {
-      id: 'skill-3',
-      category: 'AI 赋能与现代工程化',
-      skills: ['LLM API / 智能体编排', 'RAG 向量检索架构', 'CI/CD (GitHub Actions)', '自动化测试 (Vitest/Playwright)', 'APM 全链路监控 (OpenTelemetry)', '微前端架构']
-    }
+    { id: 'skill-embedded', category: '嵌入式与 RTOS', skills: ['C/C++', 'RISC-V / TL321x', 'STM32', 'FreeRTOS', 'ISR / DMA / PLIC', 'Linker Script', '低功耗与电机控制'] },
+    { id: 'skill-wireless', category: '无线通信与协议', skills: ['BLE GATT / HCI / LL', 'Coded PHY S=2', '私有 Mesh / TDMA', 'LoRa', 'AT 通信', 'Proxy / Provisioning', 'AES-128'] },
+    { id: 'skill-platform', category: '升级 存储与工程化', skills: ['Bootloader / 双镜像 OTA', 'MCUboot / MCUmgr', 'NOR Flash / NVS / Retention', 'CMake / Kconfig', 'GCC / Ninja', 'Python / Qt / CLI', 'Unity Test / pcapng'] },
+    { id: 'skill-vision', category: '视觉与系统能力', skills: ['Linux / 树莓派', 'OpenCV / ORB-SLAM', 'YOLOv5', 'TOF / RGB / 多目相机', 'PyTorch', '原理图与 PCB Layout', '英文技术文档'] }
   ],
   workExperience: [
     {
-      id: 'exp-1',
-      company: '未来脉动科技有限公司',
-      position: '资深技术专家 (Tech Lead)',
-      department: '基础平台与前沿架构部',
-      location: '北京',
-      startDate: '2023-03',
-      endDate: '至今',
-      current: true,
+      id: 'exp-yinfeng', company: '隐峰智创（深圳）科技有限公司', position: '嵌入式软件工程师', department: '研发部', location: '深圳', startDate: '2025-11', endDate: '2026-08', current: false,
       highlights: [
-        '主导千万级企业服务平台前端微模块架构演进，首屏加载 FCP 从 2.4s 优化至 0.65s，Lighthouse 性能得分提升至 96分。',
-        '设计并落地全自动 AI 知识资产生成管线，基于多模态大模型与向量库实现企业文档自动语义提取与智能问答，日均调用量超 800 万次，Token 消耗成本降低 42%。',
-        '带领 14 人跨端工程团队，搭建标准化 Monorepo 与自动化 CI/CD 流程，发布周期由周级别缩减至小时级持续交付。'
+        '参与面向 TL321x RISC-V 无线 SoC 的 Lynx SDK、私有 BLE Mesh 与固件升级链路开发，覆盖底层驱动、协议栈、Bootloader、PC 工具与自动化测试。',
+        '打通 BLE GATT→UART DMA→MCU Flash OTA 链路，设计 START/PKT/END/STATE 协议、CRC16、超时看门狗与会话所有权，并完成双槽 XIP、Flash Area 及 MCUboot/mcumgr 串口恢复验证。',
+        '实现 200 ms TDMA 超帧、Mesh 同步与紧凑空口报文；使用 PLL/EWMA 与 O(1) 在线统计支持大规模节点校时，并完成 0.5–150 m Coded PHY 链路测试。',
+        '建设 UART DMA 多实例驱动、设备模型、Initcall、AT Parser 及 CMake/Kconfig 模块系统；迭代 Lynx CLI 2.1，以 53 项测试覆盖核心命令和异常路径。'
       ],
-      technologies: ['React 19', 'TypeScript', 'Node.js', 'PostgreSQL', 'Redis', 'Docker', 'LLM SDK']
+      technologies: ['C/C++', 'TL321x', 'RISC-V', 'FreeRTOS', 'BLE Coded PHY', 'Mesh / TDMA', 'MCUboot', 'Python', 'CMake / Kconfig']
     },
     {
-      id: 'exp-2',
-      company: '极智互联网络传媒集团',
-      position: '高级全栈研发工程师',
-      department: '核心电商业务线',
-      location: '杭州',
-      startDate: '2020-07',
-      endDate: '2023-02',
-      current: false,
+      id: 'exp-sihoo', company: '深圳西昊智能家居股份有限公司', position: '嵌入式软件工程师', location: '深圳', startDate: '2024-02', endDate: '2025-08', current: false,
       highlights: [
-        '重构核心大促结算与购物车中台，采用分布式多级缓存与异步削峰设计，在 QPS 峰值 35,000+ 场景下实现 0 宕机、0 资损与 P99 响应延迟低于 45ms。',
-        '独立攻坚高并发复杂可视化画布系统，运用 Canvas 与 Web Worker 进行计算卸载，解决了 10,000+ 节点同屏交互卡顿问题，帧率稳定在 58-60 FPS。',
-        '建立团队前端异常监控与性能埋点 SDK，日均收集错误日志超百万条，线上故障排查平均耗时 (MTTR) 从 40 分钟降至 8 分钟。'
+        '负责智能家具嵌入式方案开发，覆盖 STM32 电机控制、蓝牙音频、电疗按摩、热敷控制以及软硬件联调。',
+        '基于树莓派 4B、YOLOv5 与双目 ORB-SLAM 完成相机标定、3D 定位、路径规划和机械臂厘米级抓取验证。',
+        '独立完成智能头枕方案选型、BOM 优化、原理图与 PCB Layout，并基于杰理蓝牙芯片优化连接稳定性和功耗。'
       ],
-      technologies: ['React', 'Next.js', 'Go', 'Kafka', 'Redis', 'MySQL', 'Prometheus']
+      technologies: ['STM32F407', 'FreeRTOS', '杰理 MCU', 'Bluetooth Audio', 'OpenCV', 'ORB-SLAM', 'YOLOv5', 'uni-app']
     },
     {
-      id: 'exp-3',
-      company: '智云软件技术有限公司',
-      position: '全栈开发工程师',
-      department: '企业数字化解决方案',
-      location: '北京',
-      startDate: '2016-08',
-      endDate: '2020-06',
-      current: false,
+      id: 'exp-lemu', company: '乐牧科技（深圳）有限公司', position: '嵌入式软件工程师', department: '研发部', location: '深圳', startDate: '2022-04', endDate: '2023-11', current: false,
       highlights: [
-        '参与企业级协作 SaaS 平台从 0 到 1 开发，独立负责即时通讯模块及富文本协作编辑器的封装。',
-        '优化服务端数据库查询效率，通过复合索引规划与慢查询排查，数据库整体 CPU 使用率降低 35%。'
+        '开发奶牛发情监测终端及 LoRa 中继设备，完成 BLE/LoRa 多平台协议栈迁移、低功耗优化、远距离数据上报和生产跟线。',
+        '自研 LoRa 点对点及中继协议，在 STM32 + FreeRTOS 上实现任务调度、网络覆盖扩展和现场调试。',
+        '交付公司首个独立 4G 网关项目，完成 LoRa Python 库迁移、4G 模组 AT/PPPoE/NAT 调试、Ubuntu 镜像定制及外部看门狗设计。'
       ],
-      technologies: ['JavaScript', 'TypeScript', 'Node.js', 'Express', 'MongoDB', 'WebSocket']
+      technologies: ['STM32', 'TI-RTOS', 'FreeRTOS', 'BLE', 'LoRa', '4G / AT', 'Linux', 'Python']
     }
   ],
   projects: [
     {
-      id: 'proj-1',
-      name: 'OmniFlow - 新一代企业级实时协作与 AI 智能体编排工作台',
-      role: '主架构师 & 核心开发者',
-      startDate: '2023-08',
-      endDate: '2024-05',
-      description: '面向多角色协同的企业级智能画布与自动化工作流平台，支持拖拽式节点连接、实时音视频旁路协同与大模型自动化任务执行。',
+      id: 'proj-lynx', name: 'Lynx 无线通信 SDK 与私有 Mesh', role: '嵌入式软件开发', startDate: '2025-11', endDate: '2026-08',
+      description: '面向 TL321x RISC-V 无线 SoC 的嵌入式平台，覆盖设备驱动、私有 BLE Mesh、固件升级、构建系统和测试工具。',
       highlights: [
-        '基于 CRDT 算法与 WebSocket 实现了毫秒级多人协同冲突解决，支持 50+ 人同时在同一画布平滑编辑。',
-        '集成多模态模型流式解析能力，实现用户语音/草图实时转换为可运行工作流，转化准确率达 91.5%。'
+        '设计 BLE/UART OTA、双镜像 XIP Bootloader 与 MCUboot/mcumgr 升级链路，完成镜像签名、test/confirm、失败回滚和应用确认流程验证。',
+        '实现 RF/LL、Bearer、TDMA Scheduler、Network、Proxy 与 Provisioning 核心路径，以及 TTL/SEQ 去重、防环和紧凑位级封包。',
+        '完成 BLE Coded PHY S=2 单/多信道测试；覆盖 0.5–150 m，CH10 丢包率在 0.5 m 为 0.08%、50 m 为 13.88%。'
       ],
-      techStack: ['React 19', 'TypeScript', 'WebSockets', 'CRDT (Yjs)', 'Node.js', 'Tailwind CSS'],
-      link: 'https://github.com/vincent-zhang-tech/omniflow'
+      techStack: ['C', 'TL321x', 'RISC-V', 'FreeRTOS', 'BLE Coded PHY', 'TDMA', 'MCUboot', 'CMake', 'Python']
     },
     {
-      id: 'proj-2',
-      name: 'PulseKit - 现代化轻量级前端 APM 异常与性能监控基建',
-      role: '开源发起人 & 维护者',
-      startDate: '2022-01',
-      endDate: '2023-01',
-      description: '零依赖、轻量无侵入的 Web 性能与异常监控 SDK，GitHub 累计获得 1.2k+ Star。',
-      highlights: [
-        'SDK 体积仅 6.2KB (Gzipped)，自动捕获未捕获 Promise、脚本错误、资源加载失败及 Web Vitals 核心指标。',
-        '支持批量采样与 Beacon API 后台安全上传，保障宿主应用零卡顿。'
-      ],
-      techStack: ['TypeScript', 'Rollup', 'Web Vitals', 'Node.js', 'ClickHouse'],
-      link: 'https://github.com/vincent-zhang-tech/pulsekit'
+      id: 'proj-stereo-arm', name: '双目摄像头 3D 定位与机械臂控制', role: '嵌入式与视觉算法开发', startDate: '2024-09', endDate: '2025-04',
+      description: '为电动桌面机械臂与人体工学椅扶手开发厘米级 3D 定位、路径规划和自适应抓取能力。',
+      highlights: ['使用 STM32F407 完成电机控制，树莓派 4B 运行 YOLOv5 与双目 ORB-SLAM，完成标定、畸变校正及像素坐标到世界坐标映射。', '基于逆运动学和空间避障规划抓取与复位路径，实现目标物体实时 3D 定位和厘米级精度抓取。'],
+      techStack: ['STM32F407', 'Raspberry Pi 4B', 'OpenCV', 'YOLOv5', 'ORB-SLAM', 'C++', 'Python']
+    },
+    {
+      id: 'proj-headrest', name: '低功耗智能头枕', role: '软硬件方案与固件开发', startDate: '2024-02', endDate: '2024-09',
+      description: '集成蓝牙音频、电疗按摩与热敷功能的智能头枕产品。',
+      highlights: ['独立完成方案选型、BOM 优化、原理图及 PCB Layout，并协调电极片、热敷片、功放和喇叭供应商。', '基于杰理蓝牙芯片完成协议栈配置、连接稳定性与功耗优化，并以 uni-app 开发 App/微信小程序控制端。'],
+      techStack: ['杰理蓝牙 MCU', 'C', 'Bluetooth Audio', 'PCB', '低功耗', 'uni-app']
+    },
+    {
+      id: 'proj-gateway', name: 'LoRa 与 4G 独立网关', role: '嵌入式软件开发', startDate: '2022-06', endDate: '2023-11',
+      description: '面向养殖场远程数据采集的低成本蓝牙/LoRa 网关与 4G 模组组合方案。',
+      highlights: ['完成 LoRa Python 库迁移与私有点对点协议，调试 4G 模组 AT、PPPoE、NAT，并定制和备份 Ubuntu Linux 镜像。', '使用 STM32 周期检测网关心跳，以中断唤醒和 FreeRTOS 低功耗任务实现外部看门狗，提高无人值守运行的自动恢复能力。'],
+      techStack: ['STM32', 'FreeRTOS', 'LoRa', '4G', 'AT', 'PPPoE / NAT', 'Ubuntu', 'Python']
     }
   ],
   education: [
-    {
-      id: 'edu-1',
-      school: '北京航空航天大学 (BUAA)',
-      degree: '工学学士',
-      major: '计算机科学与技术',
-      startDate: '2012-09',
-      endDate: '2016-06',
-      gpa: '3.82 / 4.0 (前 5%)',
-      honors: ['国家奖学金', 'ACM-ICPC 区域赛二等奖', '北京市优秀毕业生']
-    }
+    { id: 'edu-hncu', school: '湖南城市学院', degree: '本科', major: '计算机科学与技术', startDate: '2018-09', endDate: '2022-06', gpa: '3.7 / 4.0，专业排名 5 / 40', honors: ['校 ACM 队员（2019.03–2021.03）', '湖南省数学竞赛三等奖（2021.11）', '湖南城市学院数学竞赛一等奖（2021.06）'] }
   ],
   certificates: [
-    {
-      id: 'cert-1',
-      name: 'AWS Certified Solutions Architect – Professional',
-      issuer: 'Amazon Web Services',
-      date: '2023-05'
-    },
-    {
-      id: 'cert-2',
-      name: 'CKA (Certified Kubernetes Administrator)',
-      issuer: 'Linux Foundation / CNCF',
-      date: '2022-11'
-    }
+    { id: 'cert-cet4', name: 'CET-4', issuer: '全国大学英语四、六级考试委员会', date: '' },
+    { id: 'award-math-2019', name: '湖南城市学院数学竞赛三等奖', issuer: '湖南城市学院', date: '2019-03' }
   ]
 };
 

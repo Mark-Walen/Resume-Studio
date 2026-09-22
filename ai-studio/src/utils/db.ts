@@ -10,15 +10,15 @@ import { WorkDailyLog } from '../types/journal';
 import { DEFAULT_LEETBOOKS } from '../data/defaultBooks';
 import { INITIAL_WORK_DAILY_LOGS } from '../data/defaultJournals';
 
-const RESUME_KEY = 'ai_resume_data_v2';
-const JOBS_KEY = 'ai_jobs_data_v2';
-const INTERVIEWS_KEY = 'ai_interviews_data_v2';
-const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v2';
+const RESUME_KEY = 'ai_resume_data_v3_embedded';
+const JOBS_KEY = 'ai_jobs_data_v3_embedded';
+const INTERVIEWS_KEY = 'ai_interviews_data_v3_embedded';
+const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v3_embedded';
 const API_KEY_STORAGE = 'custom_ai_api_key_v2';
 const LEGACY_API_KEY_STORAGE = 'custom_gemini_api_key_v1';
-const KNOWLEDGE_KEY = 'ai_knowledge_items_v1';
-const LEETBOOKS_KEY = 'ai_leetbooks_data_v1';
-const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v1';
+const KNOWLEDGE_KEY = 'ai_knowledge_items_v2_embedded';
+const LEETBOOKS_KEY = 'ai_leetbooks_data_v2_embedded';
+const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v2_embedded';
 
 // --- IndexedDB for Media Blobs ---
 const DB_NAME = 'ResumeInterviewMediaDB';
@@ -220,4 +220,3 @@ export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
     console.warn('Failed to save work daily logs:', err);
   }
 }
-

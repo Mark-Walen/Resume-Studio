@@ -182,7 +182,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
               </div>
               <textarea
                 rows={3}
-                placeholder="例如：职位描述：负责核心业务前端架构设计，要求精通 React / TypeScript，5年以上经验..."
+                placeholder="例如：负责 MCU/RTOS 平台与无线通信协议开发，要求精通 C/C++、FreeRTOS、BLE 与底层驱动..."
                 value={rawJdInput}
                 onChange={e => setRawJdInput(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 font-mono"

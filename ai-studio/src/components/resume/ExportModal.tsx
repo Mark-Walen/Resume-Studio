@@ -163,7 +163,7 @@ ${resume.personalInfo.fullName}
                   <label className="block text-xs font-semibold text-slate-700 mb-1">目标公司名称</label>
                   <input
                     type="text"
-                    placeholder="如: 字节跳动、阿里巴巴"
+                    placeholder="如: 大疆创新、乐鑫科技"
                     value={targetCompany}
                     onChange={e => setTargetCompany(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"

@@ -40,26 +40,26 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
   const [targetCompanies, setTargetCompanies] = useState<TargetCompanyJdInput[]>([
     {
       id: 'c-1',
-      companyName: '字节跳动 (ByteDance)',
-      position: '资深全栈工程师 / 架构师',
+      companyName: '大疆创新（DJI）',
+      position: '嵌入式软件工程师（无线通信方向）',
       jobDescription:
-        '负责抖音电商创作者工作台架构演进，高并发低延迟复杂 Web 交互，以及大模型生成式 AI 工作流探索。具备海量并发优化与复杂状态管理经验。',
+        '负责 MCU/RTOS 平台、无线通信协议、底层驱动和系统稳定性开发，要求熟悉 C/C++、FreeRTOS、BLE 与软硬件联调。',
       isHighPriority: true
     },
     {
       id: 'c-2',
-      companyName: '阿里巴巴 (Alibaba)',
-      position: '前端技术专家 (P7+)',
+      companyName: '乐鑫科技（Espressif）',
+      position: 'IoT 嵌入式软件工程师',
       jobDescription:
-        '阿里云核心管控台微前端体系架构，高可用稳定性保障与研发工程效能工具链。要求深入分布式缓存与一致性，具备中台抽象能力。',
+        '负责 IoT 芯片 SDK、驱动、网络连接、低功耗、系统组件和开发工具，要求具备 RTOS 与工程化能力。',
       isHighPriority: true
     },
     {
       id: 'c-3',
-      companyName: '美团 (Meituan)',
-      position: '前端架构师',
+      companyName: 'Nordic Semiconductor',
+      position: 'Embedded Software Engineer',
       jobDescription:
-        '负责商家经营后台及履约核心链路数字化基建，解决多业务线动态表单协同与跨端性能瓶颈。'
+        '负责低功耗无线 SoC、BLE 协议栈、RTOS、驱动、Bootloader 和开发者工具相关研发。'
     }
   ]);
 
@@ -250,7 +250,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                   <label className="block text-xs font-medium text-slate-700 mb-1">公司名称</label>
                   <input
                     type="text"
-                    placeholder="如：字节跳动"
+                    placeholder="如：大疆创新"
                     value={comp.companyName}
                     onChange={(e) => handleUpdateCompany(comp.id, 'companyName', e.target.value)}
                     className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
@@ -261,7 +261,7 @@ export const MultiCompanyResumeOptimizer: React.FC<MultiCompanyResumeOptimizerPr
                   <label className="block text-xs font-medium text-slate-700 mb-1">目标岗位</label>
                   <input
                     type="text"
-                    placeholder="如：资深前端架构师"
+                    placeholder="如：嵌入式软件工程师"
                     value={comp.position}
                     onChange={(e) => handleUpdateCompany(comp.id, 'position', e.target.value)}
                     className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"

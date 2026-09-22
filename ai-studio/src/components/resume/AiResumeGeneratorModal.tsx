@@ -198,7 +198,7 @@ export const AiResumeGeneratorModal: React.FC<AiResumeGeneratorModalProps> = ({
             <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
               <span className="font-semibold text-slate-900">使用技巧：</span>
-              <span>您可以直接用语音或文字口述：“我叫张三，求职前端架构师，过去三年在美团负责外卖商家端系统重构，用 React 19 和 Vite 提升了 50% 构建效率...”，大模型将自动按照大厂简历规范转化为精炼排版。</span>
+              <span>您可以直接用语音或文字口述：“我求职嵌入式软件工程师，负责过 FreeRTOS、BLE Mesh 和双镜像 OTA，完成 0.5–150 m 链路测试...”，AI 将按专业简历结构提炼为可验证的项目经历。</span>
             </div>
           </div>
 
