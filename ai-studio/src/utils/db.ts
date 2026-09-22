@@ -18,6 +18,10 @@ const API_KEY_STORAGE = 'custom_ai_api_key_v2';
 const LEGACY_API_KEY_STORAGE = 'custom_gemini_api_key_v1';
 const AI_SERVICE_SETTINGS_STORAGE = 'ai_service_settings_v1';
 const AI_SERVICE_PROFILES_STORAGE = 'ai_service_profiles_v2';
+const AI_VAULT_DB_NAME = 'ResumeAiCredentialVault';
+const AI_VAULT_DB_VERSION = 1;
+const AI_VAULT_KEY_STORE = 'crypto_keys';
+const AI_VAULT_SECRET_STORE = 'encrypted_secrets';
 const KNOWLEDGE_KEY = 'ai_knowledge_items_v2_embedded';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v2_embedded';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v2_embedded';
@@ -145,10 +149,6 @@ export function saveInterviewRecords(records: InterviewRecord[]): void {
   }
 }
 
-export function getCustomApiKey(): string {
-  return getAiServiceSettings().apiKey;
-}
-
 export type AiProviderId = 'anthropic' | 'openai' | 'xai' | 'google' | 'deepseek' | 'zai' | 'custom';
 
 export interface AiServiceSettings {
@@ -194,7 +194,73 @@ function normalizeAiProfile(profile: AiServiceProfile): AiServiceProfile {
   };
 }
 
-export function getAiServiceProfileStore(): AiServiceProfileStore {
+interface EncryptedApiKeyRecord {
+  id: string;
+  iv: number[];
+  ciphertext: number[];
+}
+
+function openAiVaultDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(AI_VAULT_DB_NAME, AI_VAULT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(AI_VAULT_KEY_STORE)) db.createObjectStore(AI_VAULT_KEY_STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(AI_VAULT_SECRET_STORE)) db.createObjectStore(AI_VAULT_SECRET_STORE, { keyPath: 'id' });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function requestResult<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+let aiVaultKeyPromise: Promise<CryptoKey> | null = null;
+
+async function createOrLoadAiVaultKey(): Promise<CryptoKey> {
+  if (!window.crypto?.subtle) throw new Error('当前浏览器不支持安全凭据存储。');
+  const db = await openAiVaultDb();
+  const existing = await requestResult<any>(db.transaction(AI_VAULT_KEY_STORE, 'readonly').objectStore(AI_VAULT_KEY_STORE).get('primary'));
+  if (existing?.key) return existing.key as CryptoKey;
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  await requestResult(db.transaction(AI_VAULT_KEY_STORE, 'readwrite').objectStore(AI_VAULT_KEY_STORE).put({ id: 'primary', key }));
+  return key;
+}
+
+function getAiVaultKey(): Promise<CryptoKey> {
+  if (!aiVaultKeyPromise) aiVaultKeyPromise = createOrLoadAiVaultKey().catch(error => { aiVaultKeyPromise = null; throw error; });
+  return aiVaultKeyPromise;
+}
+
+async function saveEncryptedApiKey(profileId: string, apiKey: string): Promise<void> {
+  const db = await openAiVaultDb();
+  if (!apiKey) {
+    await requestResult(db.transaction(AI_VAULT_SECRET_STORE, 'readwrite').objectStore(AI_VAULT_SECRET_STORE).delete(profileId));
+    return;
+  }
+  const key = await getAiVaultKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const additionalData = new TextEncoder().encode(profileId);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData }, key, new TextEncoder().encode(apiKey));
+  const record: EncryptedApiKeyRecord = { id: profileId, iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(encrypted)) };
+  await requestResult(db.transaction(AI_VAULT_SECRET_STORE, 'readwrite').objectStore(AI_VAULT_SECRET_STORE).put(record));
+}
+
+async function loadEncryptedApiKey(profileId: string): Promise<string> {
+  const db = await openAiVaultDb();
+  const record = await requestResult<EncryptedApiKeyRecord | undefined>(db.transaction(AI_VAULT_SECRET_STORE, 'readonly').objectStore(AI_VAULT_SECRET_STORE).get(profileId));
+  if (!record) return '';
+  const key = await getAiVaultKey();
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(record.iv), additionalData: new TextEncoder().encode(profileId) }, key, new Uint8Array(record.ciphertext));
+  return new TextDecoder().decode(decrypted);
+}
+
+function getAiServiceProfileMetadataStore(): AiServiceProfileStore {
   try {
     const rawProfiles = localStorage.getItem(AI_SERVICE_PROFILES_STORAGE);
     if (rawProfiles) {
@@ -217,38 +283,67 @@ export function getAiServiceProfileStore(): AiServiceProfileStore {
   }
 }
 
-export function saveAiServiceProfileStore(store: AiServiceProfileStore): void {
-  try {
-    const profiles = store.profiles.map(normalizeAiProfile);
-    const activeProfileId = profiles.some(profile => profile.id === store.activeProfileId) ? store.activeProfileId : profiles[0]?.id;
-    if (!profiles.length || !activeProfileId) return;
-    const normalized = { activeProfileId, profiles };
-    localStorage.setItem(AI_SERVICE_PROFILES_STORAGE, JSON.stringify(normalized));
-    const active = profiles.find(profile => profile.id === activeProfileId)!;
-    localStorage.setItem(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(active));
-    if (active.apiKey) localStorage.setItem(API_KEY_STORAGE, active.apiKey); else localStorage.removeItem(API_KEY_STORAGE);
-    localStorage.removeItem(LEGACY_API_KEY_STORAGE);
-  } catch (err) {
-    console.warn('Failed to save AI service profiles:', err);
-  }
+function persistAiServiceMetadata(store: AiServiceProfileStore): void {
+  const profiles = store.profiles.map(profile => ({ ...normalizeAiProfile(profile), apiKey: '' }));
+  const activeProfileId = profiles.some(profile => profile.id === store.activeProfileId) ? store.activeProfileId : profiles[0]?.id;
+  if (!profiles.length || !activeProfileId) return;
+  const normalized = { activeProfileId, profiles };
+  localStorage.setItem(AI_SERVICE_PROFILES_STORAGE, JSON.stringify(normalized));
+  const active = profiles.find(profile => profile.id === activeProfileId)!;
+  localStorage.setItem(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(active));
+  localStorage.removeItem(API_KEY_STORAGE);
+  localStorage.removeItem(LEGACY_API_KEY_STORAGE);
 }
 
-export function getAiServiceSettings(): AiServiceSettings {
-  const store = getAiServiceProfileStore();
+export async function getAiServiceProfileStore(): Promise<AiServiceProfileStore> {
+  const metadata = getAiServiceProfileMetadataStore();
+  let migratedPlaintext = false;
+  const profiles = await Promise.all(metadata.profiles.map(async profile => {
+    if (profile.apiKey) {
+      await saveEncryptedApiKey(profile.id, profile.apiKey);
+      migratedPlaintext = true;
+      return profile;
+    }
+    try {
+      return { ...profile, apiKey: await loadEncryptedApiKey(profile.id) };
+    } catch (err) {
+      console.warn('Failed to decrypt an AI API key:', err);
+      return { ...profile, apiKey: '' };
+    }
+  }));
+  if (migratedPlaintext) persistAiServiceMetadata({ ...metadata, profiles });
+  return { ...metadata, profiles };
+}
+
+export async function saveAiServiceProfileStore(store: AiServiceProfileStore): Promise<void> {
+  const previous = getAiServiceProfileMetadataStore().profiles;
+  const profiles = store.profiles.map(normalizeAiProfile);
+  await Promise.all(profiles.map(profile => saveEncryptedApiKey(profile.id, profile.apiKey)));
+  persistAiServiceMetadata({ ...store, profiles });
+  const persistedIds = new Set(profiles.map(profile => profile.id));
+  await Promise.all(previous.filter(profile => !persistedIds.has(profile.id)).map(profile => saveEncryptedApiKey(profile.id, '')));
+}
+
+export async function getAiServiceSettings(): Promise<AiServiceSettings> {
+  const store = await getAiServiceProfileStore();
   return store.profiles.find(profile => profile.id === store.activeProfileId) || store.profiles[0] || DEFAULT_AI_SETTINGS;
 }
 
-export function setCustomApiKey(key: string): void {
-  saveAiServiceSettings({ ...getAiServiceSettings(), apiKey: key.trim() });
+export async function setCustomApiKey(key: string): Promise<void> {
+  await saveAiServiceSettings({ ...await getAiServiceSettings(), apiKey: key.trim() });
 }
 
-export function saveAiServiceSettings(settings: AiServiceSettings): void {
-  const store = getAiServiceProfileStore();
+export async function saveAiServiceSettings(settings: AiServiceSettings): Promise<void> {
+  const store = await getAiServiceProfileStore();
   const activeIndex = store.profiles.findIndex(profile => profile.id === store.activeProfileId);
   const current = store.profiles[activeIndex] || DEFAULT_AI_PROFILE;
   const updated = normalizeAiProfile({ ...current, ...settings });
   if (activeIndex >= 0) store.profiles[activeIndex] = updated; else store.profiles.push(updated);
-  saveAiServiceProfileStore(store);
+  await saveAiServiceProfileStore(store);
+}
+
+export async function getCustomApiKey(): Promise<string> {
+  return (await getAiServiceSettings()).apiKey;
 }
 
 export const saveCustomApiKey = setCustomApiKey;

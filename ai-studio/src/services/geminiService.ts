@@ -8,7 +8,7 @@ import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
 import { getAiServiceSettings, getCustomApiKey } from '../utils/db';
 
 async function requestAiApi(path: string, init: RequestInit): Promise<Response> {
-  const settings = getAiServiceSettings();
+  const settings = await getAiServiceSettings();
   return fetch(path, {
     ...init,
     headers: {
@@ -43,7 +43,7 @@ export async function requestGenerateResume(params: {
   existingResume?: ResumeData;
   auxiliaryText?: string;
 }): Promise<Partial<ResumeData>> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/generate-resume', {
@@ -88,7 +88,7 @@ export async function requestInterviewFeedback(params: {
     solution: UnansweredSolution;
   }>;
 }> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/interview-feedback', {
@@ -117,7 +117,7 @@ export async function requestInterviewFeedback(params: {
 export async function requestCrossInterviewDiagnostic(
   interviews: InterviewRecord[]
 ): Promise<CrossInterviewDiagnosticReport> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/cross-interview-diagnostic', {
@@ -155,7 +155,7 @@ export async function parseResumeWithAi(
   rawContent: string,
   format: string = 'text/markdown'
 ): Promise<ResumeData> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/parse-resume', {
@@ -190,7 +190,7 @@ export async function fetchAndAnalyzeJd(params: {
   parsedJd: ParsedJdInfo;
   matchAnalysis: JdMatchAnalysis;
 }> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/proxy-jd', {
@@ -477,7 +477,7 @@ export async function requestRecommendKnowledgePoints(params: {
   jobDescription?: string;
   currentResume?: ResumeData;
 }): Promise<CompanyJdRecommendationResult> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/recommend-knowledge-points', {
@@ -508,7 +508,7 @@ export async function requestMultiCompanyResumeOptimizer(params: {
   companies: TargetCompanyJdInput[];
   currentResume: ResumeData;
 }): Promise<MultiCompanyComparisonResult> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/multi-company-resume-optimizer', {
@@ -540,7 +540,7 @@ export async function requestConvertJournalToResumeBullets(params: {
   targetRole?: string;
   existingResume?: ResumeData;
 }): Promise<JournalExtractResponse> {
-  const customKey = getCustomApiKey();
+  const customKey = await getCustomApiKey();
 
   try {
     const res = await requestAiApi('/api/convert-journal-to-resume-bullets', {

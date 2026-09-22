@@ -7,12 +7,11 @@ import { Check, Copy, Eye, EyeOff, KeyRound, LoaderCircle, Plus, RefreshCw, Shie
 interface ApiKeyModalProps { isOpen: boolean; onClose: () => void; }
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+const EMPTY_PROFILE: AiServiceProfile = { id: 'default', name: '默认 AI 服务', provider: 'google', model: 'gemini-3.8-flash', apiKey: '', compatibility: 'openai' };
 
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
-  const initialStore = getAiServiceProfileStore();
-  const initialProfile = initialStore.profiles.find(profile => profile.id === initialStore.activeProfileId) || initialStore.profiles[0];
-  const [profiles, setProfiles] = useState<AiServiceProfile[]>(initialStore.profiles);
-  const [settings, setSettings] = useState<AiServiceProfile>(initialProfile);
+  const [profiles, setProfiles] = useState<AiServiceProfile[]>([EMPTY_PROFILE]);
+  const [settings, setSettings] = useState<AiServiceProfile>(EMPTY_PROFILE);
   const [models, setModels] = useState<string[]>([]);
   const [hasEnvKey, setHasEnvKey] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -20,26 +19,42 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [modelMessage, setModelMessage] = useState('');
   const [isManualModel, setIsManualModel] = useState(false);
+  const [isVaultLoading, setIsVaultLoading] = useState(false);
   const provider = useMemo(() => getProviderDefinition(settings.provider), [settings.provider]);
 
   useEffect(() => {
     if (!isOpen) return;
-    const store = getAiServiceProfileStore();
-    const stored = store.profiles.find(profile => profile.id === store.activeProfileId) || store.profiles[0];
-    const selectedProvider = getProviderDefinition(stored.provider);
-    setProfiles(store.profiles);
-    setSettings(stored);
-    setModels([...new Set([stored.model, ...selectedProvider.fallbackModels].filter(Boolean))]);
-    setIsManualModel(!stored.model);
+    let cancelled = false;
+    setIsVaultLoading(true);
     setModelMessage('');
     checkApiHealth().then(res => setHasEnvKey(res.hasEnvKey));
-    if (stored.apiKey) {
-      setIsLoadingModels(true);
-      fetchProviderModels(stored)
-        .then(fetched => { setModels([...new Set([stored.model, ...fetched].filter(Boolean))]); setIsManualModel(!stored.model && fetched.length === 0); setModelMessage(`已自动获取 ${fetched.length} 个可用模型`); })
-        .catch(() => setModelMessage('实时模型列表暂不可用，已显示推荐模型，也可手动输入。'))
-        .finally(() => setIsLoadingModels(false));
-    }
+    getAiServiceProfileStore().then(async store => {
+      if (cancelled) return;
+      const stored = store.profiles.find(profile => profile.id === store.activeProfileId) || store.profiles[0] || EMPTY_PROFILE;
+      const selectedProvider = getProviderDefinition(stored.provider);
+      setProfiles(store.profiles);
+      setSettings(stored);
+      setModels([...new Set([stored.model, ...selectedProvider.fallbackModels].filter(Boolean))]);
+      setIsManualModel(!stored.model);
+      if (stored.apiKey) {
+        setIsLoadingModels(true);
+        try {
+          const fetched = await fetchProviderModels(stored);
+          if (!cancelled) {
+            setModels([...new Set([stored.model, ...fetched].filter(Boolean))]);
+            setIsManualModel(!stored.model && fetched.length === 0);
+            setModelMessage(`已安全解锁凭据，并获取 ${fetched.length} 个可用模型`);
+          }
+        } catch {
+          if (!cancelled) setModelMessage('凭据已安全解锁；实时模型列表暂不可用。');
+        } finally {
+          if (!cancelled) setIsLoadingModels(false);
+        }
+      }
+    }).catch(error => {
+      if (!cancelled) setModelMessage(error instanceof Error ? error.message : '无法打开安全凭据存储。');
+    }).finally(() => { if (!cancelled) setIsVaultLoading(false); });
+    return () => { cancelled = true; };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -106,20 +121,30 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
     } finally { setIsLoadingModels(false); }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const nextProfiles = commitCurrentProfile();
-    saveAiServiceProfileStore({ activeProfileId: settings.id, profiles: nextProfiles });
-    setProfiles(nextProfiles);
-    setIsSaved(true);
-    window.setTimeout(() => { setIsSaved(false); onClose(); }, 700);
+    setIsVaultLoading(true);
+    try {
+      await saveAiServiceProfileStore({ activeProfileId: settings.id, profiles: nextProfiles });
+      setProfiles(nextProfiles);
+      setIsSaved(true);
+      window.setTimeout(() => { setIsSaved(false); onClose(); }, 700);
+    } catch (error) {
+      setModelMessage(error instanceof Error ? error.message : '无法保存加密凭据。');
+    } finally { setIsVaultLoading(false); }
   };
-  const handleClear = () => {
+  const handleClear = async () => {
     const cleared = { ...settings, apiKey: '' };
     const nextProfiles = profiles.map(profile => profile.id === cleared.id ? cleared : profile);
-    saveAiServiceProfileStore({ activeProfileId: cleared.id, profiles: nextProfiles });
-    setProfiles(nextProfiles);
-    setSettings(cleared);
-    setModelMessage('已清除当前浏览器保存的密钥');
+    setIsVaultLoading(true);
+    try {
+      await saveAiServiceProfileStore({ activeProfileId: cleared.id, profiles: nextProfiles });
+      setProfiles(nextProfiles);
+      setSettings(cleared);
+      setModelMessage('已清除当前配置的加密密钥');
+    } catch (error) {
+      setModelMessage(error instanceof Error ? error.message : '无法清除加密密钥。');
+    } finally { setIsVaultLoading(false); }
   };
 
   return (
@@ -142,13 +167,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
             <div><label className="mb-1.5 block font-semibold text-slate-700">Model Provider</label><select className={inputClass} value={settings.provider} onChange={event => handleProviderChange(event.target.value as AiServiceSettings['provider'])}>{AI_PROVIDERS.map(item => <option key={item.id} value={item.id}>{item.name} · {item.description}</option>)}</select></div>
             {settings.provider === 'custom' && <><div><label className="mb-1.5 block font-semibold text-slate-700">兼容协议</label><select className={inputClass} value={settings.compatibility || 'openai'} onChange={event => { updateSettings({ compatibility: event.target.value as 'openai' | 'anthropic', apiKey: '' }); setModels(settings.model ? [settings.model] : []); setModelMessage(''); }}><option value="openai">OpenAI 兼容</option><option value="anthropic">Anthropic 兼容</option></select></div><div><label className="mb-1.5 block font-semibold text-slate-700">Base URL</label><input className={inputClass} value={settings.baseUrl || ''} onChange={event => updateSettings({ baseUrl: event.target.value })} placeholder="https://example.com/v1" /></div></>}
             <div><div className="mb-1.5 flex items-center justify-between"><label className="font-semibold text-slate-700">Model Name</label><button type="button" onClick={handleLoadModels} disabled={isLoadingModels} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60">{isLoadingModels ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}获取模型列表</button></div><select className={inputClass} value={isManualModel ? '__manual__' : settings.model} onChange={event => { if (event.target.value === '__manual__') { setIsManualModel(true); updateSettings({ model: '' }); } else { setIsManualModel(false); updateSettings({ model: event.target.value }); } }}><option value="" disabled>请选择模型</option>{models.map(model => <option key={model} value={model}>{model}</option>)}<option value="__manual__">手动输入模型名称…</option></select>{isManualModel && <input className={`${inputClass} mt-2`} value={settings.model} onChange={event => updateSettings({ model: event.target.value })} placeholder="输入模型名称" autoFocus />}{modelMessage && <p className={`mt-1.5 text-[11px] ${modelMessage.startsWith('已') ? 'text-emerald-600' : 'text-amber-700'}`}>{modelMessage}</p>}</div>
-            <div><label className="mb-1.5 block font-semibold text-slate-700">API Key</label><div className="relative"><input type={showKey ? 'text' : 'password'} className={`${inputClass} pr-10 font-mono`} value={settings.apiKey} onChange={event => updateSettings({ apiKey: event.target.value })} onBlur={() => settings.apiKey.trim() && handleLoadModels()} placeholder={`输入 ${provider.name} API Key`} /><button type="button" onClick={() => setShowKey(value => !value)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700" aria-label={showKey ? '隐藏密钥' : '显示密钥'}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1 text-[11px] text-slate-400">密钥按配置独立保存在当前浏览器。可复制当前配置复用密钥并选择另一个模型；清除站点数据会删除这些配置。</p></div>
+            <div><label className="mb-1.5 block font-semibold text-slate-700">API Key</label><div className="relative"><input type={showKey ? 'text' : 'password'} disabled={isVaultLoading} className={`${inputClass} pr-10 font-mono disabled:bg-slate-50`} value={settings.apiKey} onChange={event => updateSettings({ apiKey: event.target.value })} onBlur={() => settings.apiKey.trim() && handleLoadModels()} placeholder={isVaultLoading ? '正在解锁安全凭据…' : `输入 ${provider.name} API Key`} /><button type="button" onClick={() => setShowKey(value => !value)} disabled={isVaultLoading} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700 disabled:opacity-40" aria-label={showKey ? '隐藏密钥' : '显示密钥'}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1 text-[11px] text-slate-400">密钥使用 AES-GCM 加密，密文与不可导出的设备密钥分开保存在当前浏览器。复制配置可安全复用密钥；清除站点数据会删除凭据。</p></div>
           </section>
 
-          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-[11px] text-blue-900"><div className="flex items-center gap-1.5 font-bold text-blue-950"><ShieldCheck className="h-4 w-4 text-blue-600" />隐私与文件安全</div><ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-blue-800"><li>上传资料仅接受允许的文件类型，并检查文件头与危险内容</li><li>API Key 保存在本机浏览器，不写入简历或附件</li><li>音视频保存在本地 IndexedDB；AI 摘要仅在用户主动生成时调用所选服务</li></ul></div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-[11px] text-blue-900"><div className="flex items-center gap-1.5 font-bold text-blue-950"><ShieldCheck className="h-4 w-4 text-blue-600" />隐私与文件安全</div><ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-blue-800"><li>上传资料仅接受允许的文件类型，并检查文件头与危险内容</li><li>API Key 经 AES-GCM 加密后存储，不写入网页源码、简历或附件</li><li>音视频保存在本地 IndexedDB；AI 摘要仅在用户主动生成时调用所选服务</li></ul></div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 p-4"><button onClick={handleClear} className="text-xs font-medium text-red-500 hover:text-red-700">清空已存密钥</button><div className="flex gap-2"><button onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">取消</button><button onClick={handleSave} disabled={!settings.model.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{isSaved && <Check className="h-3.5 w-3.5" />}{isSaved ? '已保存' : '保存设置'}</button></div></div>
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 p-4"><button onClick={handleClear} disabled={isVaultLoading} className="text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-40">清空已存密钥</button><div className="flex gap-2"><button onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">取消</button><button onClick={handleSave} disabled={isVaultLoading || !settings.model.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{isVaultLoading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : isSaved && <Check className="h-3.5 w-3.5" />}{isVaultLoading ? '安全保存中' : isSaved ? '已保存' : '保存设置'}</button></div></div>
       </div>
     </div>
   );
