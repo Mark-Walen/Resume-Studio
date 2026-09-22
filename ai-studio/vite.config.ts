@@ -33,13 +33,25 @@ const PROVIDER_BASE_URLS: Record<Exclude<ProviderId, 'custom'>, string> = {
   zai: 'https://api.z.ai/api/paas/v4',
 };
 
-function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string) {
+type Compatibility = 'openai' | 'anthropic';
+
+function getPublicCustomBaseUrl(rawUrl?: string): string {
+  if (!rawUrl) throw new Error('请先填写自定义兼容服务的 Base URL。');
+  const url = new URL(rawUrl);
+  if (url.protocol !== 'https:') throw new Error('自定义兼容服务仅支持 HTTPS 地址。');
+  const hostname = url.hostname.toLowerCase();
+  const blockedIpv4 = /^(0|10|127|169\.254|192\.168)\./.test(hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
+  if (hostname === 'localhost' || hostname === '::1' || hostname.endsWith('.local') || blockedIpv4) {
+    throw new Error('自定义兼容服务不能使用本机或内网地址。');
+  }
+  return url.toString().replace(/\/$/, '');
+}
+
+function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string, compatibility: Compatibility = 'openai', customBaseUrl?: string) {
   const apiKey = customKey || process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('未检测到 AI 服务 API Key。请在“AI 服务与隐私设置”中配置个人密钥，或由部署方配置服务端密钥。');
   }
-  if (provider === 'custom') throw new Error('自定义兼容服务请通过浏览器直连；本地代理不转发任意地址。');
-
   if (provider === 'google') {
     const client = new GoogleGenAI({ apiKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
     return { models: { generateContent: (request: any) => client.models.generateContent({ ...request, model: selectedModel || request.model }) } };
@@ -51,16 +63,18 @@ function getAiClient(customKey?: string, provider: ProviderId = 'google', select
         const model = selectedModel || request.model;
         const systemInstruction = request.config?.systemInstruction || '';
         const wantsJson = request.config?.responseMimeType === 'application/json';
+        const protocol = provider === 'custom' ? compatibility : provider;
+        const baseUrl = provider === 'custom' ? getPublicCustomBaseUrl(customBaseUrl) : PROVIDER_BASE_URLS[provider];
         let response: Response;
 
-        if (provider === 'anthropic') {
-          response = await fetch(`${PROVIDER_BASE_URLS.anthropic}/messages`, {
+        if (protocol === 'anthropic') {
+          response = await fetch(`${baseUrl}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({ model, max_tokens: 8192, system: systemInstruction, messages: [{ role: 'user', content: request.contents }] }),
           });
         } else {
-          response = await fetch(`${PROVIDER_BASE_URLS[provider]}/chat/completions`, {
+          response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({ model, messages: [{ role: 'system', content: systemInstruction }, { role: 'user', content: request.contents }], ...(wantsJson ? { response_format: { type: 'json_object' } } : {}) }),
@@ -69,22 +83,23 @@ function getAiClient(customKey?: string, provider: ProviderId = 'google', select
 
         const payload: any = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload?.error?.message || payload?.message || `AI 服务请求失败（${response.status}）`);
-        const text = provider === 'anthropic' ? payload?.content?.map((item: any) => item.text || '').join('') : payload?.choices?.[0]?.message?.content;
+        const text = protocol === 'anthropic' ? payload?.content?.map((item: any) => item.text || '').join('') : payload?.choices?.[0]?.message?.content;
         return { text: text || '' };
       },
     },
   };
 }
 
-function getProviderConfig(req: any): { provider: ProviderId; model?: string } {
+function getProviderConfig(req: any): { provider: ProviderId; model?: string; compatibility: Compatibility; baseUrl?: string } {
   const rawProvider = String(req.headers['x-ai-provider'] || 'google') as ProviderId;
   const provider = (rawProvider in PROVIDER_BASE_URLS || rawProvider === 'custom') ? rawProvider : 'google';
-  return { provider, model: String(req.headers['x-ai-model'] || '') || undefined };
+  const compatibility = req.headers['x-ai-compatibility'] === 'anthropic' ? 'anthropic' : 'openai';
+  return { provider, model: String(req.headers['x-ai-model'] || '') || undefined, compatibility, baseUrl: String(req.headers['x-ai-base-url'] || '') || undefined };
 }
 
 function getConfiguredAiClient(customKey: string | undefined, req: any) {
-  const { provider, model } = getProviderConfig(req);
-  return getAiClient(customKey, provider, model);
+  const { provider, model, compatibility, baseUrl } = getProviderConfig(req);
+  return getAiClient(customKey, provider, model, compatibility, baseUrl);
 }
 
 const apiPlugin: Plugin = {
