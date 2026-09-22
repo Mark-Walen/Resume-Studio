@@ -404,7 +404,7 @@ export default function App() {
               {/* Document Preview Side */}
               {(resumeViewMode === 'split' || resumeViewMode === 'preview') && (
                 <div className={resumeViewMode === 'split' ? 'lg:col-span-7' : 'lg:col-span-12'}>
-                  <div className="sticky top-20">
+                  <div className="resume-preview-sticky sticky top-20">
                     <ResumePreview resume={resume} templateId={templateId} />
                   </div>
                 </div>
