@@ -3,7 +3,6 @@ import {
   FileText,
   Briefcase,
   BookOpen,
-  Globe,
   Key,
 } from 'lucide-react';
 
@@ -14,7 +13,6 @@ interface HeaderProps {
   onSelectTab: (tab: MainTab) => void;
   onOpenApiKey: () => void;
   onOpenAiGenerator: () => void;
-  onOpenJobProxy?: () => void;
 }
 
 
@@ -23,7 +21,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectTab,
   onOpenApiKey,
   onOpenAiGenerator,
-  onOpenJobProxy,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/82 backdrop-blur-xl border-b border-black/8">
@@ -88,21 +85,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right action buttons */}
         <div className="flex items-center gap-2">
-          {currentTab === 'career' && (
-            <>
-              {onOpenJobProxy && (
-                <button
-                  onClick={onOpenJobProxy}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold transition-colors"
-                  title="网站代理抓取 JD 与一键投递"
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">代理获取JD</span>
-                </button>
-              )}
-            </>
-          )}
-
           <button
             onClick={onOpenApiKey}
             className="p-2 text-slate-500 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors"

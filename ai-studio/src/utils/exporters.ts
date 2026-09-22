@@ -1,13 +1,18 @@
 import { ResumeData } from '../types/resume';
 import { escapeHtml, richTextToMarkdown, sanitizeRichText, toRichHtml } from './richText';
 
-const builtInSections = ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+const sortableBuiltInSections = ['jobIntent', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
 
 function getSectionOrder(resume: ResumeData): string[] {
   const customKeys = (resume.customSections || []).map(section => `custom:${section.id}`);
-  const requested = [...(resume.sectionOrder || builtInSections)];
-  if (!requested.includes('jobIntent')) requested.splice(Math.max(0, requested.indexOf('summary')), 0, 'jobIntent');
-  return [...requested.filter(key => builtInSections.includes(key) || customKeys.includes(key)), ...builtInSections.filter(key => !requested.includes(key)), ...customKeys.filter(key => !requested.includes(key))];
+  const requested = [...(resume.sectionOrder || sortableBuiltInSections)].filter(key => key !== 'summary');
+  if (!requested.includes('jobIntent')) requested.unshift('jobIntent');
+  const hiddenSections = new Set(resume.hiddenSections || []);
+  const sortableOrder = [...requested.filter(key => sortableBuiltInSections.includes(key) || customKeys.includes(key)), ...sortableBuiltInSections.filter(key => !requested.includes(key)), ...customKeys.filter(key => !requested.includes(key))];
+  const sectionOrder = sortableOrder.filter(key => !hiddenSections.has(key));
+  const jobIntentIndex = sectionOrder.indexOf('jobIntent');
+  sectionOrder.splice(jobIntentIndex >= 0 ? jobIntentIndex + 1 : 0, 0, 'summary');
+  return sectionOrder;
 }
 
 function wordSection(resume: ResumeData, key: string): string {
@@ -31,7 +36,7 @@ function wordSection(resume: ResumeData, key: string): string {
 export function exportToWord(resume: ResumeData): void {
   const avatar = resume.personalInfo.avatarUrl && /^data:image\/(png|jpeg|webp);base64,/i.test(resume.personalInfo.avatarUrl) ? `<img class="avatar" src="${resume.personalInfo.avatarUrl}" alt="头像" />` : '';
   const htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${escapeHtml(resume.personalInfo.fullName)} - 个人简历</title><style>
-  body{font-family:'Microsoft YaHei','PingFang SC',Arial,sans-serif;line-height:1.6;color:#1e293b;padding:20px}.header{border-bottom:2px solid #2563eb;padding-bottom:12px}.avatar{width:82px;height:82px;object-fit:cover;border-radius:12px;float:right;margin-left:16px}h1{font-size:24pt;color:#0f172a;margin:0 0 4px}.subtitle{font-size:14pt;color:#2563eb;font-weight:bold}.contact{font-size:10pt;color:#475569;margin-top:8px}h2{font-size:14pt;color:#1e3a8a;border-bottom:1.5pt solid #3b82f6;padding-bottom:4px;margin:18px 0 8px}.summary,.skill-group{font-size:10.5pt;color:#334155}.item-header{margin-top:10px}.item-title{font-size:11pt;font-weight:bold;color:#0f172a}.item-role{font-weight:bold;color:#2563eb}.item-date{font-size:9.5pt;color:#64748b;float:right}.meta{font-size:9.5pt;color:#64748b;margin:3px 0}ul{margin:4px 0 10px;padding-left:20px}li{font-size:10pt;color:#334155;margin-bottom:4px}blockquote{border-left:3px solid #93c5fd;padding-left:8px;color:#475569}
+  body{font-family:'Microsoft YaHei','PingFang SC',Arial,sans-serif;line-height:1.6;color:#1e293b;padding:20px}.header{border-bottom:2px solid #2563eb;padding-bottom:12px}.avatar{width:70px;height:98px;object-fit:cover;border-radius:0;float:right;margin-left:16px}h1{font-size:24pt;color:#0f172a;margin:0 0 4px}.subtitle{font-size:14pt;color:#2563eb;font-weight:bold}.contact{font-size:10pt;color:#475569;margin-top:8px}h2{font-size:14pt;color:#1e3a8a;border-bottom:1.5pt solid #3b82f6;padding-bottom:4px;margin:18px 0 8px}.summary,.skill-group{font-size:10.5pt;color:#334155}.item-header{margin-top:10px}.item-title{font-size:11pt;font-weight:bold;color:#0f172a}.item-role{font-weight:bold;color:#2563eb}.item-date{font-size:9.5pt;color:#64748b;float:right}.meta{font-size:9.5pt;color:#64748b;margin:3px 0}ul{margin:4px 0 10px;padding-left:20px}li{font-size:10pt;color:#334155;margin-bottom:4px}blockquote{border-left:3px solid #93c5fd;padding-left:8px;color:#475569}
   </style></head><body><div class="header">${avatar}<h1>${escapeHtml(resume.personalInfo.fullName)}</h1><div class="subtitle">${escapeHtml(resume.personalInfo.jobTitle)}</div><div class="contact">邮箱：${escapeHtml(resume.personalInfo.email)}　电话：${escapeHtml(resume.personalInfo.phone)}　地点：${escapeHtml(resume.personalInfo.location)}${resume.personalInfo.github ? `　GitHub：${escapeHtml(resume.personalInfo.github)}` : ''}</div></div>${getSectionOrder(resume).map(key => wordSection(resume, key)).join('')}</body></html>`;
   downloadBlob(new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=utf-8' }), `${resume.personalInfo.fullName}_${resume.personalInfo.jobTitle}_简历.doc`);
 }

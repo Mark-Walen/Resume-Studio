@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ResumeData, WorkExperience, ProjectExperience, SkillCategory, CustomResumeSection } from '../../types/resume';
-import { Briefcase, ChevronDown, ChevronUp, FileBadge, FolderGit2, GraduationCap, GripVertical, LayoutList, Plus, Sparkles, Trash2, Upload, User, Wrench, X } from 'lucide-react';
+import { Briefcase, Check, ChevronDown, ChevronUp, FileBadge, FolderGit2, GraduationCap, GripVertical, LayoutList, ListOrdered, Lock, Plus, Sparkles, Trash2, Upload, User, Wrench, X } from 'lucide-react';
 import { RichTextEditor } from './RichTextEditor';
 
 interface ResumeEditorProps {
@@ -9,8 +9,8 @@ interface ResumeEditorProps {
   onOpenAiGenerator: () => void;
 }
 
-type ModalKey = 'info' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates' | `custom:${string}`;
-const builtInOrder = ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+type ModalKey = 'info' | 'jobIntent' | 'skills' | 'workExperience' | 'projects' | 'education' | 'certificates' | `custom:${string}`;
+const builtInOrder = ['jobIntent', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
 const inputClass = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100';
 
 const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
@@ -31,14 +31,15 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
   const [modalKey, setModalKey] = useState<ModalKey | null>(null);
   const [draft, setDraft] = useState<ResumeData | null>(null);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<'visibility' | 'sort'>('visibility');
   const customSections = resume.customSections || [];
-  const requestedOrder = [...(resume.sectionOrder || builtInOrder)];
-  if (!requestedOrder.includes('jobIntent')) requestedOrder.splice(Math.max(0, requestedOrder.indexOf('summary')), 0, 'jobIntent');
+  const requestedOrder = [...(resume.sectionOrder || builtInOrder)].filter(key => key !== 'summary');
+  if (!requestedOrder.includes('jobIntent')) requestedOrder.unshift('jobIntent');
   const sectionOrder = [...requestedOrder, ...builtInOrder.filter(key => !requestedOrder.includes(key)), ...customSections.map(section => `custom:${section.id}`).filter(key => !requestedOrder.includes(key))];
+  const hiddenSections = new Set(resume.hiddenSections || []);
 
   const labels: Record<string, { title: string; description: string; icon: React.ElementType }> = {
     jobIntent: { title: '求职意向', description: '目标岗位、意向城市、薪资与到岗时间', icon: Briefcase },
-    summary: { title: '基本信息与个人总结', description: '个人资料、头像与职业总结', icon: User },
     skills: { title: '专业技能', description: `${resume.skills.length} 个技能分类`, icon: Wrench },
     workExperience: { title: '工作经历', description: `${resume.workExperience.length} 段工作经历`, icon: Briefcase },
     projects: { title: '项目经历', description: `${resume.projects.length} 个项目`, icon: FolderGit2 },
@@ -48,7 +49,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
 
   const openModal = (key: string) => {
     setDraft(JSON.parse(JSON.stringify(resume)));
-    setModalKey(key === 'summary' || key === 'jobIntent' ? 'info' : key as ModalKey);
+    setModalKey(key as ModalKey);
   };
   const closeModal = () => { setModalKey(null); setDraft(null); };
   const saveModal = () => {
@@ -68,16 +69,22 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
   };
 
   const moveSection = (key: string, direction: -1 | 1) => {
+    if (layoutMode !== 'sort') return;
     const index = sectionOrder.indexOf(key); const target = index + direction;
     if (index < 0 || target < 0 || target >= sectionOrder.length) return;
     const next = [...sectionOrder]; [next[index], next[target]] = [next[target], next[index]];
     onChange({ ...resume, sectionOrder: next });
   };
   const dropSection = (target: string) => {
-    if (!draggedSection || draggedSection === target) return;
+    if (layoutMode !== 'sort' || !draggedSection || draggedSection === target) return;
     const next = [...sectionOrder]; const from = next.indexOf(draggedSection); const to = next.indexOf(target);
     if (from < 0 || to < 0) return; next.splice(from, 1); next.splice(to, 0, draggedSection);
     onChange({ ...resume, sectionOrder: next }); setDraggedSection(null);
+  };
+  const toggleSection = (key: string) => {
+    const next = new Set(resume.hiddenSections || []);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    onChange({ ...resume, hiddenSections: [...next] });
   };
   const addCustom = () => {
     const section: CustomResumeSection = { id: `custom-${Date.now()}`, title: '自定义模块', content: '<p>填写开源贡献、个人作品、语言能力或其他补充信息。</p>' };
@@ -100,16 +107,19 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
           <Field label="所在地"><input className={inputClass} value={draft.personalInfo.location} onChange={e => updatePersonal('location', e.target.value)} /></Field>
           <Field label="最高学历"><select className={inputClass} value={draft.personalInfo.highestEducation || ''} onChange={e => updatePersonal('highestEducation', e.target.value)}><option value="">请选择</option><option>大专</option><option>本科</option><option>硕士</option><option>博士</option></select></Field>
         </div>
-        <div><div className="mb-1.5 text-[11px] font-medium text-slate-500">照片</div><div className="aspect-[5/7] w-[96px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-inner">{draft.personalInfo.avatarUrl ? <img src={draft.personalInfo.avatarUrl} alt="证件照预览" className="h-full w-full object-cover object-center" /> : <div className="flex h-full items-center justify-center text-slate-300"><User className="h-9 w-9" /></div>}</div><label className="mt-2 inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-blue-600"><Upload className="h-3.5 w-3.5" />上传照片<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => handleAvatar(e.target.files?.[0])} /></label><div className="mt-1 text-[10px] leading-4 text-slate-400">自动按 5:7 证件照比例居中裁切</div></div>
-      </div></section>
-      <section className="border-t border-slate-100 pt-6"><h3 className="mb-4 text-sm font-bold text-slate-950">求职意向</h3><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="求职岗位" required><input className={inputClass} value={draft.personalInfo.jobTitle} onChange={e => updatePersonal('jobTitle', e.target.value)} /></Field>
-        <Field label="意向城市"><input className={inputClass} value={draft.personalInfo.targetCities || ''} onChange={e => updatePersonal('targetCities', e.target.value)} placeholder="深圳 / 上海" /></Field>
-        <Field label="最低期望薪资"><input className={inputClass} value={draft.personalInfo.salaryMin || ''} onChange={e => updatePersonal('salaryMin', e.target.value)} placeholder="18K" /></Field>
-        <Field label="最高期望薪资"><input className={inputClass} value={draft.personalInfo.salaryMax || ''} onChange={e => updatePersonal('salaryMax', e.target.value)} placeholder="20K" /></Field>
-        <div className="sm:col-span-2"><Field label="到岗时间"><select className={inputClass} value={draft.personalInfo.availability || ''} onChange={e => updatePersonal('availability', e.target.value)}><option value="">请选择</option><option>随时到岗</option><option>一周内</option><option>两周内</option><option>一个月内</option><option>需协商</option></select></Field></div>
+        <div><div className="mb-1.5 text-[11px] font-medium text-slate-500">照片</div><div className="aspect-[5/7] w-[96px] overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">{draft.personalInfo.avatarUrl ? <img src={draft.personalInfo.avatarUrl} alt="证件照预览" className="h-full w-full object-cover object-center" /> : <div className="flex h-full items-center justify-center text-slate-300"><User className="h-9 w-9" /></div>}</div><label className="mt-2 inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-blue-600"><Upload className="h-3.5 w-3.5" />上传照片<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => handleAvatar(e.target.files?.[0])} /></label><div className="mt-1 text-[10px] leading-4 text-slate-400">自动按 5:7 证件照比例居中裁切</div></div>
       </div></section>
       <section className="border-t border-slate-100 pt-6"><h3 className="mb-1 text-sm font-bold text-slate-950">个人总结</h3><p className="mb-3 text-[11px] text-slate-500">突出与目标岗位最相关的技术能力、项目结果和职业优势。</p><RichTextEditor value={draft.summary} onChange={summary => updateDraft({ summary })} minHeight="160px" /></section>
+    </div>
+  );
+
+  const renderJobIntent = () => draft && (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <Field label="求职岗位" required><input className={inputClass} value={draft.personalInfo.jobTitle} onChange={e => updatePersonal('jobTitle', e.target.value)} /></Field>
+      <Field label="意向城市"><input className={inputClass} value={draft.personalInfo.targetCities || ''} onChange={e => updatePersonal('targetCities', e.target.value)} placeholder="深圳 / 上海" /></Field>
+      <Field label="最低期望薪资"><input className={inputClass} value={draft.personalInfo.salaryMin || ''} onChange={e => updatePersonal('salaryMin', e.target.value)} placeholder="18K" /></Field>
+      <Field label="最高期望薪资"><input className={inputClass} value={draft.personalInfo.salaryMax || ''} onChange={e => updatePersonal('salaryMax', e.target.value)} placeholder="20K" /></Field>
+      <div className="sm:col-span-2"><Field label="到岗时间"><select className={inputClass} value={draft.personalInfo.availability || ''} onChange={e => updatePersonal('availability', e.target.value)}><option value="">请选择</option><option>随时到岗</option><option>一周内</option><option>两周内</option><option>一个月内</option><option>需协商</option></select></Field></div>
     </div>
   );
 
@@ -128,14 +138,15 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ resume, onChange, on
     return <div className="space-y-4"><Field label="模块名称"><input className={inputClass} value={section.title} onChange={e => updateDraft({ customSections: (draft.customSections || []).map(item => item.id === id ? { ...item, title: e.target.value } : item) })} /></Field><Field label="模块内容"><RichTextEditor value={section.content} onChange={content => updateDraft({ customSections: (draft.customSections || []).map(item => item.id === id ? { ...item, content } : item) })} minHeight="240px" /></Field></div>;
   };
 
-  const modalTitle = modalKey === 'info' ? '基本信息与总结' : modalKey === 'skills' ? '专业技能' : modalKey === 'workExperience' ? '工作经历' : modalKey === 'projects' ? '项目经历' : modalKey === 'education' ? '教育背景' : modalKey === 'certificates' ? '证书与荣誉' : '自定义模块';
-  const modalBody = modalKey === 'info' ? renderInfo() : modalKey === 'skills' ? renderSkills() : modalKey === 'workExperience' ? renderExperience() : modalKey === 'projects' ? renderProjects() : modalKey === 'education' ? renderEducation() : modalKey === 'certificates' ? renderCertificates() : renderCustom();
+  const modalTitle = modalKey === 'info' ? '基本信息与个人总结' : modalKey === 'jobIntent' ? '求职意向' : modalKey === 'skills' ? '专业技能' : modalKey === 'workExperience' ? '工作经历' : modalKey === 'projects' ? '项目经历' : modalKey === 'education' ? '教育背景' : modalKey === 'certificates' ? '证书与荣誉' : '自定义模块';
+  const modalBody = modalKey === 'info' ? renderInfo() : modalKey === 'jobIntent' ? renderJobIntent() : modalKey === 'skills' ? renderSkills() : modalKey === 'workExperience' ? renderExperience() : modalKey === 'projects' ? renderProjects() : modalKey === 'education' ? renderEducation() : modalKey === 'certificates' ? renderCertificates() : renderCustom();
 
   return <>
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 p-4"><div><h2 className="text-sm font-bold text-slate-900">模块与排版</h2><p className="text-xs text-slate-500">拖动调整顺序，单击模块打开编辑弹窗</p></div><button id="btn-open-ai-generator" onClick={onOpenAiGenerator} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"><Sparkles className="h-3.5 w-3.5" />AI 生成</button></div>
+      <div className="border-b border-slate-200 bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900">模块与排版</h2><p className="mt-0.5 text-xs text-slate-500">{layoutMode === 'visibility' ? '勾选需要展示的模块，单击模块编辑内容' : '拖动模块调整顺序，隐藏模块仍可参与排序'}</p></div><button id="btn-open-ai-generator" onClick={onOpenAiGenerator} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"><Sparkles className="h-3.5 w-3.5" />AI 生成</button></div><button type="button" onClick={() => { setDraggedSection(null); setLayoutMode(mode => mode === 'visibility' ? 'sort' : 'visibility'); }} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600"><ListOrdered className="h-3.5 w-3.5" />{layoutMode === 'visibility' ? '调整模块顺序' : '完成排序'}</button></div>
       <div className="max-h-[720px] flex-1 space-y-2 overflow-y-auto p-4">
-        {sectionOrder.map((key, index) => { const custom = key.startsWith('custom:') ? customSections.find(section => `custom:${section.id}` === key) : undefined; const meta = custom ? { title: custom.title || '自定义模块', description: '自定义富文本内容', icon: LayoutList } : labels[key]; if (!meta) return null; const Icon = meta.icon; return <div key={key} role="button" tabIndex={0} aria-label={`编辑${meta.title}`} draggable onDragStart={() => setDraggedSection(key)} onDragEnd={() => setDraggedSection(null)} onDragOver={e => e.preventDefault()} onDrop={() => dropSection(key)} onClick={() => openModal(key)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(key); } }} className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${draggedSection === key ? 'border-blue-400 bg-blue-50 opacity-60' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}><GripVertical className="h-4 w-4 cursor-grab text-slate-300 group-hover:text-slate-500" onClick={e => e.stopPropagation()} /><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Icon className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-bold text-slate-800">{meta.title}</div><div className="truncate text-[11px] text-slate-500">{meta.description}</div></div><div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}><button onClick={() => moveSection(key, -1)} disabled={index === 0} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20"><ChevronUp className="h-3.5 w-3.5" /></button><button onClick={() => moveSection(key, 1)} disabled={index === sectionOrder.length - 1} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20"><ChevronDown className="h-3.5 w-3.5" /></button></div></div>; })}
+        <div role="button" tabIndex={0} aria-label="编辑基本信息与个人总结" onClick={() => openModal('info')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal('info'); } }} className="group flex cursor-pointer items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-3 transition hover:border-blue-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200"><div className="flex h-5 w-5 items-center justify-center rounded border border-blue-500 bg-blue-600 text-white"><Check className="h-3.5 w-3.5" /></div><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700"><User className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-bold text-slate-800">基本信息与个人总结</div><div className="truncate text-[11px] text-slate-500">必选，个人总结固定跟随求职意向</div></div><Lock className="h-3.5 w-3.5 text-slate-400" /></div>
+        {sectionOrder.map((key, index) => { const custom = key.startsWith('custom:') ? customSections.find(section => `custom:${section.id}` === key) : undefined; const meta = custom ? { title: custom.title || '自定义模块', description: '自定义富文本内容', icon: LayoutList } : labels[key]; if (!meta) return null; const Icon = meta.icon; const visible = !hiddenSections.has(key); return <div key={key} role="button" tabIndex={0} aria-label={`编辑${meta.title}`} draggable={layoutMode === 'sort'} onDragStart={() => layoutMode === 'sort' && setDraggedSection(key)} onDragEnd={() => setDraggedSection(null)} onDragOver={e => layoutMode === 'sort' && e.preventDefault()} onDrop={() => dropSection(key)} onClick={() => openModal(key)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(key); } }} className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${draggedSection === key ? 'border-blue-400 bg-blue-50 opacity-60' : visible ? 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm' : 'border-slate-200 bg-slate-50 opacity-60 hover:opacity-90'}`}>{layoutMode === 'visibility' ? <button type="button" role="checkbox" aria-checked={visible} aria-label={`${visible ? '隐藏' : '展示'}${meta.title}`} onClick={e => { e.stopPropagation(); toggleSection(key); }} className={`flex h-5 w-5 items-center justify-center rounded border transition ${visible ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-300 bg-white text-transparent hover:border-blue-400'}`}><Check className="h-3.5 w-3.5" /></button> : <GripVertical className="h-4 w-4 cursor-grab text-slate-400 group-hover:text-slate-600" onClick={e => e.stopPropagation()} />}<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Icon className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-bold text-slate-800">{meta.title}</div><div className="truncate text-[11px] text-slate-500">{visible ? meta.description : '已隐藏 · 单击仍可编辑'}</div></div>{layoutMode === 'sort' && <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}><button onClick={() => moveSection(key, -1)} disabled={index === 0} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20"><ChevronUp className="h-3.5 w-3.5" /></button><button onClick={() => moveSection(key, 1)} disabled={index === sectionOrder.length - 1} className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20"><ChevronDown className="h-3.5 w-3.5" /></button></div>}</div>; })}
         <button type="button" onClick={addCustom} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-blue-600"><Plus className="h-4 w-4" />添加自定义模块</button>
       </div>
     </div>

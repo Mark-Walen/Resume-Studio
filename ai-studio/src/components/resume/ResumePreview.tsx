@@ -5,7 +5,7 @@ import { sanitizeRichText, toRichHtml } from '../../utils/richText';
 
 interface ResumePreviewProps { resume: ResumeData; templateId: ResumeTemplateId; }
 
-const builtInSections = ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
+const sortableBuiltInSections = ['jobIntent', 'skills', 'workExperience', 'projects', 'education', 'certificates'];
 const templateStyles: Record<ResumeTemplateId, { accent: string; heading: string; rule: string; surface: string; compact?: boolean; centered?: boolean }> = {
   modern: { accent: 'text-blue-600', heading: 'text-slate-900', rule: 'border-blue-500', surface: 'border-slate-200' },
   classic: { accent: 'text-slate-700', heading: 'text-slate-950 uppercase tracking-wider', rule: 'border-slate-800', surface: 'border-slate-300', centered: true },
@@ -18,9 +18,13 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
   const style = templateStyles[templateId];
   const customSections = resume.customSections || [];
   const customKeys = customSections.map(section => `custom:${section.id}`);
-  const requestedOrder = [...(resume.sectionOrder || builtInSections)];
-  if (!requestedOrder.includes('jobIntent')) requestedOrder.splice(Math.max(0, requestedOrder.indexOf('summary')), 0, 'jobIntent');
-  const sectionOrder = [...requestedOrder.filter(key => builtInSections.includes(key) || customKeys.includes(key)), ...builtInSections.filter(key => !requestedOrder.includes(key)), ...customKeys.filter(key => !requestedOrder.includes(key))];
+  const requestedOrder = [...(resume.sectionOrder || sortableBuiltInSections)].filter(key => key !== 'summary');
+  if (!requestedOrder.includes('jobIntent')) requestedOrder.unshift('jobIntent');
+  const hiddenSections = new Set(resume.hiddenSections || []);
+  const sortableOrder = [...requestedOrder.filter(key => sortableBuiltInSections.includes(key) || customKeys.includes(key)), ...sortableBuiltInSections.filter(key => !requestedOrder.includes(key)), ...customKeys.filter(key => !requestedOrder.includes(key))];
+  const sectionOrder = sortableOrder.filter(key => !hiddenSections.has(key));
+  const jobIntentIndex = sectionOrder.indexOf('jobIntent');
+  sectionOrder.splice(jobIntentIndex >= 0 ? jobIntentIndex + 1 : 0, 0, 'summary');
   const bodySize = style.compact ? 'text-[10.5px]' : 'text-xs';
   const blockSpace = style.compact ? 'mb-3' : 'mb-6';
 
@@ -80,7 +84,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
       <header className={`${headerTheme} ${style.centered ? 'text-center' : ''}`}>
         <div className={`flex ${style.centered ? 'flex-col items-center' : 'flex-col sm:flex-row justify-between items-start'} gap-4`}>
           <div className={`flex items-center gap-4 ${style.centered ? 'flex-col' : ''}`}>
-            {resume.personalInfo.avatarUrl && <img src={resume.personalInfo.avatarUrl} alt="个人头像" className={`${style.compact ? 'w-16 h-16' : 'w-24 h-24'} rounded-2xl object-cover border-2 border-white shadow-sm`} />}
+            {resume.personalInfo.avatarUrl && <img src={resume.personalInfo.avatarUrl} alt="个人头像" className={`${style.compact ? 'w-14' : 'w-20'} aspect-[5/7] object-cover object-center border border-slate-200 shadow-sm`} />}
             <div><h1 className={`${style.compact ? 'text-2xl' : 'text-3xl'} font-bold tracking-tight`}>{resume.personalInfo.fullName}</h1><p className={`${templateId === 'tech-sidebar' ? 'text-cyan-300' : style.accent} text-sm font-semibold mt-1`}>{resume.personalInfo.jobTitle}</p></div>
           </div>
           <div className={`${style.compact ? 'text-[10px]' : 'text-xs'} space-y-1 ${style.centered ? 'flex flex-wrap justify-center gap-x-4' : 'sm:text-right'}`}>

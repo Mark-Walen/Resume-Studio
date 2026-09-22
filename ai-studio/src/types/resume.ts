@@ -93,6 +93,7 @@ export interface ResumeData {
   certificates: Certificate[];
   customSections?: CustomResumeSection[];
   sectionOrder?: string[];
+  hiddenSections?: string[];
 }
 
 export interface ResumeTheme {

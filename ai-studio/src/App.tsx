@@ -249,7 +249,6 @@ export default function App() {
         onSelectTab={setCurrentTab}
         onOpenApiKey={() => setIsApiKeyOpen(true)}
         onOpenAiGenerator={() => setIsAiResumeOpen(true)}
-        onOpenJobProxy={() => setIsJobProxyOpen(true)}
       />
 
       {/* Main Workspace */}

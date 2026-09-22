@@ -129,7 +129,7 @@ ${resume.personalInfo.fullName}
                 </div>
                 <button
                   id="btn-export-pdf"
-                  onClick={() => exportToPdf()}
+                  onClick={() => { onClose(); window.setTimeout(() => exportToPdf(), 120); }}
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                 >
                   打印 / 保存 PDF

@@ -78,10 +78,9 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
     if (raw) {
       const stored = JSON.parse(raw) as ResumeData;
       const customSections = stored.customSections || [];
-      const baseOrder = [...(stored.sectionOrder || defaults.sectionOrder || ['jobIntent', 'summary', 'skills', 'workExperience', 'projects', 'education', 'certificates'])];
+      const baseOrder = [...(stored.sectionOrder || defaults.sectionOrder || ['jobIntent', 'skills', 'workExperience', 'projects', 'education', 'certificates'])].filter((key) => key !== 'summary');
       if (!baseOrder.includes('jobIntent')) {
-        const summaryIndex = baseOrder.indexOf('summary');
-        baseOrder.splice(summaryIndex >= 0 ? summaryIndex : 0, 0, 'jobIntent');
+        baseOrder.unshift('jobIntent');
       }
       const validCustomKeys = customSections.map((section) => `custom:${section.id}`);
       const sectionOrder = [...baseOrder.filter((key) => !key.startsWith('custom:') || validCustomKeys.includes(key)), ...validCustomKeys.filter((key) => !baseOrder.includes(key))];
@@ -91,6 +90,7 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
         personalInfo: { ...defaults.personalInfo, ...stored.personalInfo },
         customSections,
         sectionOrder,
+        hiddenSections: (stored.hiddenSections || []).filter((key) => key !== 'summary' && key !== 'basicInfo'),
       };
     }
   } catch {
