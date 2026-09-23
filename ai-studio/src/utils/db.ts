@@ -9,6 +9,7 @@ import { KnowledgeItem, KnowledgeBook } from '../types/knowledge';
 import { WorkDailyLog } from '../types/journal';
 import { DEFAULT_LEETBOOKS } from '../data/defaultBooks';
 import { INITIAL_WORK_DAILY_LOGS } from '../data/defaultJournals';
+import { auth } from '../services/firebase';
 
 const RESUME_KEY = 'ai_resume_data_v3_embedded';
 const CERTIFICATE_DATE_MIGRATION_KEY = 'resume_certificate_date_migration_v1';
@@ -32,6 +33,42 @@ const DB_NAME = 'ResumeInterviewMediaDB';
 const DB_VERSION = 1;
 const MEDIA_STORE = 'media_files';
 
+function currentUserId(): string {
+  return auth.currentUser?.uid || 'anonymous';
+}
+
+function scopedStorageKey(baseKey: string): string {
+  return `${baseKey}:${currentUserId()}`;
+}
+
+function readScopedStorage(baseKey: string): string | null {
+  const scopedKey = scopedStorageKey(baseKey);
+  const scopedValue = localStorage.getItem(scopedKey);
+  if (scopedValue !== null) return scopedValue;
+
+  if (currentUserId() !== 'anonymous') {
+    const legacyValue = localStorage.getItem(baseKey);
+    if (legacyValue !== null) {
+      localStorage.setItem(scopedKey, legacyValue);
+      localStorage.removeItem(baseKey);
+      return legacyValue;
+    }
+  }
+  return null;
+}
+
+function writeScopedStorage(baseKey: string, value: string): void {
+  localStorage.setItem(scopedStorageKey(baseKey), value);
+}
+
+function removeScopedStorage(baseKey: string): void {
+  localStorage.removeItem(scopedStorageKey(baseKey));
+}
+
+function scopedRecordId(id: string): string {
+  return `${currentUserId()}:${id}`;
+}
+
 function openMediaDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -51,7 +88,7 @@ export async function saveMediaBlob(id: string, blob: Blob): Promise<void> {
     const db = await openMediaDB();
     const tx = db.transaction(MEDIA_STORE, 'readwrite');
     const store = tx.objectStore(MEDIA_STORE);
-    store.put({ id, blob, createdAt: Date.now() });
+    store.put({ id: scopedRecordId(id), blob, createdAt: Date.now() });
     return new Promise((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -66,9 +103,30 @@ export async function getMediaBlob(id: string): Promise<Blob | null> {
     const db = await openMediaDB();
     const tx = db.transaction(MEDIA_STORE, 'readonly');
     const store = tx.objectStore(MEDIA_STORE);
-    const req = store.get(id);
+    const scopedId = scopedRecordId(id);
+    const req = store.get(scopedId);
     return new Promise((resolve, reject) => {
-      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onsuccess = () => {
+        if (req.result) {
+          resolve(req.result.blob);
+          return;
+        }
+        if (currentUserId() === 'anonymous') {
+          resolve(null);
+          return;
+        }
+        const legacyReq = store.get(id);
+        legacyReq.onsuccess = () => {
+          if (!legacyReq.result) {
+            resolve(null);
+            return;
+          }
+          const migrationTx = db.transaction(MEDIA_STORE, 'readwrite');
+          migrationTx.objectStore(MEDIA_STORE).put({ ...legacyReq.result, id: scopedId });
+          resolve(legacyReq.result.blob);
+        };
+        legacyReq.onerror = () => reject(legacyReq.error);
+      };
       req.onerror = () => reject(req.error);
     });
   } catch (err) {
@@ -81,7 +139,7 @@ export async function getMediaBlob(id: string): Promise<Blob | null> {
 export function loadResumeData(fallback?: ResumeData): ResumeData {
   const defaults = fallback || DEFAULT_RESUME;
   try {
-    const raw = localStorage.getItem(RESUME_KEY);
+    const raw = readScopedStorage(RESUME_KEY);
     if (raw) {
       const stored = JSON.parse(raw) as ResumeData;
       const customSections = stored.customSections || [];
@@ -91,7 +149,7 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
       }
       const validCustomKeys = customSections.map((section) => `custom:${section.id}`);
       const sectionOrder = [...baseOrder.filter((key) => !key.startsWith('custom:') || validCustomKeys.includes(key)), ...validCustomKeys.filter((key) => !baseOrder.includes(key))];
-      const shouldMigrateCertificateDate = !localStorage.getItem(CERTIFICATE_DATE_MIGRATION_KEY);
+      const shouldMigrateCertificateDate = !readScopedStorage(CERTIFICATE_DATE_MIGRATION_KEY);
       const certificates = shouldMigrateCertificateDate
         ? (stored.certificates || defaults.certificates).map(item => item.name === '湖南城市学院数学竞赛三等奖' && item.date === '2019-03' ? { ...item, date: '' } : item)
         : (stored.certificates || defaults.certificates);
@@ -105,8 +163,8 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
         hiddenSections: (stored.hiddenSections || []).filter((key) => key !== 'summary' && key !== 'basicInfo'),
       };
       if (shouldMigrateCertificateDate) {
-        localStorage.setItem(RESUME_KEY, JSON.stringify(normalized));
-        localStorage.setItem(CERTIFICATE_DATE_MIGRATION_KEY, '1');
+        writeScopedStorage(RESUME_KEY, JSON.stringify(normalized));
+        writeScopedStorage(CERTIFICATE_DATE_MIGRATION_KEY, '1');
       }
       return normalized;
     }
@@ -118,7 +176,7 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
 
 export function saveResumeData(data: ResumeData): void {
   try {
-    localStorage.setItem(RESUME_KEY, JSON.stringify(data));
+    writeScopedStorage(RESUME_KEY, JSON.stringify(data));
   } catch (err) {
     console.warn('LocalStorage save failed for resume:', err);
   }
@@ -126,7 +184,7 @@ export function saveResumeData(data: ResumeData): void {
 
 export function loadJobApplications(): JobApplication[] {
   try {
-    const raw = localStorage.getItem(JOBS_KEY);
+    const raw = readScopedStorage(JOBS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -136,7 +194,7 @@ export function loadJobApplications(): JobApplication[] {
 
 export function saveJobApplications(jobs: JobApplication[]): void {
   try {
-    localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
+    writeScopedStorage(JOBS_KEY, JSON.stringify(jobs));
   } catch (err) {
     console.warn('LocalStorage save failed for jobs:', err);
   }
@@ -144,7 +202,7 @@ export function saveJobApplications(jobs: JobApplication[]): void {
 
 export function loadInterviewRecords(): InterviewRecord[] {
   try {
-    const raw = localStorage.getItem(INTERVIEWS_KEY);
+    const raw = readScopedStorage(INTERVIEWS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -154,7 +212,7 @@ export function loadInterviewRecords(): InterviewRecord[] {
 
 export function saveInterviewRecords(records: InterviewRecord[]): void {
   try {
-    localStorage.setItem(INTERVIEWS_KEY, JSON.stringify(records));
+    writeScopedStorage(INTERVIEWS_KEY, JSON.stringify(records));
   } catch (err) {
     console.warn('LocalStorage save failed for interviews:', err);
   }
@@ -231,49 +289,70 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-let aiVaultKeyPromise: Promise<CryptoKey> | null = null;
+const aiVaultKeyPromises = new Map<string, Promise<CryptoKey>>();
 
 async function createOrLoadAiVaultKey(): Promise<CryptoKey> {
   if (!window.crypto?.subtle) throw new Error('当前浏览器不支持安全凭据存储。');
   const db = await openAiVaultDb();
-  const existing = await requestResult<any>(db.transaction(AI_VAULT_KEY_STORE, 'readonly').objectStore(AI_VAULT_KEY_STORE).get('primary'));
+  const keyId = scopedRecordId('primary');
+  const existing = await requestResult<any>(db.transaction(AI_VAULT_KEY_STORE, 'readonly').objectStore(AI_VAULT_KEY_STORE).get(keyId));
   if (existing?.key) return existing.key as CryptoKey;
+  if (currentUserId() !== 'anonymous') {
+    const legacy = await requestResult<any>(db.transaction(AI_VAULT_KEY_STORE, 'readonly').objectStore(AI_VAULT_KEY_STORE).get('primary'));
+    if (legacy?.key) {
+      await requestResult(db.transaction(AI_VAULT_KEY_STORE, 'readwrite').objectStore(AI_VAULT_KEY_STORE).put({ id: keyId, key: legacy.key }));
+      return legacy.key as CryptoKey;
+    }
+  }
   const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-  await requestResult(db.transaction(AI_VAULT_KEY_STORE, 'readwrite').objectStore(AI_VAULT_KEY_STORE).put({ id: 'primary', key }));
+  await requestResult(db.transaction(AI_VAULT_KEY_STORE, 'readwrite').objectStore(AI_VAULT_KEY_STORE).put({ id: keyId, key }));
   return key;
 }
 
 function getAiVaultKey(): Promise<CryptoKey> {
-  if (!aiVaultKeyPromise) aiVaultKeyPromise = createOrLoadAiVaultKey().catch(error => { aiVaultKeyPromise = null; throw error; });
-  return aiVaultKeyPromise;
+  const userId = currentUserId();
+  const existing = aiVaultKeyPromises.get(userId);
+  if (existing) return existing;
+  const promise = createOrLoadAiVaultKey().catch(error => { aiVaultKeyPromises.delete(userId); throw error; });
+  aiVaultKeyPromises.set(userId, promise);
+  return promise;
 }
 
 async function saveEncryptedApiKey(profileId: string, apiKey: string): Promise<void> {
   const db = await openAiVaultDb();
+  const recordId = scopedRecordId(profileId);
   if (!apiKey) {
-    await requestResult(db.transaction(AI_VAULT_SECRET_STORE, 'readwrite').objectStore(AI_VAULT_SECRET_STORE).delete(profileId));
+    await requestResult(db.transaction(AI_VAULT_SECRET_STORE, 'readwrite').objectStore(AI_VAULT_SECRET_STORE).delete(recordId));
     return;
   }
   const key = await getAiVaultKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const additionalData = new TextEncoder().encode(profileId);
+  const additionalData = new TextEncoder().encode(recordId);
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData }, key, new TextEncoder().encode(apiKey));
-  const record: EncryptedApiKeyRecord = { id: profileId, iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(encrypted)) };
+  const record: EncryptedApiKeyRecord = { id: recordId, iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(encrypted)) };
   await requestResult(db.transaction(AI_VAULT_SECRET_STORE, 'readwrite').objectStore(AI_VAULT_SECRET_STORE).put(record));
 }
 
 async function loadEncryptedApiKey(profileId: string): Promise<string> {
   const db = await openAiVaultDb();
-  const record = await requestResult<EncryptedApiKeyRecord | undefined>(db.transaction(AI_VAULT_SECRET_STORE, 'readonly').objectStore(AI_VAULT_SECRET_STORE).get(profileId));
+  const recordId = scopedRecordId(profileId);
+  let record = await requestResult<EncryptedApiKeyRecord | undefined>(db.transaction(AI_VAULT_SECRET_STORE, 'readonly').objectStore(AI_VAULT_SECRET_STORE).get(recordId));
+  let additionalDataId = recordId;
+  if (!record && currentUserId() !== 'anonymous') {
+    record = await requestResult<EncryptedApiKeyRecord | undefined>(db.transaction(AI_VAULT_SECRET_STORE, 'readonly').objectStore(AI_VAULT_SECRET_STORE).get(profileId));
+    additionalDataId = profileId;
+  }
   if (!record) return '';
   const key = await getAiVaultKey();
-  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(record.iv), additionalData: new TextEncoder().encode(profileId) }, key, new Uint8Array(record.ciphertext));
-  return new TextDecoder().decode(decrypted);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(record.iv), additionalData: new TextEncoder().encode(additionalDataId) }, key, new Uint8Array(record.ciphertext));
+  const value = new TextDecoder().decode(decrypted);
+  if (additionalDataId !== recordId) await saveEncryptedApiKey(profileId, value);
+  return value;
 }
 
 function getAiServiceProfileMetadataStore(): AiServiceProfileStore {
   try {
-    const rawProfiles = localStorage.getItem(AI_SERVICE_PROFILES_STORAGE);
+    const rawProfiles = readScopedStorage(AI_SERVICE_PROFILES_STORAGE);
     if (rawProfiles) {
       const parsed = JSON.parse(rawProfiles) as AiServiceProfileStore;
       const profiles = (parsed.profiles || []).map(normalizeAiProfile);
@@ -283,10 +362,10 @@ function getAiServiceProfileMetadataStore(): AiServiceProfileStore {
       }
     }
 
-    const rawLegacy = localStorage.getItem(AI_SERVICE_SETTINGS_STORAGE);
+    const rawLegacy = readScopedStorage(AI_SERVICE_SETTINGS_STORAGE);
     const legacySettings = rawLegacy ? { ...DEFAULT_AI_SETTINGS, ...JSON.parse(rawLegacy) } : {
       ...DEFAULT_AI_SETTINGS,
-      apiKey: localStorage.getItem(API_KEY_STORAGE) || localStorage.getItem(LEGACY_API_KEY_STORAGE) || '',
+      apiKey: readScopedStorage(API_KEY_STORAGE) || readScopedStorage(LEGACY_API_KEY_STORAGE) || '',
     };
     return { activeProfileId: DEFAULT_AI_PROFILE.id, profiles: [normalizeAiProfile({ ...DEFAULT_AI_PROFILE, ...legacySettings })] };
   } catch {
@@ -299,11 +378,11 @@ function persistAiServiceMetadata(store: AiServiceProfileStore): void {
   const activeProfileId = profiles.some(profile => profile.id === store.activeProfileId) ? store.activeProfileId : profiles[0]?.id;
   if (!profiles.length || !activeProfileId) return;
   const normalized = { activeProfileId, profiles };
-  localStorage.setItem(AI_SERVICE_PROFILES_STORAGE, JSON.stringify(normalized));
+  writeScopedStorage(AI_SERVICE_PROFILES_STORAGE, JSON.stringify(normalized));
   const active = profiles.find(profile => profile.id === activeProfileId)!;
-  localStorage.setItem(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(active));
-  localStorage.removeItem(API_KEY_STORAGE);
-  localStorage.removeItem(LEGACY_API_KEY_STORAGE);
+  writeScopedStorage(AI_SERVICE_SETTINGS_STORAGE, JSON.stringify(active));
+  removeScopedStorage(API_KEY_STORAGE);
+  removeScopedStorage(LEGACY_API_KEY_STORAGE);
 }
 
 export async function getAiServiceProfileStore(): Promise<AiServiceProfileStore> {
@@ -361,7 +440,7 @@ export const saveCustomApiKey = setCustomApiKey;
 
 export function loadDiagnosticReport(): CrossInterviewDiagnosticReport | null {
   try {
-    const raw = localStorage.getItem(DIAGNOSTIC_KEY);
+    const raw = readScopedStorage(DIAGNOSTIC_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -371,7 +450,7 @@ export function loadDiagnosticReport(): CrossInterviewDiagnosticReport | null {
 
 export function saveDiagnosticReport(report: CrossInterviewDiagnosticReport): void {
   try {
-    localStorage.setItem(DIAGNOSTIC_KEY, JSON.stringify(report));
+    writeScopedStorage(DIAGNOSTIC_KEY, JSON.stringify(report));
   } catch (err) {
     console.warn('Failed to save diagnostic report:', err);
   }
@@ -379,7 +458,7 @@ export function saveDiagnosticReport(report: CrossInterviewDiagnosticReport): vo
 
 export function loadKnowledgeItems(fallback: KnowledgeItem[]): KnowledgeItem[] {
   try {
-    const raw = localStorage.getItem(KNOWLEDGE_KEY);
+    const raw = readScopedStorage(KNOWLEDGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -389,7 +468,7 @@ export function loadKnowledgeItems(fallback: KnowledgeItem[]): KnowledgeItem[] {
 
 export function saveKnowledgeItems(items: KnowledgeItem[]): void {
   try {
-    localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(items));
+    writeScopedStorage(KNOWLEDGE_KEY, JSON.stringify(items));
   } catch (err) {
     console.warn('Failed to save knowledge items:', err);
   }
@@ -397,7 +476,7 @@ export function saveKnowledgeItems(items: KnowledgeItem[]): void {
 
 export function loadLeetBooks(fallback: KnowledgeBook[] = DEFAULT_LEETBOOKS): KnowledgeBook[] {
   try {
-    const raw = localStorage.getItem(LEETBOOKS_KEY);
+    const raw = readScopedStorage(LEETBOOKS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -407,7 +486,7 @@ export function loadLeetBooks(fallback: KnowledgeBook[] = DEFAULT_LEETBOOKS): Kn
 
 export function saveLeetBooks(books: KnowledgeBook[]): void {
   try {
-    localStorage.setItem(LEETBOOKS_KEY, JSON.stringify(books));
+    writeScopedStorage(LEETBOOKS_KEY, JSON.stringify(books));
   } catch (err) {
     console.warn('Failed to save LeetBooks:', err);
   }
@@ -415,7 +494,7 @@ export function saveLeetBooks(books: KnowledgeBook[]): void {
 
 export function loadWorkDailyLogs(fallback: WorkDailyLog[] = INITIAL_WORK_DAILY_LOGS): WorkDailyLog[] {
   try {
-    const raw = localStorage.getItem(WORK_JOURNAL_KEY);
+    const raw = readScopedStorage(WORK_JOURNAL_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -425,7 +504,7 @@ export function loadWorkDailyLogs(fallback: WorkDailyLog[] = INITIAL_WORK_DAILY_
 
 export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
   try {
-    localStorage.setItem(WORK_JOURNAL_KEY, JSON.stringify(logs));
+    writeScopedStorage(WORK_JOURNAL_KEY, JSON.stringify(logs));
   } catch (err) {
     console.warn('Failed to save work daily logs:', err);
   }

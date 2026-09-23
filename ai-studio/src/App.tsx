@@ -67,11 +67,13 @@ import {
   Palette,
   FileText
 } from 'lucide-react';
+import { useAuth } from './contexts/AuthContext';
 
 type CareerSection = 'pipeline' | 'optimize' | 'calendar' | 'interviews' | 'diagnostics';
 type KnowledgeSection = 'library' | 'work_materials';
 
 export default function App() {
+  const { signOutUser, user } = useAuth();
   // Navigation
   const [currentTab, setCurrentTab] = useState<MainTab>('resume');
   const [careerSection, setCareerSection] = useState<CareerSection>('pipeline');
@@ -249,6 +251,8 @@ export default function App() {
         onSelectTab={setCurrentTab}
         onOpenApiKey={() => setIsApiKeyOpen(true)}
         onOpenAiGenerator={() => setIsAiResumeOpen(true)}
+        userName={user?.displayName || user?.email || '用户'}
+        onSignOut={() => void signOutUser()}
       />
 
       {/* Main Workspace */}

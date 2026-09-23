@@ -4,6 +4,7 @@ import {
   Briefcase,
   BookOpen,
   Key,
+  LogOut,
 } from 'lucide-react';
 
 export type MainTab = 'resume' | 'career' | 'knowledge';
@@ -13,6 +14,8 @@ interface HeaderProps {
   onSelectTab: (tab: MainTab) => void;
   onOpenApiKey: () => void;
   onOpenAiGenerator: () => void;
+  userName: string;
+  onSignOut: () => void;
 }
 
 
@@ -21,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectTab,
   onOpenApiKey,
   onOpenAiGenerator,
+  userName,
+  onSignOut,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/82 backdrop-blur-xl border-b border-black/8">
@@ -91,6 +96,17 @@ export const Header: React.FC<HeaderProps> = ({
             title="AI 服务与隐私设置"
           >
             <Key className="w-4 h-4" />
+          </button>
+          <div className="hidden sm:flex max-w-36 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5" title={userName}>
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[10px] font-black uppercase text-blue-700">{userName.slice(0, 1)}</span>
+            <span className="truncate text-[11px] font-bold text-slate-600">{userName}</span>
+          </div>
+          <button
+            onClick={onSignOut}
+            className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50 transition-colors"
+            title="退出登录"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

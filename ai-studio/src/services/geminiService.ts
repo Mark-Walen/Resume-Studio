@@ -6,9 +6,12 @@ import { CompanyJdRecommendationResult } from '../types/knowledge';
 import { MultiCompanyComparisonResult, TargetCompanyJdInput } from '../types/multiCompany';
 import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
 import { getAiServiceSettings, getCustomApiKey } from '../utils/db';
+import { auth } from './firebase';
 
 async function requestAiApi(path: string, init: RequestInit): Promise<Response> {
   const settings = await getAiServiceSettings();
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('请先登录后再使用 AI 功能。');
   return fetch(path, {
     ...init,
     headers: {
@@ -17,6 +20,7 @@ async function requestAiApi(path: string, init: RequestInit): Promise<Response> 
       'x-ai-model': settings.model,
       'x-ai-compatibility': settings.compatibility || 'openai',
       ...(settings.baseUrl ? { 'x-ai-base-url': settings.baseUrl } : {}),
+      Authorization: `Bearer ${idToken}`,
     },
   });
 }
