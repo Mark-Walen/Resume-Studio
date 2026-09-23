@@ -5,14 +5,35 @@ import { ParsedJdInfo, JdMatchAnalysis, JdProxyResponse } from '../types/proxy';
 import { CompanyJdRecommendationResult } from '../types/knowledge';
 import { MultiCompanyComparisonResult, TargetCompanyJdInput } from '../types/multiCompany';
 import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
-import { getCustomApiKey } from '../utils/db';
+import { getActiveAiProfile, getCustomApiKey } from '../utils/db';
 import { auth } from './firebase';
+import { ModelProviderType } from '../types/aiProvider';
+
+const PROVIDER_IDS: Record<ModelProviderType, string> = {
+  claude: 'anthropic',
+  chatgpt: 'openai',
+  grok: 'xai',
+  gemini: 'google',
+  deepseek: 'deepseek',
+  zhipu: 'zai',
+  openai_compatible: 'custom',
+  anthropic_compatible: 'custom',
+};
 
 async function requestAiApi(path: string, init: RequestInit): Promise<Response> {
   const idToken = await auth.currentUser?.getIdToken();
   if (!idToken) throw new Error('请先登录后再使用 AI 功能。');
   const headers = new Headers(init.headers);
+  const profile = getActiveAiProfile();
+  const apiKey = getCustomApiKey();
   headers.set('Authorization', `Bearer ${idToken}`);
+  if (profile) {
+    headers.set('x-ai-provider', PROVIDER_IDS[profile.provider]);
+    headers.set('x-ai-model', profile.modelName);
+    headers.set('x-ai-compatibility', profile.provider === 'anthropic_compatible' ? 'anthropic' : 'openai');
+    if (profile.customBaseUrl) headers.set('x-ai-base-url', profile.customBaseUrl);
+  }
+  if (apiKey) headers.set('x-ai-api-key', apiKey);
   return fetch(path, { ...init, headers });
 }
 

@@ -10,7 +10,8 @@ import {
   Trash2,
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCw
 } from 'lucide-react';
 import {
   ModelProviderType,
@@ -24,6 +25,7 @@ import {
   setActiveAiProfile
 } from '../utils/db';
 import { encryptApiKey, decryptApiKey } from '../utils/crypto';
+import { fetchAvailableModels } from '../services/modelCatalogService';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -43,6 +45,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showPlainKey, setShowPlainKey] = useState(false);
   const [isSavedToast, setIsSavedToast] = useState(false);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelFetchError, setModelFetchError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -63,6 +68,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setProfileName(p.name);
     setProvider(p.provider);
     setModelName(p.modelName);
+    setModelOptions([...new Set([p.modelName, ...PROVIDER_CONFIGS[p.provider].supportedModels].filter(Boolean))]);
+    setModelFetchError('');
     setCustomBaseUrl(p.customBaseUrl || '');
     setApiKeyInput(p.encryptedApiKey ? decryptApiKey(p.encryptedApiKey) : '');
   };
@@ -71,6 +78,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setProvider(newProvider);
     const cfg = PROVIDER_CONFIGS[newProvider];
     setModelName(cfg.defaultModel);
+    setModelOptions([...cfg.supportedModels]);
+    setModelFetchError('');
     if (cfg.defaultBaseUrl) {
       setCustomBaseUrl(cfg.defaultBaseUrl);
     }
@@ -141,6 +150,22 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
       if (onSave) onSave();
       onClose();
     }, 600);
+  };
+
+  const handleFetchModels = async () => {
+    setIsFetchingModels(true);
+    setModelFetchError('');
+    try {
+      const fetched = await fetchAvailableModels({ provider, apiKey: apiKeyInput, baseUrl: customBaseUrl });
+      const merged = [...new Set([...fetched, modelName, ...currentProviderConfig.supportedModels].filter(Boolean))];
+      setModelOptions(merged);
+      if (!modelName && merged[0]) setModelName(merged[0]);
+      if (!fetched.length) setModelFetchError('服务商未返回可用模型，你仍可手动输入模型名称。');
+    } catch (error) {
+      setModelFetchError(error instanceof Error ? error.message : '获取模型失败。');
+    } finally {
+      setIsFetchingModels(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -280,30 +305,34 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
 
             {/* Model Name */}
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                模型标识名称 (Model Name) *
-              </label>
-              {isCompatibleProvider ? (
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                  模型标识名称 (Model Name) *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handleFetchModels()}
+                  disabled={isFetchingModels || !apiKeyInput.trim()}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0071e3] hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                  title="使用当前 API Key 从服务商获取模型列表"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isFetchingModels ? 'animate-spin' : ''}`} />
+                  {isFetchingModels ? '正在获取' : '联网获取'}
+                </button>
+              </div>
                 <input
                   type="text"
                   value={modelName}
                   onChange={e => setModelName(e.target.value)}
-                  placeholder="例如：deepseek-ai/DeepSeek-V3 或 llama3.3:70b"
+                  list="available-ai-models"
+                  placeholder="可选列表中的模型，或直接输入自定义模型名"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
                 />
-              ) : (
-                <select
-                  value={modelName}
-                  onChange={e => setModelName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
-                >
-                  {currentProviderConfig?.supportedModels.map((m: string) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <datalist id="available-ai-models">
+                {modelOptions.map(model => <option key={model} value={model} />)}
+              </datalist>
+              <p className="mt-1 text-[11px] text-slate-400">可自由输入，也可填写 Key 后从服务商实时获取。</p>
+              {modelFetchError && <p className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">{modelFetchError}</p>}
             </div>
 
             {/* If compatible provider, show Base URL */}
