@@ -102,10 +102,7 @@ function getConfiguredAiClient(customKey: string | undefined, req: any) {
   return getAiClient(customKey, provider, model, compatibility, baseUrl);
 }
 
-const apiPlugin: Plugin = {
-  name: 'ai-service-api',
-  configureServer(server) {
-    server.middlewares.use(async (req, res, next) => {
+const apiMiddleware = async (req: any, res: any, next: () => void) => {
       const url = req.url?.split('?')[0];
 
       // 1. Health check
@@ -885,7 +882,15 @@ ${existingResume ? JSON.stringify({
 
 
       next();
-    });
+};
+
+const apiPlugin: Plugin = {
+  name: 'ai-service-api',
+  configureServer(server) {
+    server.middlewares.use(apiMiddleware);
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use(apiMiddleware);
   },
 };
 
@@ -894,7 +899,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), apiPlugin],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {
