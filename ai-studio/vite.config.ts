@@ -906,6 +906,9 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+    preview: {
+      allowedHosts: ['resume-pilot-565432383818.asia-east1.run.app'],
+    },
   };
 });
 
