@@ -1,5 +1,7 @@
 import { ResumeData } from '../types/resume';
 
+export const DEFAULT_TEST_AVATAR = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&h=533&q=80';
+
 export const DEFAULT_RESUME: ResumeData = {
   id: 'resume-default-001',
   title: '资深全栈研发工程师 & 架构师',
@@ -13,6 +15,14 @@ export const DEFAULT_RESUME: ResumeData = {
     website: 'https://vincentzhang.dev',
     github: 'https://github.com/vincent-zhang-tech',
     linkedin: 'https://linkedin.com/in/vincent-zhang',
+    avatarUrl: DEFAULT_TEST_AVATAR,
+  },
+  jobIntent: {
+    desiredPosition: '资深前端架构师 / 全栈技术专家 / Tech Lead',
+    desiredSalary: '35k - 50k · 16薪 (可面议)',
+    desiredCity: '北京 / 杭州 / 远程',
+    jobStatus: '在职 · 考虑新机会 (1个月内到岗)',
+    workType: '全职 (支持混合办公)'
   },
   summary: '10 年现代 Web、高并发服务端与分布式架构研发经验，负责过多款千万级 DAU 核心业务与 AI 智能系统从 0 到 1 架构落地。深耕 React 19、TypeScript、Node.js/Next.js 以及云原生微服务体系，具备全链路系统性能调优、工程化基建及跨职能团队带领经验。倡导数据驱动与工程卓越，热衷开源与前沿 AI 交互落地。',
   skills: [
@@ -136,7 +146,23 @@ export const DEFAULT_RESUME: ResumeData = {
       issuer: 'Linux Foundation / CNCF',
       date: '2022-11'
     }
-  ]
+  ],
+  customSections: [
+    {
+      id: 'custom-open-source',
+      title: '开源贡献与社区影响力',
+      content: '主导开源监控库 PulseKit (1.2k+ Stars)，核心参与 React 生态 RFC 讨论。在掘金、知乎技术专栏发表多篇深度架构长文，累计阅读量超 20 万次。'
+    }
+  ],
+  sectionOrder: ['workExperience', 'projects', 'skills', 'education', 'certificates', 'custom-open-source'],
+  sectionVisibility: {
+    workExperience: true,
+    projects: true,
+    skills: true,
+    education: true,
+    certificates: true,
+    'custom-open-source': true
+  }
 };
 
 export const defaultResume = DEFAULT_RESUME;

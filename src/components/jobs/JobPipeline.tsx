@@ -1,6 +1,28 @@
 import React, { useState } from 'react';
 import { JobApplication, ApplicationStatus } from '../../types/job';
-import { Plus, Search, Building2, MapPin, DollarSign, Calendar, Edit3, Trash2, ArrowRight, UserCheck, Video, Globe } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Building2,
+  MapPin,
+  DollarSign,
+  Calendar,
+  Edit3,
+  Trash2,
+  ArrowRight,
+  UserCheck,
+  Video,
+  Globe,
+  FileText,
+  Clock,
+  Sparkles,
+  Link2,
+  CheckCircle2,
+  Bookmark,
+  Send,
+  HelpCircle,
+  Archive
+} from 'lucide-react';
 
 interface JobPipelineProps {
   jobs: JobApplication[];
@@ -10,16 +32,18 @@ interface JobPipelineProps {
   onUpdateStatus: (id: string, status: ApplicationStatus) => void;
   onNavigateToInterview: (companyName: string) => void;
   onOpenJobProxy?: () => void;
+  onOpenDossier?: (job: JobApplication) => void;
+  onOpenCalendar?: () => void;
+  onOpenJdRecommend?: (job: JobApplication) => void;
 }
 
-
-const COLUMNS: Array<{ id: ApplicationStatus; title: string; color: string; badgeColor: string }> = [
-  { id: 'wishlist', title: '🎯 预投递目标', color: 'border-slate-300 bg-slate-50/50', badgeColor: 'bg-slate-200 text-slate-700' },
-  { id: 'applied', title: '📨 已投递简历', color: 'border-blue-300 bg-blue-50/30', badgeColor: 'bg-blue-100 text-blue-700' },
-  { id: 'screening', title: '🔎 筛选与初筛', color: 'border-purple-300 bg-purple-50/30', badgeColor: 'bg-purple-100 text-purple-700' },
-  { id: 'interviewing', title: '🎙️ 面试推进中', color: 'border-amber-300 bg-amber-50/30', badgeColor: 'bg-amber-100 text-amber-800' },
-  { id: 'offer', title: '🎉 已斩获 Offer', color: 'border-emerald-300 bg-emerald-50/30', badgeColor: 'bg-emerald-100 text-emerald-800' },
-  { id: 'rejected', title: '📁 未通过/归档', color: 'border-slate-200 bg-slate-50/20', badgeColor: 'bg-slate-100 text-slate-500' }
+const COLUMNS: Array<{ id: ApplicationStatus; title: string; color: string; badgeColor: string; icon: React.FC<{ className?: string }> }> = [
+  { id: 'wishlist', title: '预投递目标', color: 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50', badgeColor: 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300', icon: Bookmark },
+  { id: 'applied', title: '已投递简历', color: 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40', badgeColor: 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300', icon: Send },
+  { id: 'screening', title: '筛选与初筛', color: 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40', badgeColor: 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300', icon: Clock },
+  { id: 'interviewing', title: '面试推进中', color: 'border-amber-200 dark:border-amber-900/60 bg-amber-50/30 dark:bg-amber-950/20', badgeColor: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300', icon: Video },
+  { id: 'offer', title: '已斩获 Offer', color: 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20', badgeColor: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300', icon: CheckCircle2 },
+  { id: 'rejected', title: '未通过/归档', color: 'border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30', badgeColor: 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400', icon: Archive },
 ];
 
 export const JobPipeline: React.FC<JobPipelineProps> = ({
@@ -30,6 +54,9 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
   onUpdateStatus,
   onNavigateToInterview,
   onOpenJobProxy,
+  onOpenDossier,
+  onOpenCalendar,
+  onOpenJdRecommend,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
@@ -49,29 +76,29 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
   const offerCount = jobs.filter(j => j.status === 'offer').length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-sans">
       {/* Top Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">预投递与目标储备</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{wishlistCount} <span className="text-xs font-normal text-slate-400">家企业</span></div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">预投递与目标储备</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{wishlistCount} <span className="text-xs font-normal text-slate-400">家企业</span></div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">总跟踪投递</div>
-          <div className="text-2xl font-bold text-blue-600 mt-1">{totalCount} <span className="text-xs font-normal text-slate-400">个岗位</span></div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">总跟踪投递</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalCount} <span className="text-xs font-normal text-slate-400">个岗位</span></div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">正在面试中</div>
-          <div className="text-2xl font-bold text-amber-600 mt-1">{interviewingCount} <span className="text-xs font-normal text-slate-400">个流程</span></div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">正在面试中</div>
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">{interviewingCount} <span className="text-xs font-normal text-slate-400">个流程</span></div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">斩获 Offer</div>
-          <div className="text-2xl font-bold text-emerald-600 mt-1">{offerCount} <span className="text-xs font-normal text-slate-400">个意向</span></div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">斩获 Offer</div>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{offerCount} <span className="text-xs font-normal text-slate-400">个意向</span></div>
         </div>
       </div>
 
       {/* Filter and Actions Bar */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-3">
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -80,18 +107,18 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
               placeholder="搜索公司名、职位..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
             />
           </div>
           <select
             value={priorityFilter}
             onChange={e => setPriorityFilter(e.target.value as any)}
-            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700"
+            className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
           >
             <option value="all">全部优先级</option>
-            <option value="high">🔥 重点关注</option>
-            <option value="medium">⚡ 常规意向</option>
-            <option value="low">🌱 储备兜底</option>
+            <option value="high">重点关注 (高)</option>
+            <option value="medium">常规意向 (中)</option>
+            <option value="low">储备兜底 (低)</option>
           </select>
         </div>
 
@@ -100,21 +127,21 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
             <button
               id="btn-proxy-job"
               onClick={onOpenJobProxy}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold shadow-2xs transition-colors w-full sm:w-auto justify-center"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-colors w-full sm:w-auto justify-center cursor-pointer"
               title="输入招聘网址或粘贴JD，智能解析并一键加入意向池"
             >
-              <Globe className="w-3.5 h-3.5" />
-              网站代理获取 JD
+              <Globe className="w-3.5 h-3.5 text-[#0071e3]" />
+              <span>网站代理获取 JD</span>
             </button>
           )}
 
           <button
             id="btn-add-job"
             onClick={onAddJob}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors w-full sm:w-auto justify-center"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors w-full sm:w-auto justify-center cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            新增目标公司/投递
+            <span>新增目标公司/投递</span>
           </button>
         </div>
       </div>
@@ -123,12 +150,16 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3.5 items-start">
         {COLUMNS.map(col => {
           const colJobs = filteredJobs.filter(j => j.status === col.id);
+          const ColIcon = col.icon;
 
           return (
-            <div key={col.id} className={`rounded-xl border p-3 flex flex-col min-h-[500px] ${col.color}`}>
+            <div key={col.id} className={`rounded-xl border p-3 flex flex-col min-h-[480px] ${col.color}`}>
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/80">
-                <span className="text-xs font-bold text-slate-800">{col.title}</span>
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center space-x-1.5">
+                  <ColIcon className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{col.title}</span>
+                </div>
                 <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${col.badgeColor}`}>
                   {colJobs.length}
                 </span>
@@ -139,97 +170,120 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
                 {colJobs.map(job => (
                   <div
                     key={job.id}
-                    className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs hover:shadow-sm transition-all text-xs relative group"
+                    className="bg-white dark:bg-slate-800/90 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-xs hover:shadow-sm transition-all text-xs relative group"
                   >
                     {/* Top Row */}
                     <div className="flex justify-between items-start mb-1">
                       <div>
-                        <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1">
-                          {job.companyName}
-                          {job.priority === 'high' && <span className="text-[10px] text-red-500 font-bold">🔥</span>}
-                        </h4>
-                        <p className="text-slate-600 font-medium text-[11px] mt-0.5">{job.position}</p>
+                        <span className="font-bold text-slate-900 dark:text-white text-sm block leading-snug">{job.companyName}</span>
+                        <span className="text-slate-600 dark:text-slate-400 font-medium">{job.position}</span>
                       </div>
-                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
+                      <div className="flex items-center space-x-1">
                         <button
+                          type="button"
                           onClick={() => onEditJob(job)}
-                          className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
-                          title="编辑"
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
+                          title="编辑详情"
                         >
-                          <Edit3 className="w-3 h-3" />
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => onDeleteJob(job.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 transition-colors"
-                          title="删除"
+                          className="text-slate-400 hover:text-red-500 p-0.5"
+                          title="删除记录"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
 
                     {/* Metadata tags */}
-                    <div className="space-y-1 my-2 text-[10px] text-slate-500">
-                      {job.salaryExpectation && (
-                        <div className="flex items-center gap-1 text-amber-700 font-medium">
-                          <DollarSign className="w-3 h-3 flex-shrink-0" />
-                          <span>{job.salaryExpectation}</span>
-                        </div>
+                    <div className="flex flex-wrap gap-1.5 my-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      {job.salary && (
+                        <span className="flex items-center gap-0.5 bg-slate-50 dark:bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-700">
+                          <DollarSign className="w-2.5 h-2.5" />
+                          {job.salary}
+                        </span>
                       )}
                       {job.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 flex-shrink-0" />
-                          <span>{job.location}</span>
-                        </div>
+                        <span className="flex items-center gap-0.5 bg-slate-50 dark:bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-700">
+                          <MapPin className="w-2.5 h-2.5" />
+                          {job.location}
+                        </span>
                       )}
-                      {job.source && (
-                        <div className="text-slate-400">
-                          渠道: {job.source}
-                        </div>
-                      )}
-                      {job.notes && (
-                        <div className="bg-slate-50 p-1.5 rounded text-[10px] text-slate-600 line-clamp-2 mt-1">
-                          {job.notes}
-                        </div>
+                      {job.scheduledInterviewDate && (
+                        <span className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                          <Clock className="w-2.5 h-2.5" />
+                          {new Date(job.scheduledInterviewDate).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
+                        </span>
                       )}
                     </div>
 
-                    {/* Action Bar */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[10px]">
-                      {job.status === 'interviewing' ? (
-                        <button
-                          onClick={() => onNavigateToInterview(job.companyName)}
-                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-bold"
-                        >
-                          <Video className="w-3 h-3" />
-                          查看面试记录
-                        </button>
-                      ) : (
-                        <span className="text-slate-400">{job.updatedAt}</span>
-                      )}
+                    {/* Dossier status badge if filled */}
+                    {job.companyDossier && (
+                      <div className="mb-2 p-1.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">已建背调档案</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {job.companyDossier.reverseQuestions?.length || 0} 反问
+                        </span>
+                      </div>
+                    )}
 
-                      {/* Status select */}
+                    {/* Action Links */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/80 flex items-center justify-between gap-1 flex-wrap">
+                      <div className="flex items-center space-x-1">
+                        {onOpenDossier && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenDossier(job)}
+                            className="text-[11px] text-slate-600 dark:text-slate-400 hover:text-[#0071e3] dark:hover:text-[#0071e3] hover:bg-slate-100 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded transition-colors"
+                          >
+                            背调档案
+                          </button>
+                        )}
+                        {onOpenJdRecommend && job.jobDescription && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenJdRecommend(job)}
+                            className="text-[11px] text-slate-600 dark:text-slate-400 hover:text-[#0071e3] dark:hover:text-[#0071e3] hover:bg-slate-100 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded transition-colors flex items-center gap-0.5"
+                            title="根据此岗位JD提取推荐考点"
+                          >
+                            <Sparkles className="w-3 h-3 text-[#0071e3]" />
+                            <span>提考点</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Move to next status dropdown */}
                       <select
                         value={job.status}
-                        onChange={e => onUpdateStatus(job.id, e.target.value as ApplicationStatus)}
-                        className="text-[10px] font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5"
+                        onChange={(e) => onUpdateStatus(job.id, e.target.value as ApplicationStatus)}
+                        className="text-[10px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 text-slate-700 dark:text-slate-300"
                       >
-                        <option value="wishlist">🎯 预投递</option>
-                        <option value="applied">📨 已投递</option>
-                        <option value="screening">🔎 初筛中</option>
-                        <option value="interviewing">🎙️ 面试中</option>
-                        <option value="offer">🎉 Offer</option>
-                        <option value="rejected">📁 归档</option>
+                        {COLUMNS.map(c => (
+                          <option key={c.id} value={c.id}>
+                            移至: {c.title}
+                          </option>
+                        ))}
                       </select>
                     </div>
+
+                    {/* Mock Interview Launch Button if in interview status */}
+                    {job.status === 'interviewing' && (
+                      <div className="mt-2 pt-1.5 border-t border-amber-100 dark:border-amber-900/40">
+                        <button
+                          type="button"
+                          onClick={() => onNavigateToInterview(job.companyName)}
+                          className="w-full py-1 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Video className="w-3 h-3" />
+                          <span>发起模拟面试</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
-
-                {colJobs.length === 0 && (
-                  <div className="h-24 border-2 border-dashed border-slate-200/60 rounded-xl flex items-center justify-center text-[11px] text-slate-400">
-                    暂无记录
-                  </div>
-                )}
               </div>
             </div>
           );

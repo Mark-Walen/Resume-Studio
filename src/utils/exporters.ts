@@ -1,4 +1,6 @@
 import { ResumeData } from '../types/resume';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 /**
  * 导出为 Word 格式 (.doc)
@@ -178,10 +180,320 @@ export function exportToMarkdown(resume: ResumeData): void {
 }
 
 /**
- * 导出为 PDF (通过系统打印原生生成无损高保真矢量 PDF)
+ * 生成可用于无头/离屏渲染的 HTML 简历结构
  */
-export function exportToPdf(): void {
+function createOffscreenResumeNode(resume: ResumeData): HTMLDivElement {
+  const container = document.createElement('div');
+  container.id = 'temp-resume-export-container';
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '800px';
+  container.style.backgroundColor = '#ffffff';
+  container.style.color = '#0f172a';
+  container.style.padding = '40px';
+  container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif";
+  container.style.lineHeight = '1.6';
+  container.style.zIndex = '-9999';
+
+  const p = resume.personalInfo;
+  const intent = resume.jobIntent;
+
+  let html = `
+    <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h1 style="font-size: 26px; font-weight: 800; color: #0f172a; margin: 0 0 6px 0;">${p.fullName}</h1>
+          <div style="font-size: 15px; font-weight: 600; color: #0071e3; margin-bottom: 10px;">${p.jobTitle}</div>
+          <div style="font-size: 12px; color: #475569; display: flex; flex-wrap: wrap; gap: 12px;">
+            <span>📧 ${p.email}</span>
+            <span>📱 ${p.phone}</span>
+            <span>📍 ${p.location}</span>
+          </div>
+        </div>
+        ${p.avatarUrl ? `<img src="${p.avatarUrl}" style="width: 80px; height: 104px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;" />` : ''}
+      </div>
+    </div>
+  `;
+
+  if (intent && (intent.desiredPosition || intent.desiredSalary || intent.desiredCity)) {
+    html += `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px;">
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px;">求职意向</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; color: #334155;">
+          <div><span style="color: #64748b;">职位：</span><strong>${intent.desiredPosition || p.jobTitle}</strong></div>
+          <div><span style="color: #64748b;">期望薪资：</span><strong style="color: #0071e3;">${intent.desiredSalary || '面议'}</strong></div>
+          <div><span style="color: #64748b;">城市：</span>${intent.desiredCity || p.location}</div>
+          <div><span style="color: #64748b;">状态：</span>${intent.jobStatus || '随时到岗'}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (resume.summary) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1.5px solid #0071e3; padding-bottom: 4px; margin-bottom: 10px;">个人总结与核心优势</div>
+        <div style="font-size: 12px; color: #334155; white-space: pre-line; line-height: 1.7;">${resume.summary.replace(/[#*`>-]/g, '').trim()}</div>
+      </div>
+    `;
+  }
+
+  if (resume.workExperience && resume.workExperience.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1.5px solid #0071e3; padding-bottom: 4px; margin-bottom: 10px;">工作经历</div>
+        ${resume.workExperience.map(exp => `
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #0f172a;">
+              <span>${exp.company} <span style="font-weight: 500; color: #475569;">| ${exp.position}</span></span>
+              <span style="font-size: 11px; color: #64748b; font-family: monospace;">${exp.startDate} ~ ${exp.endDate}</span>
+            </div>
+            ${exp.department ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${exp.department} ${exp.location ? '· ' + exp.location : ''}</div>` : ''}
+            <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 12px; color: #334155;">
+              ${exp.highlights.map(h => `<li style="margin-bottom: 3px;">${h}</li>`).join('')}
+            </ul>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (resume.projects && resume.projects.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1.5px solid #0071e3; padding-bottom: 4px; margin-bottom: 10px;">重点项目</div>
+        ${resume.projects.map(proj => `
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #0f172a;">
+              <span>${proj.name} <span style="font-weight: 500; color: #0071e3;">(${proj.role})</span></span>
+              <span style="font-size: 11px; color: #64748b; font-family: monospace;">${proj.startDate} ~ ${proj.endDate}</span>
+            </div>
+            <div style="font-size: 11.5px; color: #475569; margin: 3px 0;">${proj.description}</div>
+            <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 12px; color: #334155;">
+              ${proj.highlights.map(h => `<li style="margin-bottom: 3px;">${h}</li>`).join('')}
+            </ul>
+            <div style="font-size: 11px; color: #0071e3; margin-top: 4px;"><strong>技术栈：</strong>${proj.techStack.join(' · ')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (resume.skills && resume.skills.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1.5px solid #0071e3; padding-bottom: 4px; margin-bottom: 10px;">专业技能</div>
+        ${resume.skills.map(s => `
+          <div style="font-size: 12px; margin-bottom: 4px; color: #334155;">
+            <strong style="color: #0f172a;">${s.category}：</strong>${s.skills.join('、')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (resume.education && resume.education.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1.5px solid #0071e3; padding-bottom: 4px; margin-bottom: 10px;">教育背景</div>
+        ${resume.education.map(edu => `
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #334155; margin-bottom: 4px;">
+            <span><strong style="color: #0f172a;">${edu.school}</strong> · ${edu.degree} (${edu.major})</span>
+            <span style="color: #64748b; font-family: monospace;">${edu.startDate} ~ ${edu.endDate}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (resume.certificates && resume.certificates.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1.5px solid #0071e3; padding-bottom: 4px; margin-bottom: 10px;">证书与荣誉</div>
+        <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 12px; color: #334155;">
+          ${resume.certificates.map(c => `<li><strong>${c.name}</strong> - ${c.issuer} (${c.date})</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+  return container;
+}
+
+/**
+ * 导出为高保真 PDF (.pdf) 文件
+ * 支持传入 ResumeData，即使不在预览视图中也能自动在离屏沙箱中无损采样并导出
+ */
+export async function exportToPdf(resume: ResumeData, candidateName?: string): Promise<boolean> {
+  let targetEl = document.getElementById('resume-document');
+  let tempNode: HTMLDivElement | null = null;
+
+  if (!targetEl) {
+    tempNode = createOffscreenResumeNode(resume);
+    document.body.appendChild(tempNode);
+    targetEl = tempNode;
+  }
+
+  try {
+    const canvas = await html2canvas(targetEl, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      onclone: (clonedDoc) => {
+        // 导出时严格统一为浅色高保真主题，去除所有深色模式样式
+        clonedDoc.documentElement.classList.remove('dark');
+        clonedDoc.body.classList.remove('dark');
+        const darkElements = clonedDoc.querySelectorAll('.dark');
+        darkElements.forEach(el => el.classList.remove('dark'));
+
+        const clonedResume = clonedDoc.getElementById('resume-document');
+        if (clonedResume) {
+          clonedResume.classList.remove('dark');
+          clonedResume.style.backgroundColor = '#ffffff';
+          clonedResume.style.color = '#0f172a';
+          clonedResume.style.borderColor = '#e2e8f0';
+          clonedResume.style.boxShadow = 'none';
+        }
+      }
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pageHeight = 297;
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    // 绘制第一页
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    // 跨页处理
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    const name = candidateName || resume.personalInfo.fullName || '个人简历';
+    const filename = `${name}_个人简历.pdf`;
+    pdf.save(filename);
+    return true;
+  } catch (err) {
+    console.error('Canvas PDF export failed, fallback to jsPDF native:', err);
+    try {
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      pdf.text(`${resume.personalInfo.fullName} - 个人简历`, 40, 50);
+      pdf.text(`职位: ${resume.personalInfo.jobTitle} | 电话: ${resume.personalInfo.phone} | 邮箱: ${resume.personalInfo.email}`, 40, 75);
+      const filename = `${candidateName || resume.personalInfo.fullName}_个人简历.pdf`;
+      pdf.save(filename);
+      return true;
+    } catch {
+      window.print();
+      return false;
+    }
+  } finally {
+    if (tempNode && tempNode.parentNode) {
+      tempNode.parentNode.removeChild(tempNode);
+    }
+  }
+}
+
+/**
+ * 生成 PDF 的 Blob 实例（用于邮件发送准备、附件分享或本地校验）
+ */
+export async function generatePdfBlob(resume: ResumeData, candidateName?: string): Promise<{ blob: Blob; filename: string } | null> {
+  let targetEl = document.getElementById('resume-document');
+  let tempNode: HTMLDivElement | null = null;
+
+  if (!targetEl) {
+    tempNode = createOffscreenResumeNode(resume);
+    document.body.appendChild(tempNode);
+    targetEl = tempNode;
+  }
+
+  try {
+    const canvas = await html2canvas(targetEl, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      onclone: (clonedDoc) => {
+        // 导出时严格统一为浅色高保真主题，去除所有深色模式样式
+        clonedDoc.documentElement.classList.remove('dark');
+        clonedDoc.body.classList.remove('dark');
+        const darkElements = clonedDoc.querySelectorAll('.dark');
+        darkElements.forEach(el => el.classList.remove('dark'));
+
+        const clonedResume = clonedDoc.getElementById('resume-document');
+        if (clonedResume) {
+          clonedResume.classList.remove('dark');
+          clonedResume.style.backgroundColor = '#ffffff';
+          clonedResume.style.color = '#0f172a';
+          clonedResume.style.borderColor = '#e2e8f0';
+          clonedResume.style.boxShadow = 'none';
+        }
+      }
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pageHeight = 297;
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    const name = candidateName || resume.personalInfo.fullName || '个人简历';
+    const filename = `${name}_个人简历.pdf`;
+    const blob = pdf.output('blob');
+    return { blob, filename };
+  } catch (err) {
+    console.error('Failed to generate PDF blob:', err);
+    return null;
+  } finally {
+    if (tempNode && tempNode.parentNode) {
+      tempNode.parentNode.removeChild(tempNode);
+    }
+  }
+}
+
+/**
+ * 调起浏览器系统原生打印窗口
+ */
+export function exportToNativePrint(): void {
+  const wasDark = document.documentElement.classList.contains('dark');
+  if (wasDark) {
+    document.documentElement.classList.remove('dark');
+  }
+
   window.print();
+
+  if (wasDark) {
+    // 调起打印后恢复当前深色主题
+    setTimeout(() => {
+      document.documentElement.classList.add('dark');
+    }, 500);
+  }
 }
 
 /**

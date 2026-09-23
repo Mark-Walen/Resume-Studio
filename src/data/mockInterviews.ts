@@ -15,7 +15,29 @@ export const INITIAL_JOB_APPLICATIONS: JobApplication[] = [
     jobDescription: '负责抖音电商创作者工作台架构演进，高并发低延迟复杂 Web 交互，以及大模型生成式 AI 工作流探索。',
     appliedDate: '2026-09-08',
     updatedAt: '2026-09-18',
-    notes: '已顺利通过一面和二面，目前等待业务线技术总监三面。'
+    notes: '已顺利通过一面和二面，目前等待业务线技术总监三面。',
+    scheduledInterviewDate: '2026-09-23T14:30',
+    scheduledInterviewRound: '三面技术总监',
+    scheduledInterviewFormat: '线上视频',
+    scheduledInterviewMeetingUrl: 'https://meeting.feishu.cn/j/982341235',
+    reminderEnabled: true,
+    reminderMinutesBefore: 60,
+    companyDossier: {
+      hrIntro: '抖音电商核心业务线扩招HC，直接对齐2-2/3-1职级，年终3-6个月，期权分4年归属。部门直属电商技术中台。',
+      compensationStructure: '基本薪资 58k * 15-18薪，另有每月房补1500，免费三餐+下午茶，期权首年归属15%。',
+      teamAndTechStack: '团队约 35 人，主力栈 React 19 + TypeScript + Go (微服务) + Rust (底层打包工具) + 自研微前端引擎。',
+      reputationAndWorkLife: '大小周已全面取消，日常 10-10-5，大促期间可能加班至深夜。代码评审与性能治理严苛，技术氛围浓厚。',
+      keyInterviewStyle: '前两轮必撕 Hard 难度算法题（动态规划/图论），三面重复杂架构演进、故障排查与海量流量高并发防重。',
+      reverseQuestions: [
+        '请问目前团队在 AI 赋能创作者视频切片与低代码落地中，面临的最大技术瓶颈是什么？',
+        '未来半年内，该架构组最核心要攻坚的 3 项业务指标或技术专项是什么？'
+      ],
+      riskAlerts: ['业务节奏极快，需求变更频繁，抗压能力要求较高。'],
+      collectedLinks: [
+        { id: 'dl-1', title: '字节电商中台技术架构演进复盘（技术博客）', url: 'https://juejin.cn/post/bytedance-arch', note: '涵盖其微前端与高并发链路' },
+        { id: 'dl-2', title: '看准网与脉脉员工真实风评汇总', url: 'https://maimai.cn/company/bytedance', note: '主管评价正向，期权流动性好' }
+      ]
+    }
   },
   {
     id: 'job-2',
@@ -30,7 +52,26 @@ export const INITIAL_JOB_APPLICATIONS: JobApplication[] = [
     jobDescription: '阿里云核心管控台微前端体系架构，高可用稳定性保障与研发工程效能工具链。',
     appliedDate: '2026-09-05',
     updatedAt: '2026-09-19',
-    notes: '已完成二面技术交叉，二面面试官对高并发分布式事务问得很深。'
+    notes: '已完成二面技术交叉，二面面试官对高并发分布式事务问得很深。',
+    scheduledInterviewDate: '2026-09-24T10:00',
+    scheduledInterviewRound: '三面交叉综合面',
+    scheduledInterviewFormat: '线上视频',
+    scheduledInterviewMeetingUrl: 'https://meeting.dingtalk.com/j/829103819',
+    reminderEnabled: true,
+    reminderMinutesBefore: 30,
+    companyDossier: {
+      hrIntro: '阿里云基础架构线，P7专家HC。负责百万级云资源控制台，属于集团核心战略级业务。',
+      compensationStructure: '52k * 16薪，全额公积金12%，满两年可参与股票期权增发。',
+      teamAndTechStack: '微前端架构 (qiankun/icestark) + Node.js BFF (Midway) + TypeScript + 云原生Kubernetes。',
+      reputationAndWorkLife: '9.30-9-5，周三周五不加班日。强调业务闭环与技术深度，文档文化深厚。',
+      keyInterviewStyle: '偏好系统设计大题、架构全生命周期思考与跨团队业务拿结果的能力。',
+      reverseQuestions: [
+        '阿里云管控台在面对全球化多机房部署与弱网环境时，核心的性能优化策略是什么？'
+      ],
+      collectedLinks: [
+        { id: 'dl-3', title: '阿里云云原生控制台前端架构演进', url: 'https://developer.aliyun.com/article/109283' }
+      ]
+    }
   },
   {
     id: 'job-3',
@@ -45,7 +86,19 @@ export const INITIAL_JOB_APPLICATIONS: JobApplication[] = [
     jobDescription: '腾讯云即时通信与实时协同服务研发，海量用户高并发架构。',
     appliedDate: '2026-08-25',
     updatedAt: '2026-09-15',
-    notes: '收到口头 Offer，正在沟通职级与薪酬 package 细节。'
+    notes: '收到口头 Offer，正在沟通职级与薪酬 package 细节。',
+    scheduledInterviewDate: '2026-09-22T16:00',
+    scheduledInterviewRound: 'HR谈薪与职级沟通',
+    scheduledInterviewFormat: '电话面试',
+    scheduledInterviewMeetingUrl: 'HR 专属电话: 0755-8601****',
+    reminderEnabled: true,
+    reminderMinutesBefore: 15,
+    companyDossier: {
+      hrIntro: 'CSIG云与智慧产业事业群，对标9-10级，已通过全部技术与GM终面。',
+      compensationStructure: '底薪 50k + 2-4个月奖金 + 10万企鹅股票分3年兑现。',
+      teamAndTechStack: 'WebSocket/WebRTC + C++核心引擎 + Node.js/Go网关 + React前端。',
+      reputationAndWorkLife: '早10晚8.30，双休，班车食堂设施完善，技术稳定性极高。'
+    }
   },
   {
     id: 'job-4',
@@ -58,7 +111,18 @@ export const INITIAL_JOB_APPLICATIONS: JobApplication[] = [
     source: '内推',
     appliedDate: '2026-09-14',
     updatedAt: '2026-09-16',
-    notes: 'HR 告知简历已初筛通过，正在安排业务一面时间。'
+    notes: 'HR 告知简历已初筛通过，正在安排业务一面时间。',
+    scheduledInterviewDate: '2026-09-25T15:00',
+    scheduledInterviewRound: '一面业务线架构技术面',
+    scheduledInterviewFormat: '线上视频',
+    scheduledInterviewMeetingUrl: 'https://meeting.meituan.com/j/57192834',
+    reminderEnabled: true,
+    reminderMinutesBefore: 60,
+    companyDossier: {
+      hrIntro: '到店综合业务研发部，重点负责B端商家经营后台与数字化基建。',
+      teamAndTechStack: 'React + TypeScript + Taro跨端 + 自研商家组件库。',
+      keyInterviewStyle: '特别考察工程化提效、跨端渲染架构与复杂表单动态流转引擎。'
+    }
   },
   {
     id: 'job-5',

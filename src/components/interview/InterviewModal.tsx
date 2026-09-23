@@ -98,24 +98,24 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
       id: 'q-' + Date.now(),
       question: '',
       category: '通用考题',
-      struggleLevel: 'mastered',
+      struggleLevel: 'struggled',
       userNotes: ''
     };
     setQuestions([...questions, newQ]);
+  };
+
+  const updateQuestion = (id: string, field: keyof InterviewQuestionItem, val: any) => {
+    setQuestions(questions.map(q => q.id === id ? { ...q, [field]: val } : q));
   };
 
   const removeQuestion = (id: string) => {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
-  const updateQuestion = (id: string, field: keyof InterviewQuestionItem, value: any) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim()) {
-      alert('请填写公司名称！');
+    if (!companyName.trim() || !round.trim()) {
+      alert('请填写公司名称与面试轮次');
       return;
     }
 
@@ -125,7 +125,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
       round: round.trim(),
       position: position.trim(),
       date,
-      durationMinutes: Number(durationMinutes) || 60,
+      durationMinutes,
       interviewers: interviewers.trim(),
       notes: notes.trim(),
       mediaAttachments,
@@ -139,16 +139,16 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans">
+      <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl max-w-2xl w-full max-h-[90vh] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-2">
-            <Video className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-bold text-slate-900">
+            <Video className="w-5 h-5 text-[#0071e3]" />
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
               {editingRecord ? '编辑面试复盘记录' : '新增面试面经与录音录像'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -156,84 +156,84 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">面试公司 *</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">面试公司 *</label>
               <input
                 type="text"
                 required
                 placeholder="如: 字节跳动、腾讯"
                 value={companyName}
                 onChange={e => setCompanyName(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0071e3]"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">面试轮次 *</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">面试轮次 *</label>
               <input
                 type="text"
                 required
                 placeholder="如: 一面技术 / 二面架构 / HR面"
                 value={round}
                 onChange={e => setRound(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0071e3]"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">应聘岗位</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">应聘岗位</label>
               <input
                 type="text"
                 value={position}
                 onChange={e => setPosition(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">面试日期</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">面试日期</label>
               <input
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">面试时长 (分钟)</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">面试时长 (分钟)</label>
               <input
                 type="number"
                 value={durationMinutes}
                 onChange={e => setDurationMinutes(Number(e.target.value))}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">面试官/组别</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">面试官/组别</label>
               <input
                 type="text"
                 placeholder="如: 架构委员会 / 直属 Leader"
                 value={interviewers}
                 onChange={e => setInterviewers(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0071e3]"
               />
             </div>
           </div>
 
           {/* Media attachments */}
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex justify-between items-center">
               <div>
-                <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                  <Video className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5 text-[#0071e3]" />
                   面试过程音视频附件 (支持在线播放)
                 </span>
-                <span className="text-[11px] text-slate-500 block">自动安全查杀，本地 IndexedDB 安全持久化存储</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block">自动安全查杀，本地 IndexedDB 安全持久化存储</span>
               </div>
               <button
                 type="button"
                 disabled={mediaUploading}
                 onClick={() => mediaInputRef.current?.click()}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700"
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5" />
                 {mediaUploading ? '校验与存储中...' : '上传音视频'}
@@ -250,10 +250,10 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
             {mediaAttachments.length > 0 && (
               <div className="space-y-1.5 pt-1">
                 {mediaAttachments.map(m => (
-                  <div key={m.id} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200 text-xs">
+                  <div key={m.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
                     <div className="flex items-center gap-2">
-                      {m.type === 'video' ? <Video className="w-4 h-4 text-blue-500" /> : <Music className="w-4 h-4 text-emerald-500" />}
-                      <span className="font-medium text-slate-800">{m.name}</span>
+                      {m.type === 'video' ? <Video className="w-4 h-4 text-[#0071e3]" /> : <Music className="w-4 h-4 text-emerald-500" />}
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{m.name}</span>
                       <span className="text-[10px] text-slate-400">
                         ({(((m.size ?? m.sizeBytes) || 0) / (1024 * 1024)).toFixed(1)} MB)
                       </span>
@@ -261,7 +261,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setMediaAttachments(mediaAttachments.filter(x => x.id !== m.id))}
-                      className="text-slate-400 hover:text-red-500 p-1"
+                      className="text-slate-400 hover:text-red-500 p-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -273,27 +273,27 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">现场面经与个人感受笔记</label>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">现场面经与个人感受笔记</label>
             <textarea
               rows={3}
               placeholder="记录本次面试的整体节奏、面试官提问风格、对自己的态度，以及答辩中的心理感受..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500 leading-relaxed"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0071e3] leading-relaxed"
             />
           </div>
 
           {/* Questions */}
-          <div className="space-y-3 pt-2 border-t border-slate-100">
+          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
             <div className="flex justify-between items-center">
               <div>
-                <span className="font-bold text-slate-900">核心提问与作答掌握度</span>
-                <p className="text-[11px] text-slate-500">标记未答上或勉强答出的题目，AI 将精准提供下次遇题高分应对方案！</p>
+                <span className="font-bold text-slate-900 dark:text-white">核心提问与作答掌握度</span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">标记未答上或勉强答出的题目，AI 将精准提供下次遇题高分应对方案！</p>
               </div>
               <button
                 type="button"
                 onClick={addQuestion}
-                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-bold text-xs"
+                className="inline-flex items-center gap-1 text-[#0071e3] hover:underline font-bold text-xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 添加考题
@@ -302,7 +302,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
 
             <div className="space-y-3">
               {questions.map((q, idx) => (
-                <div key={q.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div key={q.id} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-400 w-5">#{idx + 1}</span>
                     <input
@@ -310,17 +310,17 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                       placeholder="面试问题 (如: 为什么 Vite 冷启动比 Webpack 快？)"
                       value={q.question}
                       onChange={e => updateQuestion(q.id, 'question', e.target.value)}
-                      className="flex-1 px-2.5 py-1 bg-white border border-slate-300 rounded font-medium"
+                      className="flex-1 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white font-medium focus:outline-none focus:border-[#0071e3]"
                     />
                     <select
                       value={q.struggleLevel}
                       onChange={e => updateQuestion(q.id, 'struggleLevel', e.target.value as any)}
-                      className={`px-2 py-1 rounded text-xs font-bold ${
+                      className={`px-2 py-1 rounded-lg text-xs font-bold ${
                         q.struggleLevel === 'unanswered'
-                          ? 'bg-red-100 text-red-700 border border-red-200'
+                          ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900'
                           : q.struggleLevel === 'struggled'
-                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
+                          : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900'
                       }`}
                     >
                       <option value="unanswered">❌ 未答上 / 卡壳</option>
@@ -330,7 +330,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                     <button
                       type="button"
                       onClick={() => removeQuestion(q.id)}
-                      className="text-slate-400 hover:text-red-500 p-1"
+                      className="text-slate-400 hover:text-red-500 p-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -340,24 +340,24 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                     placeholder="现场作答情况与遗漏细节备忘..."
                     value={q.userNotes || ''}
                     onChange={e => updateQuestion(q.id, 'userNotes', e.target.value)}
-                    className="w-full px-2.5 py-1 text-[11px] bg-white border border-slate-200 rounded text-slate-600"
+                    className="w-full px-2.5 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 focus:outline-none focus:border-[#0071e3]"
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               取消
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs"
+              className="px-5 py-2 text-xs font-bold text-white bg-[#0071e3] hover:bg-[#0077ed] rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               保存面试记录
             </button>

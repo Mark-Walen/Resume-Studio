@@ -1,1 +1,113 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --color-apple-blue: #0071e3;
+    --color-apple-blue-hover: #0077ed;
+    --color-apple-blue-active: #0062c4;
+    --color-apple-blue-soft: rgba(0, 113, 227, 0.08);
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body {
+    background-color: #0b0f17;
+    color: #f8fafc;
+  }
+}
+
+/* Apple HIG clean scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Dedicated High-Fidelity Print Styling for Resume PDF Export */
+@media print {
+  html, body, .dark, .dark body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Hide headers, footers, fixed dialogs, overlays, buttons */
+  header, nav, aside, .fixed, button, input, [role="dialog"] {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #resume-document,
+  #resume-document * {
+    visibility: visible;
+  }
+
+  #resume-document {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 12mm 14mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Force light theme colors on print */
+  #resume-document h1,
+  #resume-document h2,
+  #resume-document h3,
+  #resume-document p,
+  #resume-document span,
+  #resume-document li,
+  #resume-document div {
+    color: #0f172a !important;
+  }
+
+  #resume-document .bg-slate-50,
+  #resume-document .bg-slate-100 {
+    background-color: #f8fafc !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}

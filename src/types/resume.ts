@@ -61,17 +61,35 @@ export interface Certificate {
   date: string;
 }
 
+export interface JobIntent {
+  desiredPosition: string;
+  desiredSalary: string;
+  desiredCity: string;
+  jobStatus: string;
+  workType: string;
+}
+
+export interface CustomSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
 export interface ResumeData {
   id: string;
   title: string;
   lastModified: string;
   personalInfo: PersonalInfo;
+  jobIntent?: JobIntent;
   summary: string;
   skills: SkillCategory[];
   workExperience: WorkExperience[];
   projects: ProjectExperience[];
   education: Education[];
   certificates: Certificate[];
+  customSections?: CustomSection[];
+  sectionOrder?: string[];
+  sectionVisibility?: Record<string, boolean>;
 }
 
 export interface ResumeTheme {

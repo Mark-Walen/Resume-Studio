@@ -3,162 +3,160 @@ import {
   FileText,
   Briefcase,
   Video,
-  BarChart3,
-  BookOpen,
+  Library,
+  PenTool,
   Download,
   Upload,
-  Globe,
   Key,
-  Sparkles,
-  ShieldCheck
+  Calendar
 } from 'lucide-react';
+import { ThemeToggle } from './common/ThemeToggle';
+import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
 
-export type MainTab = 'resume' | 'pipeline' | 'interviews' | 'diagnostics' | 'knowledge';
+export type MainTab =
+  | 'resume'
+  | 'interview_management'
+  | 'interviews'
+  | 'knowledge'
+  | 'daily_log';
 
 interface HeaderProps {
   currentTab: MainTab;
   onSelectTab: (tab: MainTab) => void;
   onOpenExport: () => void;
   onOpenApiKey: () => void;
-  onOpenAiGenerator: () => void;
   onOpenImportResume?: () => void;
-  onOpenJobProxy?: () => void;
 }
-
 
 export const Header: React.FC<HeaderProps> = ({
   currentTab,
   onSelectTab,
   onOpenExport,
   onOpenApiKey,
-  onOpenAiGenerator,
   onOpenImportResume,
-  onOpenJobProxy,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 font-sans transition-colors">
+      <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 xl:gap-6">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-xs tracking-wider text-sm">
+        <div className="flex items-center gap-3 flex-shrink-0 cursor-pointer" onClick={() => onSelectTab('resume')}>
+          <div className="w-9 h-9 rounded-xl bg-[#0071e3] text-white flex items-center justify-center font-black shadow-xs tracking-wider text-sm flex-shrink-0">
             AI
           </div>
-          <div>
-            <span className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight flex items-center gap-1.5">
-              智能简历与面试复盘平台
-              <span className="hidden sm:inline-block px-2 py-0.2 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-full">
+          <div className="flex flex-col">
+            <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight flex items-center gap-1.5 whitespace-nowrap">
+              智能简历与求职工作台
+              <span className="hidden sm:inline-block px-1.5 py-0.2 bg-blue-50 dark:bg-blue-950/60 text-[#0071e3] border border-blue-100 dark:border-blue-900/60 text-[10px] font-semibold rounded-full">
                 Pro
               </span>
             </span>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              简历生成 · 投递管理 · 音视频复盘 · 跨轮诊断
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden 2xl:block -mt-0.5 whitespace-nowrap">
+              全流程简历精修 · 投递看板与背调 · 模拟复盘 · 深度书库
             </span>
           </div>
         </div>
 
         {/* Center Tabs Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl text-xs font-semibold">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-semibold flex-shrink-0">
           <button
             id="tab-resume"
             onClick={() => onSelectTab('resume')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
               currentTab === 'resume'
-                ? 'bg-white text-blue-600 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            简历工坊
+            <FileText className="w-3.5 h-3.5 text-[#0071e3]" />
+            <span>简历工坊</span>
           </button>
+
           <button
-            id="tab-pipeline"
-            onClick={() => onSelectTab('pipeline')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
-              currentTab === 'pipeline'
-                ? 'bg-white text-blue-600 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+            id="tab-interview-management"
+            onClick={() => onSelectTab('interview_management')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+              currentTab === 'interview_management'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Briefcase className="w-4 h-4" />
-            投递与目标公司
+            <Briefcase className="w-3.5 h-3.5 text-[#0071e3]" />
+            <span>求职与面试管理</span>
           </button>
+
           <button
             id="tab-interviews"
             onClick={() => onSelectTab('interviews')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
               currentTab === 'interviews'
-                ? 'bg-white text-blue-600 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Video className="w-4 h-4" />
-            面试音视频复盘
+            <Video className="w-3.5 h-3.5 text-[#0071e3]" />
+            <span>模拟实战与复盘</span>
           </button>
-          <button
-            id="tab-diagnostics"
-            onClick={() => onSelectTab('diagnostics')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
-              currentTab === 'diagnostics'
-                ? 'bg-white text-blue-600 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            高频考点与盲区预警
-          </button>
+
           <button
             id="tab-knowledge"
             onClick={() => onSelectTab('knowledge')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
               currentTab === 'knowledge'
-                ? 'bg-white text-blue-600 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            基础知识库
+            <Library className="w-3.5 h-3.5 text-[#0071e3]" />
+            <span>深度知识书库</span>
+          </button>
+
+          <button
+            id="tab-daily-log"
+            onClick={() => onSelectTab('daily_log')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+              currentTab === 'daily_log'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <PenTool className="w-3.5 h-3.5 text-[#0071e3]" />
+            <span>求职手记</span>
           </button>
         </nav>
 
         {/* Right action buttons */}
-        <div className="flex items-center gap-2">
-          {currentTab === 'resume' && (
-            <>
-              {onOpenImportResume && (
-                <button
-                  onClick={onOpenImportResume}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors"
-                  title="导入已有简历文件或文本"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">导入简历</span>
-                </button>
-              )}
-              <button
-                onClick={onOpenExport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">导出与邮箱发送</span>
-              </button>
-            </>
-          )}
-
-          {currentTab === 'pipeline' && onOpenJobProxy && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {currentTab === 'resume' && onOpenImportResume && (
             <button
-              onClick={onOpenJobProxy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold transition-colors"
-              title="网站代理抓取 JD 与一键投递"
+              onClick={onOpenImportResume}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold transition-colors flex-shrink-0 whitespace-nowrap cursor-pointer"
+              title="导入已有简历文件或文本"
             >
-              <Globe className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">代理获取JD</span>
+              <Upload className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>导入简历</span>
             </button>
           )}
 
           <button
+            onClick={onOpenExport}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap"
+            title="导出高保真 PDF、Word 或发送求职信"
+          >
+            <Download className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>导出与发送</span>
+          </button>
+
+          {/* Quick AI Model Switcher (Trae / Workbuddy style) */}
+          <ModelQuickSwitcher onOpenSettings={onOpenApiKey} />
+
+          {/* Theme Toggle Button */}
+          <ThemeToggle />
+
+          {/* API Key Modal Button */}
+          <button
             onClick={onOpenApiKey}
-            className="p-2 text-slate-500 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors"
-            title="API Key 与安全设置"
+            className="p-2 text-slate-600 dark:text-slate-300 hover:text-[#0071e3] dark:hover:text-[#0071e3] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 flex-shrink-0 cursor-pointer"
+            title="AI 模型与通用 API 设置"
           >
             <Key className="w-4 h-4" />
           </button>
@@ -166,46 +164,46 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Mobile Sub-Navigation */}
-      <div className="lg:hidden flex overflow-x-auto px-4 py-2 border-t border-slate-100 bg-slate-50 text-xs font-medium gap-1 scrollbar-none">
+      <div className="lg:hidden flex overflow-x-auto px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs font-medium gap-1 scrollbar-none">
         <button
           onClick={() => onSelectTab('resume')}
           className={`px-3 py-1 rounded-lg whitespace-nowrap ${
-            currentTab === 'resume' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
+            currentTab === 'resume' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'
           }`}
         >
-          📄 简历工坊
+          简历工坊
         </button>
         <button
-          onClick={() => onSelectTab('pipeline')}
+          onClick={() => onSelectTab('interview_management')}
           className={`px-3 py-1 rounded-lg whitespace-nowrap ${
-            currentTab === 'pipeline' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
+            currentTab === 'interview_management' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'
           }`}
         >
-          💼 投递与目标公司
+          求职与面试管理
         </button>
         <button
           onClick={() => onSelectTab('interviews')}
           className={`px-3 py-1 rounded-lg whitespace-nowrap ${
-            currentTab === 'interviews' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
+            currentTab === 'interviews' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'
           }`}
         >
-          🎙️ 面试音视频复盘
-        </button>
-        <button
-          onClick={() => onSelectTab('diagnostics')}
-          className={`px-3 py-1 rounded-lg whitespace-nowrap ${
-            currentTab === 'diagnostics' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          📊 高频考点与盲区
+          模拟实战与复盘
         </button>
         <button
           onClick={() => onSelectTab('knowledge')}
           className={`px-3 py-1 rounded-lg whitespace-nowrap ${
-            currentTab === 'knowledge' ? 'bg-white text-blue-600 font-bold shadow-xs' : 'text-slate-600'
+            currentTab === 'knowledge' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'
           }`}
         >
-          📚 基础知识库
+          深度知识书库
+        </button>
+        <button
+          onClick={() => onSelectTab('daily_log')}
+          className={`px-3 py-1 rounded-lg whitespace-nowrap ${
+            currentTab === 'daily_log' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          求职手记
         </button>
       </div>
     </header>

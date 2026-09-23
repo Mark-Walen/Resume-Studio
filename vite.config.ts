@@ -556,6 +556,269 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
         return;
       }
 
+      // 7. Recommend Knowledge Points based on Resume + Target Company JD
+      if (url === '/api/recommend-knowledge-points' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { companyName, position, jobDescription, currentResume } = body;
+
+          const systemPrompt = `你是一位精通各大互联网巨头（字节、阿里、腾讯、美团、微软、快手等）技术面风格的高级架构技术面试官兼求职导师。
+根据用户提供的【即将面试的目标公司与岗位JD】以及【当前简历信息】：
+1. 深入剖析该公司的技术风格画像（如：字节重手撕算法与微前端跨端，阿里重分布式事务/高并发/中台，美团重履约/高可用限流/状态机）；
+2. 对比候选人简历与该岗位需求，精准推荐 5-8 个最需要重点突击的核心知识点与考题；
+3. 为每个考点标明紧急度（critical: 必考高危 / high: 核心重点 / bonus: 加分亮点），明确指出“为什么针对这家公司必考”、该公司的特有考察侧重点，以及面试前30分钟速记要点与翻车避坑指南。
+
+严格输出合法 JSON 格式：
+{
+  "companyName": "${companyName || '目标公司'}",
+  "position": "${position || '求职岗位'}",
+  "companyTechProfile": "该企业的技术文化与面试风格特征剖析（80-150字）",
+  "coreRequirementsSummary": "岗位核心硬性诉求精炼",
+  "overallMatchScore": 86,
+  "recommendations": [
+    {
+      "id": "rec-1",
+      "title": "考点名称（如：分布式双写一致性与Canal方案）",
+      "category": "backend / frontend / algorithm / system_design / ai_fullstack",
+      "urgency": "critical",
+      "matchReason": "为什么针对该岗位此考点是面试焦点？",
+      "companySpecificFlavor": "该公司面试官最爱追问的独特切入角度",
+      "interviewTrapWarning": "绝大多数候选人容易踩坑答错的点",
+      "keyPreparationAction": "面试前务必牢记的3句话标准回答框架"
+    }
+  ]
+}`;
+
+          const userContent = `【目标面试公司】：${companyName}
+【目标岗位】：${position}
+【岗位 JD 描述】：
+${jobDescription || '未提供详细JD，请基于该公司同类高级研发岗常见考察标准推荐'}
+
+【候选人当前简历】：
+${currentResume ? JSON.stringify(currentResume).slice(0, 7000) : '常规高级全栈架构师人才画像'}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: userContent,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            },
+          });
+
+          const rawJson = response.text || '{}';
+          const parsed = JSON.parse(rawJson);
+
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: true,
+            data: {
+              ...parsed,
+              generatedAt: new Date().toISOString(),
+            }
+          }));
+        } catch (err: any) {
+          console.error('Error in recommend-knowledge-points:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '知识点智能推荐失败' }));
+        }
+        return;
+      }
+
+      // 8. Multi-Company Targeted Resume Optimizer (1 to 3 Companies)
+      if (url === '/api/multi-company-resume-optimizer' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { companies, currentResume } = body;
+
+          if (!companies || !Array.isArray(companies) || companies.length === 0) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: '请至少提供 1 家期望公司的 JD，最多支持同时添加 3 家公司' }));
+            return;
+          }
+
+          const systemPrompt = `你是一位顶级科技猎头顾问兼技术简历精修专家。
+用户希望根据 1 至 3 家重点期望公司的 Job Description (JD)，结合候选人的工作经历以及求学经历，进行针对性的精细化定制与差异化优化。
+
+请完成以下核心分析：
+1. 【横向对比总结】分析这几家公司在技术选型、架构侧重点、业务文化上的异同；
+2. 【分公司精细优化建议】：针对每家目标企业：
+   - 计算匹配度评分 (0-100) 与评级 (S/A/B/C)；
+   - 提取该公司的核心技术倾向 (如：对高并发TPS、算法复杂度、微前端沙箱、业务量化结果的不同偏好)；
+   - 【工作经历改写指导】：选取候选人最具代表性的工作/项目经历，针对该公司 JD 的关键词提供【量化 STAR 改写范例】，明确改写理由；
+   - 【求学经历包装建议】：深度结合候选人的学历、专业、核心课程、学术研究/论文或毕业设计，指导如何讲好“从高校学术思维到工业级工程实战”的故事，贴合该公司对应职位的诉求；
+   - 必须在简历中强化的核心关键词清单；
+   - 针对该公司的定制化投递打招呼自荐亮点（高情商自荐信）。
+
+严格输出合法 JSON 格式：
+{
+  "overallCrossComparison": "2-3 家公司侧重点横向差异对比概述（150-250字）",
+  "generalAdvice": "通用提升建议",
+  "companies": [
+    {
+      "companyName": "公司名",
+      "position": "岗位名",
+      "matchScore": 88,
+      "matchGrade": "S 或 A 或 B",
+      "keyTechFlavors": ["侧重点1", "侧重点2"],
+      "workExperienceSuggestions": [
+        {
+          "companyOrRole": "某段工作经历/项目",
+          "originalFocus": "原简历侧重点",
+          "recommendedRewrite": "针对该公司 JD 量身打造的 STAR 精修改写版（包含量化指标与核心技术词）",
+          "reason": "为什么这样改能切中该公司的痛点"
+        }
+      ],
+      "educationFramingAdvice": {
+        "schoolAndDegree": "院校与学历",
+        "framingStrategy": "求学经历叙事策略",
+        "recommendedCourseHighlights": ["相关课程或研究方向1", "方向2"],
+        "academicStorytelling": "如何结合学术背景展现底层逻辑与快速学习能力"
+      },
+      "essentialKeywords": ["高频词1", "高频词2", "高频词3"],
+      "tailoredElevatorPitch": "针对该公司的30秒高价值自荐话术"
+    }
+  ]
+}`;
+
+          const userContent = `【目标期望公司列表（最多3家）】：
+${JSON.stringify(companies.slice(0, 3), null, 2)}
+
+【候选人当前工作经历与求学经历】：
+${JSON.stringify({
+  workExperience: currentResume?.workExperience || [],
+  education: currentResume?.education || [],
+  projects: currentResume?.projects || [],
+  skills: currentResume?.skills || []
+}, null, 2)}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: userContent,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.25,
+            },
+          });
+
+          const rawJson = response.text || '{}';
+          const parsed = JSON.parse(rawJson);
+
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: true,
+            data: {
+              ...parsed,
+              generatedAt: new Date().toISOString(),
+            }
+          }));
+        } catch (err: any) {
+          console.error('Error in multi-company-resume-optimizer:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '多公司精细化简历优化分析失败' }));
+        }
+        return;
+      }
+
+      // 9. Convert Work Daily Journal into Evidence-backed Resume Bullets
+      if (url === '/api/convert-journal-to-resume-bullets' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getAiClient(customKey);
+
+          const { journalLogs, targetRole, existingResume } = body;
+
+          if (!journalLogs || !Array.isArray(journalLogs) || journalLogs.length === 0) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: '请选择至少一条工作日报记录进行提炼' }));
+            return;
+          }
+
+          const systemPrompt = `你是一位高阶技术总监兼技术简历专家。
+用户的目标是：“让真实经历变成有据可查、无法造假的高价值简历”。
+根据用户平时的【工作日报记录】（包含完成任务、攻坚挑战、量化数据、技术栈及证据链）：
+1. 提炼出可以直接补充进【工作经历 (workExperience)】或【核心项目 (projects)】的专业简历亮点语句 (Bullet Points)；
+2. 每条语句必须严格遵循 STAR 原则：
+   - 动词开头（如：主导架构、攻关重构、自研实现）
+   - 量化指标驱动（如：延时降低 65%、吞吐量提升 8 倍、发布耗时缩减至 42 秒）
+   - 紧密绑定真实业务场景与技术选型；
+3. 标注溯源日期与 STAR 拆解。
+
+严格输出合法 JSON 格式：
+{
+  "summary": "提炼总结：根据这些工作日报，突出的核心工程能力画像（80字以内）",
+  "recommendedTechnologies": ["提取的高频关键技术栈1", "技术2"],
+  "suggestedBullets": [
+    {
+      "id": "bullet-1",
+      "targetSection": "workExperience",
+      "companyOrProjectTarget": "推荐归属的项目或工作经历名称",
+      "bulletText": "主导大促秒杀链路高可用改造，针对高并发库存超卖痛点，引入 Redis + Lua 内存原子扣减与 Guava 双本地缓存，配合 RocketMQ 异步批量落库，将接口 P99 响应时间从 820ms 压降至 38ms（降幅 95%），实现 12,000 QPS 稳态运行与零超卖事故。",
+      "starBreakdown": {
+        "situation": "大促秒杀流量从 1,500 QPS 激增至 12,000 QPS，MySQL 行锁导致死锁暴增并拖垮连接池",
+        "task": "彻底根治防超卖与接口高延迟，保障秒杀服务高可用",
+        "action": "采用 Redis + Lua 脚本在内存中原子扣减，搭配 Guava 本地缓存降级与 RocketMQ 异步削峰",
+        "result": "P99 延时由 820ms 降至 38ms（降幅95%），承载力提升8倍，零故障"
+      },
+      "evidenceSources": ["2026-09-18 日报"]
+    }
+  ]
+}`;
+
+          const userContent = `【目标期望求职岗位】：${targetRole || '资深工程师 / 架构师'}
+
+【待提炼的工作日报记录】：
+${JSON.stringify(journalLogs, null, 2)}
+
+【候选人参考现有简历】：
+${existingResume ? JSON.stringify({
+  title: existingResume.title,
+  skills: existingResume.skills,
+  workExperience: existingResume.workExperience?.map((w: any) => ({ company: w.company, position: w.position })),
+  projects: existingResume.projects?.map((p: any) => ({ name: p.name, role: p.role }))
+}, null, 2) : '无'}`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: userContent,
+            config: {
+              systemInstruction: systemPrompt,
+              responseMimeType: 'application/json',
+              temperature: 0.25,
+            },
+          });
+
+          const rawJson = response.text || '{}';
+          const parsed = JSON.parse(rawJson);
+
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: true,
+            data: parsed,
+          }));
+        } catch (err: any) {
+          console.error('Error in convert-journal-to-resume-bullets:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '工作日报提炼简历失败' }));
+        }
+        return;
+      }
+
+
       next();
     });
   },
