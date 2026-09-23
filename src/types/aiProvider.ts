@@ -22,7 +22,7 @@ export interface ProviderOption {
 export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   claude: {
     type: 'claude',
-    label: 'Claude (Anthropic)',
+    label: 'Anthropic',
     category: 'builtin',
     defaultModel: 'claude-3-7-sonnet-20250219',
     supportedModels: [
@@ -36,7 +36,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   chatgpt: {
     type: 'chatgpt',
-    label: 'ChatGPT (OpenAI)',
+    label: 'OpenAI',
     category: 'builtin',
     defaultModel: 'gpt-4o',
     supportedModels: [
@@ -52,7 +52,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   grok: {
     type: 'grok',
-    label: 'Grok (xAI)',
+    label: 'xAI',
     category: 'builtin',
     defaultModel: 'grok-3',
     supportedModels: [
@@ -66,7 +66,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   gemini: {
     type: 'gemini',
-    label: 'Google Gemini',
+    label: 'Google AI',
     category: 'builtin',
     defaultModel: 'gemini-2.5-flash',
     supportedModels: [
@@ -81,7 +81,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   deepseek: {
     type: 'deepseek',
-    label: 'DeepSeek (深度求索)',
+    label: 'DeepSeek',
     category: 'builtin',
     defaultModel: 'deepseek-chat',
     supportedModels: [
@@ -93,7 +93,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   zhipu: {
     type: 'zhipu',
-    label: 'Z.ai (智谱清言 GLM)',
+    label: 'Z.ai',
     category: 'builtin',
     defaultModel: 'glm-4-plus',
     supportedModels: [
@@ -107,7 +107,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   openai_compatible: {
     type: 'openai_compatible',
-    label: '自定义 OpenAI 兼容协议服务 (Ollama / vLLM / Moonshot 等)',
+    label: 'OpenAI-compatible endpoint',
     category: 'compatible',
     defaultModel: 'custom-model',
     supportedModels: ['custom-model'],
@@ -117,7 +117,7 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
   },
   anthropic_compatible: {
     type: 'anthropic_compatible',
-    label: '自定义 Anthropic 兼容协议服务',
+    label: 'Anthropic-compatible endpoint',
     category: 'compatible',
     defaultModel: 'claude-compatible',
     supportedModels: ['claude-compatible'],

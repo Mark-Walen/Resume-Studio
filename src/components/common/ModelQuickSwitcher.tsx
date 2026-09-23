@@ -70,10 +70,10 @@ export const ModelQuickSwitcher: React.FC<ModelQuickSwitcherProps> = ({ onOpenSe
         title="快速切换 AI 模型方案"
       >
         <Zap className="w-3.5 h-3.5 text-[#0071e3] flex-shrink-0" />
-        <span className="truncate max-w-[110px] sm:max-w-[150px] font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-100">
+        <span className="hidden md:block truncate max-w-[110px] xl:max-w-[150px] font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-100">
           {currentLabel}
         </span>
-        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`hidden md:block w-3 h-3 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (

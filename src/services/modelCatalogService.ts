@@ -19,12 +19,10 @@ export async function fetchAvailableModels(options: {
 }): Promise<string[]> {
   const idToken = await auth.currentUser?.getIdToken();
   if (!idToken) throw new Error('请先登录。');
-  if (!options.apiKey.trim()) throw new Error('请先填写 API Key。');
-
   const response = await fetch('/api/models', {
     headers: {
       Authorization: `Bearer ${idToken}`,
-      'x-ai-api-key': options.apiKey.trim(),
+      ...(options.apiKey.trim() ? { 'x-ai-api-key': options.apiKey.trim() } : {}),
       'x-ai-provider': PROVIDER_IDS[options.provider],
       'x-ai-compatibility': options.provider === 'anthropic_compatible' ? 'anthropic' : 'openai',
       ...(options.baseUrl?.trim() ? { 'x-ai-base-url': options.baseUrl.trim() } : {}),

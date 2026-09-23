@@ -198,7 +198,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-100 dark:selection:bg-blue-900/40 transition-colors">
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-100 dark:selection:bg-blue-900/40 transition-colors">
       {/* Top Header */}
       <Header
         currentTab={currentTab}

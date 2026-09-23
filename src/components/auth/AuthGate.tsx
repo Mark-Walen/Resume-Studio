@@ -182,8 +182,8 @@ function GuestLanding() {
   ];
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f5f5f7] dark:bg-slate-950 text-slate-950 dark:text-white transition-colors">
-      <header className="border-b border-black/5 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl">
+    <div className="min-h-screen overflow-x-clip bg-[#f5f5f7] dark:bg-slate-950 text-slate-950 dark:text-white transition-colors">
+      <header className="relative z-50 overflow-visible border-b border-black/5 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">AI</div>

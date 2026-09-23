@@ -289,16 +289,16 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
               >
                 <optgroup label="主流原生内置提供商">
-                  <option value="claude">Claude (Anthropic Claude 3.7 Sonnet / Opus)</option>
-                  <option value="chatgpt">ChatGPT (OpenAI GPT-4o / o3-mini)</option>
-                  <option value="deepseek">DeepSeek (深度求索 V3 / R1)</option>
-                  <option value="grok">Grok (xAI Grok-3)</option>
-                  <option value="gemini">Google Gemini (Gemini 2.5 Flash / Pro)</option>
-                  <option value="zhipu">Z.ai (智谱清言 GLM-4)</option>
+                  <option value="claude">Anthropic</option>
+                  <option value="chatgpt">OpenAI</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="grok">xAI</option>
+                  <option value="gemini">Google AI</option>
+                  <option value="zhipu">Z.ai</option>
                 </optgroup>
                 <optgroup label="通用开放协议提供商">
-                  <option value="openai_compatible">OpenAI 兼容协议 (Ollama / vLLM / Moonshot / 硅基流动等)</option>
-                  <option value="anthropic_compatible">Anthropic 兼容协议</option>
+                  <option value="openai_compatible">OpenAI-compatible endpoint</option>
+                  <option value="anthropic_compatible">Anthropic-compatible endpoint</option>
                 </optgroup>
               </select>
             </div>
@@ -312,9 +312,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
                 <button
                   type="button"
                   onClick={() => void handleFetchModels()}
-                  disabled={isFetchingModels || !apiKeyInput.trim()}
+                  disabled={isFetchingModels}
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0071e3] hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
-                  title="使用当前 API Key 从服务商获取模型列表"
+                  title="从服务商获取模型列表；如该服务需要认证，将使用当前 Key"
                 >
                   <RefreshCw className={`h-3 w-3 ${isFetchingModels ? 'animate-spin' : ''}`} />
                   {isFetchingModels ? '正在获取' : '联网获取'}
@@ -331,7 +331,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               <datalist id="available-ai-models">
                 {modelOptions.map(model => <option key={model} value={model} />)}
               </datalist>
-              <p className="mt-1 text-[11px] text-slate-400">可自由输入，也可填写 Key 后从服务商实时获取。</p>
+              <p className="mt-1 text-[11px] text-slate-400">可自由输入，也可从服务商实时获取；公开目录无需 Key。</p>
               {modelFetchError && <p className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">{modelFetchError}</p>}
             </div>
 
@@ -353,7 +353,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-slate-700 dark:text-slate-300">
-                  API Key (密钥凭证) *
+                  API Key (可选)
                 </label>
                 <button
                   type="button"
@@ -377,7 +377,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               </div>
 
               <p className="text-[11px] text-slate-400 mt-1">
-                密钥保存在本地安全隔离存储，前端及网页源码绝不暴露明文。
+                密钥仅保存在当前用户的本地隔离存储，只在调用所选 AI 服务时通过本站后端代理使用。
               </p>
             </div>
           </div>
@@ -389,7 +389,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               <span>本地隔离与反探针安全保护</span>
             </div>
             <ul className="space-y-0.5 pl-4 list-disc text-slate-500 dark:text-slate-400">
-              <li>API Key 仅存放于浏览器本地沙箱安全层，绝不向第三方服务器泄露</li>
+              <li>公开模型目录可不填 Key；需要认证时才会把 Key 发送给所选 AI 服务商</li>
               <li>支持保存多组模型方案，随时无缝切换主力与备用模型</li>
             </ul>
           </div>

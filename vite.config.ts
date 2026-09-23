@@ -106,7 +106,6 @@ function getConfiguredAiClient(customKey: string | undefined, req: any) {
 
 async function fetchProviderModels(req: any): Promise<string[]> {
   const apiKey = String(req.headers['x-ai-api-key'] || req.headers['x-gemini-api-key'] || '');
-  if (!apiKey) throw new Error('请先填写该服务提供商的 API Key。');
   const { provider, compatibility, baseUrl: requestedBaseUrl } = getProviderConfig(req);
   const protocol = provider === 'custom' ? compatibility : provider;
   const baseUrl = provider === 'custom' ? getPublicCustomBaseUrl(requestedBaseUrl) : PROVIDER_BASE_URLS[provider];
@@ -114,11 +113,11 @@ async function fetchProviderModels(req: any): Promise<string[]> {
   let endpoint = `${baseUrl.replace(/\/$/, '')}/models`;
 
   if (provider === 'google') {
-    endpoint += `?key=${encodeURIComponent(apiKey)}&pageSize=1000`;
-  } else if (protocol === 'anthropic') {
+    endpoint += apiKey ? `?key=${encodeURIComponent(apiKey)}&pageSize=1000` : '?pageSize=1000';
+  } else if (protocol === 'anthropic' && apiKey) {
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
-  } else {
+  } else if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
 

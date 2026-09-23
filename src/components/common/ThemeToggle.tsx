@@ -26,7 +26,7 @@ export const ThemeToggle: React.FC = () => {
   const CurrentIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative z-[100] flex-shrink-0" ref={containerRef}>
       <button
         type="button"
         id="btn-theme-toggle"
@@ -38,7 +38,7 @@ export const ThemeToggle: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200/90 dark:border-slate-800 py-1.5 z-50 text-xs font-sans animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200/90 dark:border-slate-700 py-1.5 z-[110] text-xs font-sans animate-in fade-in zoom-in-95 duration-100">
           {options.map(opt => {
             const Icon = opt.icon;
             const isSelected = theme === opt.mode;
