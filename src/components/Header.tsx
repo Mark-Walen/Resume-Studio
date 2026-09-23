@@ -8,7 +8,8 @@ import {
   Download,
   Upload,
   Key,
-  Calendar
+  Calendar,
+  LogOut
 } from 'lucide-react';
 import { ThemeToggle } from './common/ThemeToggle';
 import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
@@ -26,6 +27,8 @@ interface HeaderProps {
   onOpenExport: () => void;
   onOpenApiKey: () => void;
   onOpenImportResume?: () => void;
+  userName: string;
+  onSignOut: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,6 +37,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenApiKey,
   onOpenImportResume,
+  userName,
+  onSignOut,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 font-sans transition-colors">
@@ -159,6 +164,20 @@ export const Header: React.FC<HeaderProps> = ({
             title="AI 模型与通用 API 设置"
           >
             <Key className="w-4 h-4" />
+          </button>
+
+          <div className="hidden sm:flex max-w-36 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5" title={userName}>
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950 text-[10px] font-black uppercase text-blue-700 dark:text-blue-300">
+              {userName.slice(0, 1)}
+            </span>
+            <span className="truncate text-[11px] font-bold text-slate-600 dark:text-slate-300">{userName}</span>
+          </div>
+          <button
+            onClick={onSignOut}
+            className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors border border-slate-200 dark:border-slate-800"
+            title="退出登录"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

@@ -4,6 +4,8 @@ import path from 'path';
 import {defineConfig, Plugin} from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { applicationDefault, getApps as getAdminApps, initializeApp as initializeAdminApp } from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 
 dotenv.config();
 
@@ -37,10 +39,40 @@ function getAiClient(customKey?: string) {
   });
 }
 
-const apiPlugin: Plugin = {
-  name: 'gemini-api-server',
-  configureServer(server) {
-    server.middlewares.use(async (req, res, next) => {
+async function authenticateApiRequest(req: any, res: any): Promise<boolean> {
+  const authorization = String(req.headers.authorization || '');
+  const idToken = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  if (!idToken) {
+    res.statusCode = 401;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ success: false, error: '请先登录后再使用该功能。' }));
+    return false;
+  }
+
+  try {
+    const adminApp = getAdminApps()[0] || initializeAdminApp({
+      credential: applicationDefault(),
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || 'resume-pilot-509509',
+    });
+    const decoded = await getAdminAuth(adminApp).verifyIdToken(idToken);
+    if (decoded.email && decoded.email_verified === false) {
+      res.statusCode = 403;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: false, error: '请先完成邮箱验证。' }));
+      return false;
+    }
+    req.authUser = { uid: decoded.uid, email: decoded.email || '' };
+    return true;
+  } catch (error) {
+    console.warn('Identity token verification failed:', error instanceof Error ? error.message : error);
+    res.statusCode = 401;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ success: false, error: '登录状态无效或已过期，请重新登录。' }));
+    return false;
+  }
+}
+
+const apiMiddleware = async (req: any, res: any, next: () => void) => {
       const url = req.url?.split('?')[0];
 
       // 1. Health check
@@ -50,6 +82,8 @@ const apiPlugin: Plugin = {
         res.end(JSON.stringify({ status: 'ok', hasEnvKey }));
         return;
       }
+
+      if (url?.startsWith('/api/') && !(await authenticateApiRequest(req, res))) return;
 
       // 2. Generate Resume
       if (url === '/api/generate-resume' && req.method === 'POST') {
@@ -820,7 +854,15 @@ ${existingResume ? JSON.stringify({
 
 
       next();
-    });
+};
+
+const apiPlugin: Plugin = {
+  name: 'gemini-api-server',
+  configureServer(server) {
+    server.middlewares.use(apiMiddleware);
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use(apiMiddleware);
   },
 };
 

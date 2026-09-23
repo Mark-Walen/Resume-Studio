@@ -6,6 +6,15 @@ import { CompanyJdRecommendationResult } from '../types/knowledge';
 import { MultiCompanyComparisonResult, TargetCompanyJdInput } from '../types/multiCompany';
 import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
 import { getCustomApiKey } from '../utils/db';
+import { auth } from './firebase';
+
+async function requestAiApi(path: string, init: RequestInit): Promise<Response> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('请先登录后再使用 AI 功能。');
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${idToken}`);
+  return fetch(path, { ...init, headers });
+}
 
 export interface HealthResponse {
   status: string;
@@ -32,7 +41,7 @@ export async function requestGenerateResume(params: {
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/generate-resume', {
+    const res = await requestAiApi('/api/generate-resume', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,7 +86,7 @@ export async function requestInterviewFeedback(params: {
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/interview-feedback', {
+    const res = await requestAiApi('/api/interview-feedback', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -106,7 +115,7 @@ export async function requestCrossInterviewDiagnostic(
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/cross-interview-diagnostic', {
+    const res = await requestAiApi('/api/cross-interview-diagnostic', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,7 +153,7 @@ export async function parseResumeWithAi(
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/parse-resume', {
+    const res = await requestAiApi('/api/parse-resume', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -179,7 +188,7 @@ export async function fetchAndAnalyzeJd(params: {
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/proxy-jd', {
+    const res = await requestAiApi('/api/proxy-jd', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -519,7 +528,7 @@ export async function requestRecommendKnowledgePoints(params: {
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/recommend-knowledge-points', {
+    const res = await requestAiApi('/api/recommend-knowledge-points', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -550,7 +559,7 @@ export async function requestMultiCompanyResumeOptimizer(params: {
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/multi-company-resume-optimizer', {
+    const res = await requestAiApi('/api/multi-company-resume-optimizer', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -582,7 +591,7 @@ export async function requestConvertJournalToResumeBullets(params: {
   const customKey = getCustomApiKey();
 
   try {
-    const res = await fetch('/api/convert-journal-to-resume-bullets', {
+    const res = await requestAiApi('/api/convert-journal-to-resume-bullets', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

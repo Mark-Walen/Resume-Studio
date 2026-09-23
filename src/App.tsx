@@ -46,8 +46,10 @@ import {
   Eye,
   FileEdit
 } from 'lucide-react';
+import { useAuth } from './contexts/AuthContext';
 
 export default function App() {
+  const { signOutUser, user } = useAuth();
   // Navigation
   const [currentTab, setCurrentTab] = useState<MainTab>('resume');
 
@@ -209,6 +211,8 @@ export default function App() {
         onOpenExport={() => handleOpenExport('export')}
         onOpenApiKey={() => setIsApiKeyOpen(true)}
         onOpenImportResume={() => setIsResumeImportOpen(true)}
+        userName={user?.displayName || user?.email || '用户'}
+        onSignOut={() => void signOutUser()}
       />
 
       {/* Main Workspace */}
