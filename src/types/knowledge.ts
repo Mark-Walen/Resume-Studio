@@ -34,7 +34,9 @@ export interface BookSection {
   id: string;
   title: string;
   order?: number;
-  content: string; // Markdown / Rich content
+  content: string; // Agent/export-friendly Markdown snapshot
+  editorDocument?: unknown[]; // Lossless BlockNote document used by the visual editor
+  contentFormat?: 'markdown-v1' | 'blocks-v2';
   summary?: string;
   estimatedMinutes?: number;
   isCompleted?: boolean;

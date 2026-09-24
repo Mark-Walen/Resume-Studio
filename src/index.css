@@ -50,6 +50,34 @@
   background: #475569;
 }
 
+/* Notion-style knowledge canvas: one surface for reading and editing. */
+.knowledge-block-editor .bn-container {
+  width: 100%;
+  background: transparent;
+}
+
+.knowledge-block-editor .bn-editor {
+  min-height: inherit;
+  padding: 2rem 2.75rem 5rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.knowledge-block-editor.is-readonly .bn-editor {
+  padding: 0;
+}
+
+.knowledge-block-editor .bn-block-content {
+  font-size: 0.925rem;
+  line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+  .knowledge-block-editor .bn-editor {
+    padding: 1.5rem 1.25rem 4rem;
+  }
+}
+
 /* Dedicated High-Fidelity Print Styling for Resume PDF Export */
 .resume-pdf-print-stage {
   display: none;

@@ -23,12 +23,15 @@ import {
   Bot,
   Globe2,
   UserRound,
-  LockKeyhole
+  LockKeyhole,
+  Copy,
 } from 'lucide-react';
 import { KnowledgeBook, BookChapter, BookSection } from '../types/knowledge';
-import ReactMarkdown from 'react-markdown';
-import { sanitizeMarkdownUrl } from '../utils/security';
 import { showAppConfirm, showAppMessage } from './common/AppFeedback';
+
+const KnowledgeBlockEditor = React.lazy(() =>
+  import('./knowledge/KnowledgeBlockEditor').then(module => ({ default: module.KnowledgeBlockEditor })),
+);
 
 interface LeetBookReaderProps {
   books: KnowledgeBook[];
@@ -50,6 +53,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
   const [isCreatingSection, setIsCreatingSection] = useState(false);
   const [editorTitle, setEditorTitle] = useState('');
   const [editorContent, setEditorContent] = useState('');
+  const [editorDocument, setEditorDocument] = useState<unknown[] | undefined>();
   const [editorTags, setEditorTags] = useState('');
   const [editorChapterId, setEditorChapterId] = useState('');
 
@@ -125,6 +129,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
     setEditorChapterId(selectedBook?.chapters[0]?.id || '');
     setEditorTitle(createNew ? '' : currentSection?.title || '');
     setEditorContent(createNew ? '' : currentSection?.content || '');
+    setEditorDocument(createNew ? undefined : currentSection?.editorDocument);
     setEditorTags(createNew ? '' : (currentSection?.tags || []).join(', '));
   };
 
@@ -149,6 +154,8 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
               id: savedSectionId,
               title: editorTitle.trim(),
               content: editorContent.trim(),
+              editorDocument,
+              contentFormat: 'blocks-v2' as const,
               tags: tags.length ? tags : ['个人创作'],
               estimatedMinutes: Math.max(3, Math.round(editorContent.length / 500)),
               isCompleted: false,
@@ -165,6 +172,8 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             ...section,
             title: editorTitle.trim(),
             content: editorContent.trim(),
+            editorDocument,
+            contentFormat: 'blocks-v2' as const,
             tags,
           } : section),
         })),
@@ -175,6 +184,19 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
     setIsInlineEditing(false);
     setIsCreatingSection(false);
     showAppMessage('知识小节已保存，并将随工作区同步。', 'success');
+  };
+
+  const copyAgentMarkdown = async () => {
+    if (!editorContent.trim()) {
+      showAppMessage('当前没有可复制的内容。', 'warning');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`# ${editorTitle.trim()}\n\n${editorContent.trim()}`);
+      showAppMessage('已复制适合 Agent 阅读的 Markdown。', 'success');
+    } catch {
+      showAppMessage('复制失败，请检查浏览器剪贴板权限。', 'error');
+    }
   };
 
   const deleteCurrentSection = async () => {
@@ -548,20 +570,27 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             {isInlineEditing ? (
               <div className="mx-auto flex min-h-full max-w-6xl flex-col">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
-                  <div><div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"><Bot className="h-4 w-4 text-[#0071e3]" />{isCreatingSection ? '新建 Agent 友好知识小节' : '编辑知识小节'}</div><p className="mt-1 text-[11px] text-slate-400">使用 Markdown 标题、列表、代码块和明确上下文，便于人阅读，也便于 Agent 检索和引用。</p></div>
-                  <div className="flex gap-2"><button type="button" onClick={() => { setIsInlineEditing(false); setIsCreatingSection(false); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">取消</button><button type="button" onClick={saveInlineSection} className="inline-flex items-center gap-1.5 rounded-xl bg-[#0071e3] px-4 py-2 text-xs font-bold text-white"><Save className="h-3.5 w-3.5" />保存</button></div>
+                  <div><div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"><Bot className="h-4 w-4 text-[#0071e3]" />{isCreatingSection ? '新建知识小节' : '编辑知识小节'}</div><p className="mt-1 text-[11px] text-slate-400">直接在最终排版中编辑；输入 / 可插入标题、列表、代码块等内容。</p></div>
+                  <div className="flex gap-2"><button type="button" onClick={() => void copyAgentMarkdown()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"><Copy className="h-3.5 w-3.5" />复制给 Agent</button><button type="button" onClick={() => { setIsInlineEditing(false); setIsCreatingSection(false); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">取消</button><button type="button" onClick={saveInlineSection} className="inline-flex items-center gap-1.5 rounded-xl bg-[#0071e3] px-4 py-2 text-xs font-bold text-white"><Save className="h-3.5 w-3.5" />保存</button></div>
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_240px]">
                   <input value={editorTitle} onChange={event => setEditorTitle(event.target.value)} placeholder="小节标题" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
                   {isCreatingSection ? <select value={editorChapterId} onChange={event => setEditorChapterId(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white">{selectedBook.chapters.map(chapter => <option key={chapter.id} value={chapter.id}>{chapter.title}</option>)}</select> : <input value={editorTags} onChange={event => setEditorTags(event.target.value)} placeholder="标签，以逗号分隔" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-950 dark:text-white" />}
                 </div>
                 {isCreatingSection && <input value={editorTags} onChange={event => setEditorTags(event.target.value)} placeholder="标签，以逗号分隔" className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-950 dark:text-white" />}
-                <div className="mt-4 grid min-h-[520px] flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 xl:grid-cols-2">
-                  <div className="flex min-h-[520px] flex-col border-b border-slate-200 dark:border-slate-700 xl:border-b-0 xl:border-r">
-                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-950">Markdown 编辑</div>
-                    <textarea value={editorContent} onChange={event => setEditorContent(event.target.value)} placeholder={'# 背景\n\n## 核心原理\n\n## 实践步骤\n\n## Agent 使用说明'} className="min-h-0 flex-1 resize-none bg-white p-4 font-mono text-xs leading-6 text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100" />
-                  </div>
-                  <div className="hidden min-h-[520px] overflow-y-auto xl:block"><div className="sticky top-0 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-950">实时预览</div><div className="space-y-4 p-5 text-sm leading-7 text-slate-800 dark:text-slate-200"><ReactMarkdown urlTransform={sanitizeMarkdownUrl}>{editorContent || '*开始输入后，这里会显示实时预览。*'}</ReactMarkdown></div></div>
+                <div className="mt-4 min-h-[520px] flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                  <React.Suspense fallback={<div className="flex min-h-[520px] items-center justify-center text-xs text-slate-400">正在加载编辑器…</div>}>
+                    <KnowledgeBlockEditor
+                      key={`${currentSection?.id || 'new'}-${isCreatingSection ? 'new' : 'edit'}`}
+                      initialMarkdown={editorContent}
+                      initialDocument={editorDocument}
+                      onChange={(document, markdown) => {
+                        setEditorDocument(document);
+                        setEditorContent(markdown);
+                      }}
+                      className="min-h-[520px]"
+                    />
+                  </React.Suspense>
                 </div>
               </div>
             ) : currentSection ? (
@@ -620,10 +649,15 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   </div>
                 )}
 
-                {/* Markdown body */}
-                <div className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm space-y-4">
-                  <ReactMarkdown urlTransform={sanitizeMarkdownUrl}>{currentSection.content}</ReactMarkdown>
-                </div>
+                {/* The same document canvas is used for reading and editing. */}
+                <React.Suspense fallback={<div className="py-10 text-center text-xs text-slate-400">正在加载正文…</div>}>
+                  <KnowledgeBlockEditor
+                    key={currentSection.id}
+                    initialMarkdown={currentSection.content}
+                    initialDocument={currentSection.editorDocument}
+                    editable={false}
+                  />
+                </React.Suspense>
               </div>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
