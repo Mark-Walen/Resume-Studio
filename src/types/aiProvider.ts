@@ -1,3 +1,5 @@
+import { PROVIDER_MODEL_CATALOG } from '../config/modelCatalog';
+
 export type ModelProviderType =
   | 'claude'
   | 'chatgpt'
@@ -24,13 +26,8 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
     type: 'claude',
     label: 'Anthropic',
     category: 'builtin',
-    defaultModel: 'claude-3-7-sonnet-20250219',
-    supportedModels: [
-      'claude-3-7-sonnet-20250219',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-5-haiku-20241022',
-      'claude-3-opus-20240229'
-    ],
+    defaultModel: 'claude-sonnet-5',
+    supportedModels: [...PROVIDER_MODEL_CATALOG.anthropic],
     placeholderKey: 'sk-ant-api03-...',
     docUrl: 'https://console.anthropic.com/'
   },
@@ -38,15 +35,8 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
     type: 'chatgpt',
     label: 'OpenAI',
     category: 'builtin',
-    defaultModel: 'gpt-4o',
-    supportedModels: [
-      'gpt-4o',
-      'gpt-4o-mini',
-      'o3-mini',
-      'gpt-4.5-preview',
-      'o1',
-      'o1-mini'
-    ],
+    defaultModel: 'gpt-5.6-terra',
+    supportedModels: [...PROVIDER_MODEL_CATALOG.openai],
     placeholderKey: 'sk-proj-...',
     docUrl: 'https://platform.openai.com/api-keys'
   },
@@ -54,13 +44,8 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
     type: 'grok',
     label: 'xAI',
     category: 'builtin',
-    defaultModel: 'grok-3',
-    supportedModels: [
-      'grok-3',
-      'grok-3-mini',
-      'grok-2-1212',
-      'grok-beta'
-    ],
+    defaultModel: 'grok-4.7',
+    supportedModels: [...PROVIDER_MODEL_CATALOG.xai],
     placeholderKey: 'xai-...',
     docUrl: 'https://console.x.ai/'
   },
@@ -68,14 +53,8 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
     type: 'gemini',
     label: 'Google AI',
     category: 'builtin',
-    defaultModel: 'gemini-2.5-flash',
-    supportedModels: [
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash'
-    ],
+    defaultModel: 'gemini-3.8-flash',
+    supportedModels: [...PROVIDER_MODEL_CATALOG.google],
     placeholderKey: 'AIzaSy...',
     docUrl: 'https://aistudio.google.com/app/apikey'
   },
@@ -83,11 +62,8 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
     type: 'deepseek',
     label: 'DeepSeek',
     category: 'builtin',
-    defaultModel: 'deepseek-chat',
-    supportedModels: [
-      'deepseek-chat',
-      'deepseek-reasoner'
-    ],
+    defaultModel: 'deepseek-flash',
+    supportedModels: [...PROVIDER_MODEL_CATALOG.deepseek],
     placeholderKey: 'sk-...',
     docUrl: 'https://platform.deepseek.com/'
   },
@@ -95,13 +71,8 @@ export const PROVIDER_CONFIGS: Record<ModelProviderType, ProviderOption> = {
     type: 'zhipu',
     label: 'Z.ai',
     category: 'builtin',
-    defaultModel: 'glm-4-plus',
-    supportedModels: [
-      'glm-4-plus',
-      'glm-4-flash',
-      'glm-4-air',
-      'glm-4-long'
-    ],
+    defaultModel: 'glm-5.3',
+    supportedModels: [...PROVIDER_MODEL_CATALOG.zai],
     placeholderKey: 'api-key-...',
     docUrl: 'https://bigmodel.cn/'
   },

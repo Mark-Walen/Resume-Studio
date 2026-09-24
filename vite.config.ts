@@ -12,6 +12,7 @@ import {
   migrateOrLoadWorkspace,
   saveWorkspaceDocument,
 } from './server/database.ts';
+import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
 
 dotenv.config();
 
@@ -42,14 +43,7 @@ const PROVIDER_BASE_URLS: Record<Exclude<ProviderId, 'custom'>, string> = {
   zai: 'https://api.z.ai/api/paas/v4',
 };
 
-const PROVIDER_MODEL_FALLBACKS: Record<Exclude<ProviderId, 'custom'>, string[]> = {
-  anthropic: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
-  openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1', 'o1-mini'],
-  xai: ['grok-3', 'grok-3-mini', 'grok-2-1212', 'grok-beta'],
-  google: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
-  zai: ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4-long'],
-};
+const PROVIDER_MODEL_FALLBACKS: Record<Exclude<ProviderId, 'custom'>, readonly string[]> = PROVIDER_MODEL_CATALOG;
 
 function getPublicCustomBaseUrl(rawUrl?: string): string {
   if (!rawUrl) throw new Error('请先填写自定义兼容服务的 Base URL。');
@@ -140,7 +134,7 @@ async function fetchProviderModels(req: any): Promise<string[]> {
     const payload: any = await response.json().catch(() => ({}));
     if (!response.ok) {
       if (!apiKey && provider !== 'custom' && (response.status === 401 || response.status === 403)) {
-        return PROVIDER_MODEL_FALLBACKS[provider];
+        return [...PROVIDER_MODEL_FALLBACKS[provider]];
       }
       throw new Error(payload?.error?.message || payload?.message || `获取模型失败（${response.status}）`);
     }
@@ -149,10 +143,10 @@ async function fetchProviderModels(req: any): Promise<string[]> {
       .filter((item: any) => provider !== 'google' || !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent'))
       .map((item: any) => String(item.id || item.name || '').replace(/^models\//, ''))
       .filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    if (!models.length && provider !== 'custom') return PROVIDER_MODEL_FALLBACKS[provider];
+    if (!models.length && provider !== 'custom') return [...PROVIDER_MODEL_FALLBACKS[provider]];
     return models;
   } catch (error) {
-    if (!apiKey && provider !== 'custom') return PROVIDER_MODEL_FALLBACKS[provider];
+    if (!apiKey && provider !== 'custom') return [...PROVIDER_MODEL_FALLBACKS[provider]];
     throw error;
   }
 }

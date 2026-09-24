@@ -257,7 +257,16 @@ export function loadAiModelProfiles(): AiModelProfile[] {
     const raw = readScopedStorage(AI_PROFILES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((profile: AiModelProfile) => {
+          const isLegacySystemDefault = profile.id === 'profile-gemini-default'
+            && profile.provider === 'gemini'
+            && ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].includes(profile.modelName);
+          return isLegacySystemDefault
+            ? { ...profile, modelName: PROVIDER_CONFIGS.gemini.defaultModel }
+            : profile;
+        });
+      }
     }
   } catch (err) {
     console.warn('Failed to load AI model profiles', err);
@@ -288,6 +297,7 @@ export function saveAiModelProfiles(profiles: AiModelProfile[]): void {
     if (active && active.encryptedApiKey) {
       writeScopedStorage(API_KEY_STORAGE, active.encryptedApiKey);
     }
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('ai-profile-updated'));
   } catch (err) {
     console.warn('Failed to save AI model profiles', err);
   }

@@ -26,6 +26,7 @@ import {
 } from '../utils/db';
 import { encryptApiKey, decryptApiKey } from '../utils/crypto';
 import { fetchAvailableModels } from '../services/modelCatalogService';
+import { MODEL_CATALOG_UPDATED_AT } from '../config/modelCatalog';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -348,7 +349,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
                   className="mt-2 w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
                 />
               )}
-              <p className="mt-1 text-[11px] text-slate-400">可从下拉列表选择或填写自定义标识；公开目录无需 Key，需认证的目录会使用当前 Key。</p>
+              <p className="mt-1 text-[11px] text-slate-400">可从下拉列表选择或填写自定义标识；公开目录无需 Key，需认证的目录会使用当前 Key。内置目录更新于 {MODEL_CATALOG_UPDATED_AT}。</p>
               {modelFetchError && <p className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">{modelFetchError}</p>}
             </div>
 
