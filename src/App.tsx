@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ResumeData, ResumeTemplateId } from './types/resume';
 import { JobApplication, ApplicationStatus } from './types/job';
 import { InterviewRecord } from './types/interview';
@@ -25,7 +25,12 @@ import {
   saveLeetBooks,
   loadWorkDailyLogs,
   saveWorkDailyLogs,
+  applyCloudWorkspaceSnapshot,
+  createLocalWorkspaceSnapshot,
+  hasLocalWorkspaceData,
+  WORKSPACE_DATA_CHANGED_EVENT,
 } from './utils/db';
+import { migrateOrLoadCloudWorkspace, saveCloudWorkspace } from './services/workspaceSyncService';
 import { Header, MainTab } from './components/Header';
 import { ResumePreview } from './components/resume/ResumePreview';
 import { ResumeEditor } from './components/resume/ResumeEditor';
@@ -50,6 +55,9 @@ import { useAuth } from './contexts/AuthContext';
 
 export default function App() {
   const { signOutUser, user } = useAuth();
+  const hadLocalWorkspaceOnLogin = useRef(hasLocalWorkspaceData()).current;
+  const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [syncError, setSyncError] = useState('');
   // Navigation
   const [currentTab, setCurrentTab] = useState<MainTab>('resume');
 
@@ -110,36 +118,83 @@ export default function App() {
     setIsExportOpen(true);
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    setWorkspaceReady(false);
+    setSyncError('');
+    void migrateOrLoadCloudWorkspace(createLocalWorkspaceSnapshot(), hadLocalWorkspaceOnLogin)
+      .then(result => {
+        if (cancelled) return;
+        const synced = applyCloudWorkspaceSnapshot(result.payload);
+        setResume(synced.resume);
+        setJobs(synced.jobs);
+        setInterviews(synced.interviews);
+        setDiagnosticReport(synced.diagnosticReport);
+        setKnowledgeItems(synced.knowledgeItems);
+        setBooks(synced.books);
+        setWorkLogs(synced.workLogs);
+        setWorkspaceReady(true);
+      })
+      .catch(error => {
+        if (cancelled) return;
+        console.error('Cloud workspace initialization failed:', error);
+        setSyncError(error instanceof Error ? error.message : '云端同步暂时不可用。');
+        setWorkspaceReady(true);
+      });
+    return () => { cancelled = true; };
+  }, [hadLocalWorkspaceOnLogin, user?.uid]);
+
+  useEffect(() => {
+    if (!workspaceReady) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const queueCloudSave = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void saveCloudWorkspace(createLocalWorkspaceSnapshot())
+          .then(() => setSyncError(''))
+          .catch(error => {
+            console.error('Cloud workspace save failed:', error);
+            setSyncError(error instanceof Error ? error.message : '云端保存失败。');
+          });
+      }, 900);
+    };
+    window.addEventListener(WORKSPACE_DATA_CHANGED_EVENT, queueCloudSave);
+    return () => {
+      window.removeEventListener(WORKSPACE_DATA_CHANGED_EVENT, queueCloudSave);
+      if (timer) clearTimeout(timer);
+    };
+  }, [workspaceReady]);
+
   // Auto persist
   useEffect(() => {
-    saveResumeData(resume);
-  }, [resume]);
+    if (workspaceReady) saveResumeData(resume);
+  }, [resume, workspaceReady]);
 
   useEffect(() => {
-    saveJobApplications(jobs);
-  }, [jobs]);
+    if (workspaceReady) saveJobApplications(jobs);
+  }, [jobs, workspaceReady]);
 
   useEffect(() => {
-    saveInterviewRecords(interviews);
-  }, [interviews]);
+    if (workspaceReady) saveInterviewRecords(interviews);
+  }, [interviews, workspaceReady]);
 
   useEffect(() => {
-    saveKnowledgeItems(knowledgeItems);
-  }, [knowledgeItems]);
+    if (workspaceReady) saveKnowledgeItems(knowledgeItems);
+  }, [knowledgeItems, workspaceReady]);
 
   useEffect(() => {
-    saveLeetBooks(books);
-  }, [books]);
+    if (workspaceReady) saveLeetBooks(books);
+  }, [books, workspaceReady]);
 
   useEffect(() => {
-    saveWorkDailyLogs(workLogs);
-  }, [workLogs]);
+    if (workspaceReady) saveWorkDailyLogs(workLogs);
+  }, [workLogs, workspaceReady]);
 
   useEffect(() => {
-    if (diagnosticReport) {
+    if (workspaceReady && diagnosticReport) {
       saveDiagnosticReport(diagnosticReport);
     }
-  }, [diagnosticReport]);
+  }, [diagnosticReport, workspaceReady]);
 
   const handleImportResumeSuccess = (imported: Partial<ResumeData>) => {
     setResume((prev) => ({
@@ -214,6 +269,19 @@ export default function App() {
         userName={user?.displayName || user?.email || '用户'}
         onSignOut={() => void signOutUser()}
       />
+
+      {!workspaceReady && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-xl">
+            正在同步云端工作区…
+          </div>
+        </div>
+      )}
+      {workspaceReady && syncError && (
+        <div className="fixed right-4 top-20 z-[115] max-w-sm rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 shadow-lg">
+          云端同步暂时不可用，当前修改仍已保存在本机：{syncError}
+        </div>
+      )}
 
       {/* Main Workspace */}
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-4 sm:p-6 lg:p-8">

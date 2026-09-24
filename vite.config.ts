@@ -6,7 +6,12 @@ import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { applicationDefault, getApps as getAdminApps, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { getDatabaseStatus } from './server/database.ts';
+import {
+  getDatabaseStatus,
+  loadWorkspaceDocument,
+  migrateOrLoadWorkspace,
+  saveWorkspaceDocument,
+} from './server/database.ts';
 
 dotenv.config();
 
@@ -35,6 +40,15 @@ const PROVIDER_BASE_URLS: Record<Exclude<ProviderId, 'custom'>, string> = {
   google: 'https://generativelanguage.googleapis.com/v1beta',
   deepseek: 'https://api.deepseek.com',
   zai: 'https://api.z.ai/api/paas/v4',
+};
+
+const PROVIDER_MODEL_FALLBACKS: Record<Exclude<ProviderId, 'custom'>, string[]> = {
+  anthropic: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1', 'o1-mini'],
+  xai: ['grok-3', 'grok-3-mini', 'grok-2-1212', 'grok-beta'],
+  google: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  zai: ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4-long'],
 };
 
 function getPublicCustomBaseUrl(rawUrl?: string): string {
@@ -121,14 +135,26 @@ async function fetchProviderModels(req: any): Promise<string[]> {
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
-  const response = await fetch(endpoint, { headers });
-  const payload: any = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.error?.message || payload?.message || `获取模型失败（${response.status}）`);
-  const rows: any[] = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
-  return [...new Set(rows
-    .filter((item: any) => provider !== 'google' || !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent'))
-    .map((item: any) => String(item.id || item.name || '').replace(/^models\//, ''))
-    .filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  try {
+    const response = await fetch(endpoint, { headers, signal: AbortSignal.timeout(10_000) });
+    const payload: any = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (!apiKey && provider !== 'custom' && (response.status === 401 || response.status === 403)) {
+        return PROVIDER_MODEL_FALLBACKS[provider];
+      }
+      throw new Error(payload?.error?.message || payload?.message || `获取模型失败（${response.status}）`);
+    }
+    const rows: any[] = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
+    const models = [...new Set(rows
+      .filter((item: any) => provider !== 'google' || !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent'))
+      .map((item: any) => String(item.id || item.name || '').replace(/^models\//, ''))
+      .filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    if (!models.length && provider !== 'custom') return PROVIDER_MODEL_FALLBACKS[provider];
+    return models;
+  } catch (error) {
+    if (!apiKey && provider !== 'custom') return PROVIDER_MODEL_FALLBACKS[provider];
+    throw error;
+  }
 }
 
 async function authenticateApiRequest(req: any, res: any): Promise<boolean> {
@@ -153,7 +179,7 @@ async function authenticateApiRequest(req: any, res: any): Promise<boolean> {
       res.end(JSON.stringify({ success: false, error: '请先完成邮箱验证。' }));
       return false;
     }
-    req.authUser = { uid: decoded.uid, email: decoded.email || '' };
+    req.authUser = { uid: decoded.uid, email: decoded.email || '', displayName: decoded.name || '' };
     return true;
   } catch (error) {
     console.warn('Identity token verification failed:', error instanceof Error ? error.message : error);
@@ -177,6 +203,47 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
       }
 
       if (url?.startsWith('/api/') && !(await authenticateApiRequest(req, res))) return;
+
+      if (url === '/api/workspace' && req.method === 'GET') {
+        try {
+          const document = await loadWorkspaceDocument(req.authUser);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '读取云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace/sync' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const document = await migrateOrLoadWorkspace(req.authUser, body.payload || {}, body.hasLocalData === true);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '同步云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace' && req.method === 'PUT') {
+        try {
+          const body = await readBody(req);
+          const document = await saveWorkspaceDocument(req.authUser, body.payload || {});
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '保存云端工作区失败。' }));
+        }
+        return;
+      }
 
       if (url === '/api/models' && req.method === 'GET') {
         try {

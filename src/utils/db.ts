@@ -9,6 +9,7 @@ import { KnowledgeItem, KnowledgeBook } from '../types/knowledge';
 import { WorkDailyLog } from '../types/journal';
 import { DEFAULT_LEETBOOKS } from '../data/defaultBooks';
 import { INITIAL_WORK_DAILY_LOGS } from '../data/defaultJournals';
+import { INITIAL_KNOWLEDGE_BASE } from '../data/knowledgeBaseData';
 import { AiModelProfile, PROVIDER_CONFIGS } from '../types/aiProvider';
 import { encryptApiKey, decryptApiKey } from './crypto';
 import { auth } from '../services/firebase';
@@ -22,6 +23,31 @@ const AI_PROFILES_KEY = 'ai_model_profiles_v1';
 const KNOWLEDGE_KEY = 'ai_knowledge_items_v1';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v1';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v1';
+
+export const WORKSPACE_DATA_CHANGED_EVENT = 'resume-pilot-workspace-data-changed';
+
+export interface WorkspaceSnapshot {
+  schemaVersion: 1;
+  resume: ResumeData;
+  jobs: JobApplication[];
+  interviews: InterviewRecord[];
+  diagnosticReport: CrossInterviewDiagnosticReport | null;
+  knowledgeItems: KnowledgeItem[];
+  books: KnowledgeBook[];
+  workLogs: WorkDailyLog[];
+  aiProfiles: AiModelProfile[];
+}
+
+const WORKSPACE_STORAGE_KEYS = [
+  RESUME_KEY,
+  JOBS_KEY,
+  INTERVIEWS_KEY,
+  DIAGNOSTIC_KEY,
+  AI_PROFILES_KEY,
+  KNOWLEDGE_KEY,
+  LEETBOOKS_KEY,
+  WORK_JOURNAL_KEY,
+];
 
 // --- IndexedDB for Media Blobs ---
 const DB_NAME = 'ResumeInterviewMediaDB';
@@ -54,10 +80,12 @@ function readScopedStorage(baseKey: string): string | null {
 
 function writeScopedStorage(baseKey: string, value: string): void {
   localStorage.setItem(scopedStorageKey(baseKey), value);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(WORKSPACE_DATA_CHANGED_EVENT));
 }
 
 function removeScopedStorage(baseKey: string): void {
   localStorage.removeItem(scopedStorageKey(baseKey));
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(WORKSPACE_DATA_CHANGED_EVENT));
 }
 
 function scopedRecordId(id: string): string {
@@ -349,6 +377,61 @@ export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
   } catch (err) {
     console.warn('Failed to save work daily logs:', err);
   }
+}
+
+export function hasLocalWorkspaceData(): boolean {
+  return WORKSPACE_STORAGE_KEYS.some(key => (
+    localStorage.getItem(scopedStorageKey(key)) !== null || localStorage.getItem(key) !== null
+  ));
+}
+
+function withoutCloudApiKeys(profiles: AiModelProfile[]): AiModelProfile[] {
+  return profiles.map(profile => ({ ...profile, encryptedApiKey: '' }));
+}
+
+export function createLocalWorkspaceSnapshot(): WorkspaceSnapshot {
+  return {
+    schemaVersion: 1,
+    resume: loadResumeData(),
+    jobs: loadJobApplications(),
+    interviews: loadInterviewRecords(),
+    diagnosticReport: loadDiagnosticReport(),
+    knowledgeItems: loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE),
+    books: loadLeetBooks(),
+    workLogs: loadWorkDailyLogs(),
+    aiProfiles: withoutCloudApiKeys(loadAiModelProfiles()),
+  };
+}
+
+export function applyCloudWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>): WorkspaceSnapshot {
+  const currentProfiles = loadAiModelProfiles();
+  const localKeys = new Map(currentProfiles.map(profile => [profile.id, profile.encryptedApiKey]));
+  const mergedProfiles = (snapshot.aiProfiles?.length ? snapshot.aiProfiles : currentProfiles).map(profile => ({
+    ...profile,
+    encryptedApiKey: localKeys.get(profile.id) || '',
+  }));
+  const normalized: WorkspaceSnapshot = {
+    schemaVersion: 1,
+    resume: snapshot.resume || loadResumeData(),
+    jobs: snapshot.jobs || loadJobApplications(),
+    interviews: snapshot.interviews || loadInterviewRecords(),
+    diagnosticReport: snapshot.diagnosticReport ?? null,
+    knowledgeItems: snapshot.knowledgeItems || loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE),
+    books: snapshot.books || loadLeetBooks(),
+    workLogs: snapshot.workLogs || loadWorkDailyLogs(),
+    aiProfiles: mergedProfiles,
+  };
+
+  saveResumeData(normalized.resume);
+  saveJobApplications(normalized.jobs);
+  saveInterviewRecords(normalized.interviews);
+  if (normalized.diagnosticReport) saveDiagnosticReport(normalized.diagnosticReport);
+  else removeScopedStorage(DIAGNOSTIC_KEY);
+  saveKnowledgeItems(normalized.knowledgeItems);
+  saveLeetBooks(normalized.books);
+  saveWorkDailyLogs(normalized.workLogs);
+  saveAiModelProfiles(normalized.aiProfiles);
+  return normalized;
 }
 
 

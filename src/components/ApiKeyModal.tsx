@@ -46,6 +46,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
   const [showPlainKey, setShowPlainKey] = useState(false);
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [useCustomModel, setUseCustomModel] = useState(false);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [modelFetchError, setModelFetchError] = useState('');
 
@@ -69,6 +70,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setProvider(p.provider);
     setModelName(p.modelName);
     setModelOptions([...new Set([p.modelName, ...PROVIDER_CONFIGS[p.provider].supportedModels].filter(Boolean))]);
+    setUseCustomModel(false);
     setModelFetchError('');
     setCustomBaseUrl(p.customBaseUrl || '');
     setApiKeyInput(p.encryptedApiKey ? decryptApiKey(p.encryptedApiKey) : '');
@@ -79,6 +81,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     const cfg = PROVIDER_CONFIGS[newProvider];
     setModelName(cfg.defaultModel);
     setModelOptions([...cfg.supportedModels]);
+    setUseCustomModel(false);
     setModelFetchError('');
     if (cfg.defaultBaseUrl) {
       setCustomBaseUrl(cfg.defaultBaseUrl);
@@ -320,18 +323,32 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
                   {isFetchingModels ? '正在获取' : '联网获取'}
                 </button>
               </div>
+              <select
+                value={useCustomModel ? '__custom__' : modelName}
+                onChange={event => {
+                  if (event.target.value === '__custom__') {
+                    setUseCustomModel(true);
+                    setModelName('');
+                  } else {
+                    setUseCustomModel(false);
+                    setModelName(event.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+              >
+                {modelOptions.map(model => <option key={model} value={model}>{model}</option>)}
+                <option value="__custom__">自定义模型标识…</option>
+              </select>
+              {useCustomModel && (
                 <input
                   type="text"
                   value={modelName}
-                  onChange={e => setModelName(e.target.value)}
-                  list="available-ai-models"
-                  placeholder="可选列表中的模型，或直接输入自定义模型名"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  onChange={event => setModelName(event.target.value)}
+                  placeholder="输入供应商支持的模型标识"
+                  className="mt-2 w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
                 />
-              <datalist id="available-ai-models">
-                {modelOptions.map(model => <option key={model} value={model} />)}
-              </datalist>
-              <p className="mt-1 text-[11px] text-slate-400">可自由输入，也可从服务商实时获取；公开目录无需 Key。</p>
+              )}
+              <p className="mt-1 text-[11px] text-slate-400">可从下拉列表选择或填写自定义标识；公开目录无需 Key，需认证的目录会使用当前 Key。</p>
               {modelFetchError && <p className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">{modelFetchError}</p>}
             </div>
 

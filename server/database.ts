@@ -82,3 +82,76 @@ export async function getDatabaseStatus(): Promise<'connected' | 'not_configured
     return 'error';
   }
 }
+
+export interface CloudWorkspaceDocument {
+  payload: Record<string, unknown>;
+  updatedAt: string;
+}
+
+interface AuthenticatedUser {
+  uid: string;
+  email?: string;
+  displayName?: string;
+}
+
+async function upsertAppUser(user: AuthenticatedUser): Promise<void> {
+  await ensureDatabaseSchema();
+  const pool = await getPool();
+  await pool.query(
+    `INSERT INTO app_users (firebase_uid, email, display_name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (firebase_uid) DO UPDATE SET
+       email = EXCLUDED.email,
+       display_name = EXCLUDED.display_name,
+       updated_at = NOW()`,
+    [user.uid, user.email || '', user.displayName || ''],
+  );
+}
+
+export async function loadWorkspaceDocument(user: AuthenticatedUser): Promise<CloudWorkspaceDocument | null> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `SELECT payload, updated_at
+     FROM workspace_documents
+     WHERE firebase_uid = $1 AND document_type = 'workspace'`,
+    [user.uid],
+  );
+  if (!result.rows[0]) return null;
+  return {
+    payload: result.rows[0].payload || {},
+    updatedAt: new Date(result.rows[0].updated_at).toISOString(),
+  };
+}
+
+export async function saveWorkspaceDocument(
+  user: AuthenticatedUser,
+  payload: Record<string, unknown>,
+): Promise<CloudWorkspaceDocument> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `INSERT INTO workspace_documents (firebase_uid, document_type, payload, updated_at)
+     VALUES ($1, 'workspace', $2::jsonb, NOW())
+     ON CONFLICT (firebase_uid, document_type) DO UPDATE SET
+       payload = EXCLUDED.payload,
+       updated_at = NOW()
+     RETURNING payload, updated_at`,
+    [user.uid, JSON.stringify(payload)],
+  );
+  return {
+    payload: result.rows[0].payload || {},
+    updatedAt: new Date(result.rows[0].updated_at).toISOString(),
+  };
+}
+
+export async function migrateOrLoadWorkspace(
+  user: AuthenticatedUser,
+  localPayload: Record<string, unknown>,
+  hasLocalData: boolean,
+): Promise<CloudWorkspaceDocument & { source: 'cloud' | 'migrated' | 'initialized' }> {
+  const existing = await loadWorkspaceDocument(user);
+  if (existing) return { ...existing, source: 'cloud' };
+  const saved = await saveWorkspaceDocument(user, localPayload);
+  return { ...saved, source: hasLocalData ? 'migrated' : 'initialized' };
+}
