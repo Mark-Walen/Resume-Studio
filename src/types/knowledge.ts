@@ -68,6 +68,13 @@ export interface KnowledgeBook {
   createdAt: string;
   updatedAt: string;
   isCustom?: boolean;
+  ownership?: 'community' | 'personal' | 'subscribed';
+  accessModel?: 'free' | 'paid' | 'points';
+  priceCny?: number;
+  pointsRequired?: number;
+  previewSectionIds?: string[];
+  isOfficial?: boolean;
+  isSubscribed?: boolean;
 }
 
 // ================= 根据简历与目标公司JD智能推荐知识点 =================

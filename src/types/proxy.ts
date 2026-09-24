@@ -30,5 +30,7 @@ export interface JdProxyResponse {
   sourceTitle?: string;
   parsedJd: ParsedJdInfo;
   matchAnalysis: JdMatchAnalysis;
+  companyDossier?: CompanyDossier;
   error?: string;
 }
+import { CompanyDossier } from './job';

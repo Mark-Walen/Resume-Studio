@@ -59,6 +59,7 @@ import {
   FileEdit
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
+import { FeedbackModal } from './components/common/FeedbackModal';
 
 function createBlankResume(index: number): ResumeData {
   const now = new Date().toISOString();
@@ -144,6 +145,7 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportInitialTab, setExportInitialTab] = useState<'export' | 'email'>('export');
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<InterviewRecord | null>(null);
   const [initialInterviewCompany, setInitialInterviewCompany] = useState<string | undefined>();
@@ -405,6 +407,7 @@ export default function App() {
         saveStatus={saveStatus}
         userName={user?.displayName || user?.email || '用户'}
         onSignOut={() => void signOutUser()}
+        onOpenFeedback={() => setIsFeedbackOpen(true)}
       />
 
       {!workspaceReady && (
@@ -681,6 +684,12 @@ export default function App() {
       <ApiKeyModal
         isOpen={isApiKeyOpen}
         onClose={() => setIsApiKeyOpen(false)}
+      />
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        pageContext={currentTab}
       />
 
       <InterviewModal

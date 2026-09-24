@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   BrainCircuit,
@@ -55,6 +56,13 @@ export const JobCommunicationModal: React.FC<JobCommunicationModalProps> = ({
     setActiveRecordId(null);
     setRecords(application.communicationRecords || []);
   }, [application.id, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [isOpen]);
 
   const canSave = Boolean(advice && editedAnswer.trim());
   const jobContext = useMemo(
@@ -143,9 +151,9 @@ export const JobCommunicationModal: React.FC<JobCommunicationModalProps> = ({
     showAppMessage('沟通回答已删除。', 'success');
   };
 
-  return (
-    <div className="fixed inset-0 z-[180] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="job-communication-title">
-      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+  return createPortal((
+    <div className="fixed inset-0 z-[300] isolate flex items-center justify-center overflow-hidden bg-slate-950/70 p-2 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="job-communication-title">
+      <div className="flex h-[min(920px,calc(100dvh-1rem))] w-full max-w-6xl min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-700 dark:bg-slate-950 sm:h-[min(920px,calc(100dvh-2.5rem))]">
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex min-w-0 items-start gap-3">
             <div className="rounded-xl bg-blue-50 p-2.5 text-[#0071e3] dark:bg-blue-950/50">
@@ -161,8 +169,8 @@ export const JobCommunicationModal: React.FC<JobCommunicationModalProps> = ({
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[270px_minmax(0,1fr)]">
-          <aside className="min-h-0 overflow-y-auto border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 lg:border-b-0 lg:border-r">
+        <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)]">
+          <aside className="max-h-64 min-h-0 min-w-0 overflow-y-auto border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 lg:max-h-none lg:border-b-0 lg:border-r">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">常见问题</h3>
             <div className="mt-2 space-y-1.5">
               {PRESET_QUESTIONS.map((item, index) => (
@@ -198,7 +206,7 @@ export const JobCommunicationModal: React.FC<JobCommunicationModalProps> = ({
             </div>
           </aside>
 
-          <main className="min-h-0 overflow-y-auto p-4 sm:p-6">
+          <main className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-200" htmlFor="job-communication-question">对方问了什么？</label>
             <textarea
               id="job-communication-question"
@@ -299,5 +307,5 @@ export const JobCommunicationModal: React.FC<JobCommunicationModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 };

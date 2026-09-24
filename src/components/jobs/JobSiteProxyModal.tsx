@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ResumeData } from '../../types/resume';
-import { JobApplication } from '../../types/job';
+import { CompanyDossier, JobApplication } from '../../types/job';
 import { ParsedJdInfo, JdMatchAnalysis } from '../../types/proxy';
 import { fetchAndAnalyzeJd } from '../../services/geminiService';
 import { sanitizeExternalUrl } from '../../utils/security';
@@ -50,6 +50,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
     matchAnalysis: JdMatchAnalysis;
     extractionMethod?: 'pasted-text' | 'http' | 'browser';
     sourceTitle?: string;
+    companyDossier?: CompanyDossier;
   } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isAddedSuccess, setIsAddedSuccess] = useState(false);
@@ -137,9 +138,10 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
         `【AI 自荐信】\n${matchAnalysis.customizedCoverLetter || '暂无'}`
       ].join('\n\n'),
       companyDossier: {
-        teamAndTechStack: [...requiredSkills, ...bonusSkills].join(' · '),
-        keyInterviewStyle: matchAnalysis.recommendedInterviewPrep.join('\n'),
-        riskAlerts: matchAnalysis.potentialGaps,
+        ...(result.companyDossier || {}),
+        teamAndTechStack: result.companyDossier?.teamAndTechStack || [...requiredSkills, ...bonusSkills].join(' · '),
+        keyInterviewStyle: result.companyDossier?.keyInterviewStyle || matchAnalysis.recommendedInterviewPrep.join('\n'),
+        riskAlerts: result.companyDossier?.riskAlerts?.length ? result.companyDossier.riskAlerts : matchAnalysis.potentialGaps,
         collectedLinks: sourceUrl ? [{ id: `source-${Date.now()}`, title: result.sourceTitle || '原招聘页面', url: sourceUrl }] : [],
         updatedAt: today
       },
@@ -419,6 +421,20 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                   </ul>
                 </div>
               </div>
+
+              {result.companyDossier && (
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-3 dark:border-cyan-900/60 dark:bg-cyan-950/20">
+                  <div className="flex items-center gap-1.5 font-bold text-cyan-900 dark:text-cyan-200"><Building2 className="h-4 w-4" />企业初步背调（基于招聘页证据）</div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 text-[11px] leading-5 text-cyan-950 dark:text-cyan-100 sm:grid-cols-2">
+                    {result.companyDossier.hrIntro && <div><b>业务与招聘背景：</b>{result.companyDossier.hrIntro}</div>}
+                    {result.companyDossier.teamAndTechStack && <div><b>团队与技术栈：</b>{result.companyDossier.teamAndTechStack}</div>}
+                    {result.companyDossier.reputationAndWorkLife && <div><b>工作方式与福利：</b>{result.companyDossier.reputationAndWorkLife}</div>}
+                    {result.companyDossier.keyInterviewStyle && <div><b>面试关注推断：</b>{result.companyDossier.keyInterviewStyle}</div>}
+                  </div>
+                  {!!result.companyDossier.riskAlerts?.length && <ul className="mt-2 list-disc space-y-1 border-t border-cyan-200/70 pt-2 pl-4 text-[11px] text-cyan-900 dark:border-cyan-800 dark:text-cyan-200">{result.companyDossier.riskAlerts.map((risk, index) => <li key={`${risk}-${index}`}>{risk}</li>)}</ul>}
+                  <p className="mt-2 text-[10px] text-cyan-700 dark:text-cyan-300">未接入权威工商和员工评价数据源的信息会明确标为待核实，不作为事实断言。</p>
+                </div>
+              )}
 
               {/* Recommended Interview Prep */}
               {result.matchAnalysis.recommendedInterviewPrep && result.matchAnalysis.recommendedInterviewPrep.length > 0 && (

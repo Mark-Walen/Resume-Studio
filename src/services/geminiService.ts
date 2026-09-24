@@ -8,7 +8,7 @@ import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
 import { getActiveAiProfile, getCustomApiKey } from '../utils/db';
 import { auth } from './firebase';
 import { ModelProviderType } from '../types/aiProvider';
-import { JobApplication, JobCommunicationAdvice } from '../types/job';
+import { CompanyDossier, JobApplication, JobCommunicationAdvice } from '../types/job';
 
 const PROVIDER_IDS: Record<ModelProviderType, string> = {
   claude: 'anthropic',
@@ -207,6 +207,7 @@ export async function fetchAndAnalyzeJd(params: {
 }): Promise<{
   parsedJd: ParsedJdInfo;
   matchAnalysis: JdMatchAnalysis;
+  companyDossier?: CompanyDossier;
   extractionMethod?: 'pasted-text' | 'http' | 'browser';
   sourceTitle?: string;
 }> {
@@ -230,6 +231,7 @@ export async function fetchAndAnalyzeJd(params: {
       return {
         parsedJd: json.parsedJd,
         matchAnalysis: json.matchAnalysis,
+        companyDossier: json.companyDossier,
         extractionMethod: json.extractionMethod,
         sourceTitle: json.sourceTitle,
       };

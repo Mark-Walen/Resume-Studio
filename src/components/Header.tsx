@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FileText,
   Briefcase,
@@ -11,10 +11,14 @@ import {
   LogOut,
   Cloud,
   CloudCheck,
-  LoaderCircle
+  LoaderCircle,
+  ChevronDown,
+  MessageSquareText,
+  UserRound
 } from 'lucide-react';
 import { ThemeToggle } from './common/ThemeToggle';
 import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
+import { APP_COPYRIGHT, APP_VERSION } from '../config/appMeta';
 
 export type MainTab =
   | 'resume'
@@ -33,6 +37,7 @@ interface HeaderProps {
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   userName: string;
   onSignOut: () => void;
+  onOpenFeedback: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -45,7 +50,19 @@ export const Header: React.FC<HeaderProps> = ({
   saveStatus,
   userName,
   onSignOut,
+  onOpenFeedback,
 }) => {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) setIsUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 w-full min-w-0 overflow-visible bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 font-sans transition-colors">
       <div className="max-w-[1720px] w-full min-w-0 mx-auto px-3 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2 xl:gap-4">
@@ -175,19 +192,37 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Theme Toggle Button */}
           <ThemeToggle />
 
-          <div className="hidden 2xl:flex max-w-36 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5" title={userName}>
-            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950 text-[10px] font-black uppercase text-blue-700 dark:text-blue-300">
-              {userName.slice(0, 1)}
-            </span>
-            <span className="truncate text-[11px] font-bold text-slate-600 dark:text-slate-300">{userName}</span>
+          <div ref={userMenuRef} className="relative flex-shrink-0">
+            <button
+              id="btn-user-menu"
+              type="button"
+              onClick={() => setIsUserMenuOpen(value => !value)}
+              className="flex max-w-44 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-600 transition-colors hover:border-blue-200 hover:text-[#0071e3] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              aria-expanded={isUserMenuOpen}
+              title={userName}
+            >
+              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[10px] font-black uppercase text-blue-700 dark:bg-blue-950 dark:text-blue-300">{userName.slice(0, 1)}</span>
+              <span className="hidden max-w-24 truncate text-[11px] font-bold 2xl:inline">{userName}</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isUserMenuOpen && (
+              <div className="absolute right-0 top-full z-[90] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 px-2.5 py-2.5 dark:border-slate-800">
+                  <UserRound className="h-4 w-4 text-[#0071e3]" />
+                  <div className="min-w-0"><div className="text-[10px] text-slate-400">当前账户</div><div className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">{userName}</div></div>
+                </div>
+                <button type="button" onClick={() => { setIsUserMenuOpen(false); onOpenFeedback(); }} className="mt-1 flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <MessageSquareText className="h-4 w-4 text-[#0071e3]" />问题反馈
+                </button>
+                <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 dark:text-slate-300 dark:hover:bg-red-950/40">
+                  <LogOut className="h-4 w-4" />退出登录
+                </button>
+                <div className="mt-1 border-t border-slate-100 px-2.5 py-2 text-[10px] leading-4 text-slate-400 dark:border-slate-800">
+                  <div>{APP_COPYRIGHT}</div><div>Version {APP_VERSION}</div>
+                </div>
+              </div>
+            )}
           </div>
-          <button
-            onClick={onSignOut}
-            className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors border border-slate-200 dark:border-slate-800"
-            title="退出登录"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
 

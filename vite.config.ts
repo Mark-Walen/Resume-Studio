@@ -8,13 +8,15 @@ import { applicationDefault, getApps as getAdminApps, initializeApp as initializ
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import {
   getDatabaseStatus,
+  createUserFeedback,
+  listUserFeedback,
   loadWorkspaceDocument,
   migrateOrLoadWorkspace,
   saveWorkspaceDocument,
 } from './server/database.ts';
 import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
 import { createMediaUploadSession, getMediaFile } from './server/storage.ts';
-import { extractJobPageWithBrowser, validatePublicJobUrl } from './server/browser.ts';
+import { cleanJobPageText, extractJobPageWithBrowser, validatePublicJobUrl } from './server/browser.ts';
 
 dotenv.config();
 
@@ -284,6 +286,48 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '保存云端工作区失败。' }));
         }
+        return;
+      }
+
+      if (url === '/api/feedback' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const subject = String(body.subject || '').trim().slice(0, 160);
+          const message = String(body.message || '').trim().slice(0, 8000);
+          const category = ['bug', 'suggestion', 'content', 'account', 'other'].includes(body.category) ? body.category : 'suggestion';
+          if (!subject || message.length < 5) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: '请填写反馈标题和至少 5 个字的详细说明。' }));
+            return;
+          }
+          const result = await createUserFeedback(req.authUser, {
+            category,
+            subject,
+            message,
+            pageContext: String(body.pageContext || '').slice(0, 500),
+          });
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, data: result }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message || '反馈提交失败' }));
+        }
+        return;
+      }
+
+      if (url === '/api/admin/feedback' && req.method === 'GET') {
+        const admins = String(process.env.ADMIN_EMAILS || '').split(',').map(item => item.trim().toLowerCase()).filter(Boolean);
+        if (!req.authUser.email || !admins.includes(String(req.authUser.email).toLowerCase())) {
+          res.statusCode = 403;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: '没有管理员权限。' }));
+          return;
+        }
+        const records = await listUserFeedback(100);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ success: true, data: records }));
         return;
       }
 
@@ -776,9 +820,10 @@ ${JSON.stringify(interviews, null, 2)}`;
           }
 
           // Combine fetched text with any raw JD text provided by the user
-          const combinedJdSource = (rawJdText && rawJdText.trim().length > 0)
+          const rawCombinedJdSource = (rawJdText && rawJdText.trim().length > 0)
             ? rawJdText
             : (fetchedHtmlOrText || '');
+          const combinedJdSource = cleanJobPageText(rawCombinedJdSource, targetUrl || '', sourceTitle);
 
           if (!combinedJdSource || combinedJdSource.trim().length < 20) {
             res.statusCode = 400;
@@ -831,6 +876,14 @@ ${JSON.stringify(interviews, null, 2)}`;
       "面试突击考点1：该岗位必问技术",
       "面试突击考点2"
     ]
+  },
+  "companyDossier": {
+    "hrIntro": "基于当前招聘页面证据整理的企业业务、规模与招聘背景；资料不足必须明确注明",
+    "teamAndTechStack": "从岗位信息中提炼的团队协作关系、产品方向和技术栈",
+    "reputationAndWorkLife": "仅记录页面明确提供的工作时间、福利和办公信息，不得虚构员工评价",
+    "keyInterviewStyle": "根据岗位职责推断的面试关注方向，必须标注为推断",
+    "reverseQuestions": ["建议向招聘方核实的问题"],
+    "riskAlerts": ["信息缺口、职责边界或招聘描述中值得核实的风险"]
   }
 }`;
 
@@ -861,6 +914,7 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
             sourceTitle,
             parsedJd: result.parsedJd,
             matchAnalysis: result.matchAnalysis,
+            companyDossier: result.companyDossier || {},
           }));
         } catch (err: any) {
           console.error('Error in proxy-jd:', err);
