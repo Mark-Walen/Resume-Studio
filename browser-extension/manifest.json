@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Resume Pilot 岗位导入器",
+  "version": "1.0.0",
+  "description": "读取当前用户已打开的招聘页面，复制可见职位内容到 Resume Pilot。",
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "action": {
+    "default_title": "导入当前岗位",
+    "default_popup": "popup.html"
+  }
+}

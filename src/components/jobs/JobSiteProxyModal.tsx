@@ -22,7 +22,10 @@ import {
   FileCheck,
   BookmarkPlus,
   HelpCircle,
-  X
+  X,
+  ClipboardPaste,
+  Monitor,
+  Server
 } from 'lucide-react';
 
 interface JobSiteProxyModalProps {
@@ -45,6 +48,8 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
   const [result, setResult] = useState<{
     parsedJd: ParsedJdInfo;
     matchAnalysis: JdMatchAnalysis;
+    extractionMethod?: 'pasted-text' | 'http' | 'browser';
+    sourceTitle?: string;
   } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isAddedSuccess, setIsAddedSuccess] = useState(false);
@@ -60,6 +65,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
     }
 
     setErrorMsg(null);
+    setResult(null);
     setIsLoading(true);
     setIsAddedSuccess(false);
 
@@ -74,6 +80,18 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
     } catch (err: any) {
       setIsLoading(false);
       setErrorMsg(err.message || '抓取或分析岗位信息失败，请检查网络或在右上角配置通用 API Key');
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) throw new Error('剪贴板中没有可用文本。');
+      setRawJdInput(text.slice(0, 50_000));
+      setErrorMsg(null);
+      setResult(null);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : '无法读取剪贴板，请允许剪贴板权限或手动粘贴。');
     }
   };
 
@@ -168,9 +186,20 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
-                  或直接粘贴招聘 JD 文本：
-                </label>
+                <div>
+                  <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
+                    浏览器辅助导入 / 直接粘贴 JD：
+                  </label>
+                  <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">遇到登录或验证码时，在原页面复制可见职位内容，再从剪贴板导入。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-[#0071e3] hover:text-[#0071e3] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  读取剪贴板
+                </button>
                 {(urlInput || rawJdInput) && (
                   <button
                     onClick={() => { setUrlInput(''); setRawJdInput(''); setResult(null); }}
@@ -214,6 +243,13 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
           {/* Analysis Result */}
           {result && (
             <div className="space-y-4 animate-in fade-in">
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                {result.extractionMethod === 'browser' ? <Monitor className="h-4 w-4" /> : <Server className="h-4 w-4" />}
+                <span className="font-semibold">
+                  {result.extractionMethod === 'browser' ? '已通过云端 Chromium 读取页面' : result.extractionMethod === 'pasted-text' ? '已使用浏览器辅助导入内容' : '已通过服务器读取静态页面'}
+                </span>
+                {result.sourceTitle && <span className="truncate text-emerald-700/80 dark:text-emerald-400/80">· {result.sourceTitle}</span>}
+              </div>
               {/* Job Header Card */}
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="space-y-1">

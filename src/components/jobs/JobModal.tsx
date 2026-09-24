@@ -1,6 +1,33 @@
 import React, { useState } from 'react';
 import { JobApplication, ApplicationStatus } from '../../types/job';
-import { X, Building2, Briefcase, DollarSign, MapPin, Calendar, UserCheck } from 'lucide-react';
+import {
+  X,
+  Building2,
+  Bookmark,
+  Send,
+  Search,
+  Mic,
+  Trophy,
+  Archive,
+  Flame,
+  Zap,
+  Sprout,
+} from 'lucide-react';
+
+const STATUS_OPTIONS = [
+  { value: 'wishlist', label: '预投递目标', icon: Bookmark },
+  { value: 'applied', label: '已投递简历', icon: Send },
+  { value: 'screening', label: '简历筛选通过', icon: Search },
+  { value: 'interviewing', label: '面试中', icon: Mic },
+  { value: 'offer', label: '已拿 Offer', icon: Trophy },
+  { value: 'rejected', label: '未通过/归档', icon: Archive },
+] as const;
+
+const PRIORITY_OPTIONS = [
+  { value: 'high', label: '重点关注', hint: '高', icon: Flame },
+  { value: 'medium', label: '常规意向', hint: '中', icon: Zap },
+  { value: 'low', label: '储备兜底', hint: '低', icon: Sprout },
+] as const;
 
 interface JobModalProps {
   isOpen: boolean;
@@ -95,34 +122,49 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="space-y-3">
+            <fieldset>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">投递状态</label>
-              <select
-                value={formData.status}
-                onChange={e => setFormData({ ...formData, status: e.target.value as ApplicationStatus })}
-                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#0071e3]"
-              >
-                <option value="wishlist">🎯 预投递目标</option>
-                <option value="applied">📨 已投递简历</option>
-                <option value="screening">🔎 简历筛选通过</option>
-                <option value="interviewing">🎙️ 面试中</option>
-                <option value="offer">🎉 已拿 Offer</option>
-                <option value="rejected">📁 未通过/归档</option>
-              </select>
-            </div>
-            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {STATUS_OPTIONS.map(option => {
+                  const Icon = option.icon;
+                  const selected = formData.status === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setFormData({ ...formData, status: option.value })}
+                      className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-left font-semibold transition-colors ${selected ? 'border-[#0071e3] bg-blue-50 text-[#0071e3] dark:bg-blue-950/40' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <fieldset>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">意向优先级</label>
-              <select
-                value={formData.priority}
-                onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
-                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#0071e3]"
-              >
-                <option value="high">🔥 重点关注 (高)</option>
-                <option value="medium">⚡ 常规意向 (中)</option>
-                <option value="low">🌱 储备兜底 (低)</option>
-              </select>
-            </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {PRIORITY_OPTIONS.map(option => {
+                  const Icon = option.icon;
+                  const selected = formData.priority === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setFormData({ ...formData, priority: option.value })}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 font-semibold transition-colors ${selected ? 'border-[#0071e3] bg-blue-50 text-[#0071e3] dark:bg-blue-950/40' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{option.label} ({option.hint})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

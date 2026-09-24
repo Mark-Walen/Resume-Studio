@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resume Pilot 岗位导入器</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <div class="brand">RP</div>
+      <div>
+        <h1>导入当前岗位</h1>
+        <p>先在招聘网站完成登录或安全验证，再读取页面中已显示的文字。</p>
+      </div>
+      <button id="capture" type="button">读取并复制岗位内容</button>
+      <button id="open" class="secondary" type="button">打开 Resume Pilot</button>
+      <div id="status" role="status" aria-live="polite"></div>
+      <small>扩展不读取密码、Cookie 或其他标签页。</small>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

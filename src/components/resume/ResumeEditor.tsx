@@ -940,9 +940,10 @@ interface ModalWrapperProps {
   subtitle?: string;
   children: React.ReactNode;
   onClose: () => void;
+  hideFooter?: boolean;
 }
 
-const ModalWrapper: React.FC<ModalWrapperProps> = ({ title, subtitle, children, onClose }) => {
+const ModalWrapper: React.FC<ModalWrapperProps> = ({ title, subtitle, children, onClose, hideFooter = false }) => {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
@@ -963,14 +964,14 @@ const ModalWrapper: React.FC<ModalWrapperProps> = ({ title, subtitle, children, 
           {children}
         </div>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 flex justify-end gap-2.5">
+        {!hideFooter && <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 flex justify-end gap-2.5">
           <button
             onClick={onClose}
             className="px-5 py-2 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold transition-colors shadow-xs cursor-pointer"
           >
             保存并应用
           </button>
-        </div>
+        </div>}
       </div>
     </div>
   );
@@ -1542,6 +1543,7 @@ const CustomSectionModal: React.FC<{
       title="编辑自定义模块"
       subtitle="自定义模块标题与富文本正文，支持任意定制扩展"
       onClose={onClose}
+      hideFooter
     >
       <div className="space-y-4">
         <div>

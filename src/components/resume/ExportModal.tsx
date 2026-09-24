@@ -3,6 +3,7 @@ import { ResumeData } from '../../types/resume';
 import {
   exportToWord,
   exportToMarkdown,
+  exportToShareJson,
   exportToPdf,
   exportToNativePrint,
   generateMailToLink
@@ -19,7 +20,8 @@ import {
   ExternalLink,
   Loader2,
   Sparkles,
-  Info
+  Info,
+  Share2
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -148,7 +150,7 @@ ${resume.personalInfo.fullName}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {activeTab === 'export'
-                ? '支持矢量高清 PDF、Word 文档、Markdown 纯文本与系统原生物理打印'
+                ? '支持 PDF、Word、用户共享数据和 Agent 可读 Markdown'
                 : '一键生成自荐信并调起邮件客户端直接发送，不导出 PDF'}
             </p>
           </div>
@@ -267,8 +269,8 @@ ${resume.personalInfo.fullName}
                     MD
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">纯文本 Markdown (.md)</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">标准 GitHub 风格排版，适用于技术博客与主页展示</p>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Agent 可读 Markdown (.md)</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">稳定标题与字段结构，适合交给 AI Agent 阅读和分析</p>
                   </div>
                 </div>
                 <button
@@ -276,7 +278,26 @@ ${resume.personalInfo.fullName}
                   onClick={() => exportToMarkdown(resume)}
                   className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex-shrink-0 cursor-pointer"
                 >
-                  下载 Markdown
+                  下载 Agent 版
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-[#0071e3] dark:hover:border-[#0071e3] transition-all flex items-center justify-between gap-3 bg-white dark:bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Resume Pilot 用户共享包</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">导出完整结构数据，其他用户可直接导入继续编辑</p>
+                  </div>
+                </div>
+                <button
+                  id="btn-export-share"
+                  onClick={() => exportToShareJson(resume)}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex-shrink-0 cursor-pointer"
+                >
+                  导出共享包
                 </button>
               </div>
             </div>

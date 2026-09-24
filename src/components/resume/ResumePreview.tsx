@@ -26,20 +26,39 @@ import { sanitizeImageUrl } from '../../utils/security';
 interface ResumePreviewProps {
   resume: ResumeData;
   templateId: ResumeTemplateId;
+  sortByDate?: boolean;
 }
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId }) => {
+function dateRank(value?: string, current = false): number {
+  if (current || !value || /(至今|现在|present|current)/i.test(value)) return Number.MAX_SAFE_INTEGER;
+  const matched = value.match(/(19|20)\d{2}(?:[-/.](\d{1,2}))?/);
+  if (!matched) return 0;
+  return Number(matched[0].slice(0, 4)) * 12 + Number(matched[2] || 1);
+}
+
+function newestFirst<T extends { startDate?: string; endDate?: string; current?: boolean; date?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const endDifference = dateRank(b.endDate || b.date, b.current) - dateRank(a.endDate || a.date, a.current);
+    return endDifference || dateRank(b.startDate) - dateRank(a.startDate);
+  });
+}
+
+export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId, sortByDate = true }) => {
   const {
     personalInfo: rawPersonalInfo,
     jobIntent,
     summary,
     skills = [],
-    workExperience = [],
-    projects = [],
-    education = [],
-    certificates = [],
+    workExperience: rawWorkExperience = [],
+    projects: rawProjects = [],
+    education: rawEducation = [],
+    certificates: rawCertificates = [],
     customSections = []
   } = resume;
+  const workExperience = sortByDate ? newestFirst(rawWorkExperience) : rawWorkExperience;
+  const projects = sortByDate ? newestFirst(rawProjects) : rawProjects;
+  const education = sortByDate ? newestFirst(rawEducation) : rawEducation;
+  const certificates = sortByDate ? newestFirst(rawCertificates) : rawCertificates;
   const personalInfo = { ...rawPersonalInfo, avatarUrl: sanitizeImageUrl(rawPersonalInfo.avatarUrl) };
 
   // Active section ordering & visibility

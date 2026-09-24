@@ -148,26 +148,27 @@ export function exportToMarkdown(resume: ResumeData): void {
   resume = escapeResumeForHtml(resume);
   const lines: string[] = [];
 
+  lines.push('<!-- Resume Pilot Agent Resume v1 -->');
   lines.push(`# ${resume.personalInfo.fullName}`);
   lines.push(`**${resume.personalInfo.jobTitle}**\n`);
-  lines.push(`- 📧 **邮箱**: ${resume.personalInfo.email}`);
-  lines.push(`- 📱 **电话**: ${resume.personalInfo.phone}`);
-  lines.push(`- 📍 **城市**: ${resume.personalInfo.location}`);
-  if (safeLinks.website) lines.push(`- 🌐 **个人主页**: [${escapeHtml(safeLinks.website)}](${safeLinks.website})`);
-  if (safeLinks.github) lines.push(`- 💻 **GitHub**: [${escapeHtml(safeLinks.github)}](${safeLinks.github})`);
-  if (safeLinks.linkedin) lines.push(`- 💼 **LinkedIn**: [${escapeHtml(safeLinks.linkedin)}](${safeLinks.linkedin})`);
+  lines.push(`- **邮箱**: ${resume.personalInfo.email}`);
+  lines.push(`- **电话**: ${resume.personalInfo.phone}`);
+  lines.push(`- **城市**: ${resume.personalInfo.location}`);
+  if (safeLinks.website) lines.push(`- **个人主页**: [${escapeHtml(safeLinks.website)}](${safeLinks.website})`);
+  if (safeLinks.github) lines.push(`- **GitHub**: [${escapeHtml(safeLinks.github)}](${safeLinks.github})`);
+  if (safeLinks.linkedin) lines.push(`- **LinkedIn**: [${escapeHtml(safeLinks.linkedin)}](${safeLinks.linkedin})`);
   lines.push('\n---\n');
 
-  lines.push(`## 📌 个人优势与专业总结\n`);
+  lines.push(`## 个人优势与专业总结\n`);
   lines.push(`${resume.summary}\n`);
 
-  lines.push(`## 🛠 专业技能\n`);
+  lines.push(`## 专业技能\n`);
   resume.skills.forEach(s => {
     lines.push(`- **${s.category}**: ${s.skills.join('、')}`);
   });
   lines.push('\n');
 
-  lines.push(`## 💼 工作经历\n`);
+  lines.push(`## 工作经历\n`);
   resume.workExperience.forEach(exp => {
     lines.push(`### ${exp.company} | ${exp.position} (${exp.startDate} ~ ${exp.endDate})`);
     if (exp.department) lines.push(`*部门: ${exp.department} | 坐标: ${exp.location || '在职'}*`);
@@ -178,7 +179,7 @@ export function exportToMarkdown(resume: ResumeData): void {
     lines.push('');
   });
 
-  lines.push(`## 🚀 核心项目经历\n`);
+  lines.push(`## 核心项目经历\n`);
   resume.projects.forEach(proj => {
     lines.push(`### ${proj.name} (${proj.role})`);
     lines.push(`*周期: ${proj.startDate} ~ ${proj.endDate}*`);
@@ -187,7 +188,7 @@ export function exportToMarkdown(resume: ResumeData): void {
     lines.push(`\n**核心架构**: ${proj.techStack.join(' · ')}\n`);
   });
 
-  lines.push(`## 🎓 教育背景\n`);
+  lines.push(`## 教育背景\n`);
   resume.education.forEach(edu => {
     lines.push(`- **${edu.school}** | ${edu.degree} · ${edu.major} (${edu.startDate} ~ ${edu.endDate})`);
     if (edu.gpa) lines.push(`  - 成绩绩点: ${edu.gpa}`);
@@ -195,7 +196,7 @@ export function exportToMarkdown(resume: ResumeData): void {
   });
 
   if (resume.certificates.length > 0) {
-    lines.push(`\n## 🏆 荣誉认证\n`);
+    lines.push(`\n## 荣誉认证\n`);
     resume.certificates.forEach(c => {
       lines.push(`- **${c.name}** - ${c.issuer} (${c.date})`);
     });
@@ -562,4 +563,27 @@ ${params.candidateName}
   const body = encodeURIComponent(params.customBody || defaultBody);
   const recipient = encodeURIComponent(params.recipientEmail.trim().replace(/[\r\n]/g, ''));
   return `mailto:${recipient}?subject=${subject}&body=${body}`;
+}
+
+/**
+ * 导出可在不同 Resume Pilot 用户之间导入的无执行数据文件。
+ */
+export function exportToShareJson(resume: ResumeData): void {
+  const payload = {
+    format: 'resume-pilot.resume',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    resume,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${resume.personalInfo.fullName || resume.title || '未命名简历'}_ResumePilot.resume.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

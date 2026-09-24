@@ -98,6 +98,7 @@ export default function App() {
   });
   const [templateId, setTemplateId] = useState<ResumeTemplateId>('modern');
   const [resumeViewMode, setResumeViewMode] = useState<'split' | 'edit' | 'preview'>('split');
+  const [sortResumeByDate, setSortResumeByDate] = useState(true);
 
   // Jobs Pipeline State
   const [jobs, setJobs] = useState<JobApplication[]>(() => {
@@ -264,21 +265,44 @@ export default function App() {
     }
   }, [diagnosticReport, workspaceReady]);
 
-  const handleImportResumeSuccess = (imported: Partial<ResumeData>) => {
-    setResume((prev) => ({
-      ...prev,
-      ...imported,
-      personalInfo: {
-        ...prev.personalInfo,
-        ...(imported.personalInfo || {}),
-      },
-      skills: imported.skills || prev.skills,
-      workExperience: imported.workExperience || prev.workExperience,
-      projects: imported.projects || prev.projects,
-      education: imported.education || prev.education,
-      certificates: imported.certificates || prev.certificates,
-      customSections: imported.customSections || prev.customSections,
-    }));
+  const handleImportResumeSuccess = (imported: ResumeData, mergeMode: 'replace' | 'merge') => {
+    setResume((prev) => {
+      if (mergeMode === 'replace') {
+        return {
+          ...imported,
+          id: activeResumeId,
+          title: imported.title || prev.title,
+          lastModified: new Date().toISOString(),
+        };
+      }
+
+      const importedId = (prefix: string, id?: string) => `${prefix}-${Date.now()}-${id || Math.random().toString(36).slice(2, 8)}`;
+      const importedCustomSections = (imported.customSections || []).map(item => ({ ...item, id: importedId('custom', item.id) }));
+      const currentSectionOrder = prev.sectionOrder || [
+        'workExperience',
+        'projects',
+        'skills',
+        'education',
+        'certificates',
+        ...(prev.customSections || []).map(item => item.id),
+      ];
+      return {
+        ...prev,
+        summary: [prev.summary, imported.summary].filter(Boolean).join('\n\n'),
+        skills: [...prev.skills, ...(imported.skills || []).map(item => ({ ...item, id: importedId('skill', item.id) }))],
+        workExperience: [...prev.workExperience, ...(imported.workExperience || []).map(item => ({ ...item, id: importedId('work', item.id) }))],
+        projects: [...prev.projects, ...(imported.projects || []).map(item => ({ ...item, id: importedId('project', item.id) }))],
+        education: [...prev.education, ...(imported.education || []).map(item => ({ ...item, id: importedId('education', item.id) }))],
+        certificates: [...prev.certificates, ...(imported.certificates || []).map(item => ({ ...item, id: importedId('certificate', item.id) }))],
+        customSections: [...(prev.customSections || []), ...importedCustomSections],
+        sectionOrder: [...currentSectionOrder, ...importedCustomSections.map(item => item.id)],
+        sectionVisibility: {
+          ...(prev.sectionVisibility || {}),
+          ...Object.fromEntries(importedCustomSections.map(item => [item.id, true])),
+        },
+        lastModified: new Date().toISOString(),
+      };
+    });
   };
 
   const handleSelectResume = (id: string) => {
@@ -502,6 +526,15 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" title="只调整预览和导出顺序，不改写原始数据">
+                    <input
+                      type="checkbox"
+                      checked={sortResumeByDate}
+                      onChange={event => setSortResumeByDate(event.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-[#0071e3]"
+                    />
+                    按时间倒序
+                  </label>
                   <button
                     onClick={() => {
                       if (confirm('确定重置为您提供的默认优质高阶简历模板吗？')) {
@@ -536,7 +569,7 @@ export default function App() {
               {(resumeViewMode === 'split' || resumeViewMode === 'preview') && (
                 <div className={resumeViewMode === 'split' ? 'lg:col-span-7' : 'lg:col-span-12'}>
                   <div className="sticky top-20">
-                    <ResumePreview resume={resume} templateId={templateId} />
+                    <ResumePreview resume={resume} templateId={templateId} sortByDate={sortResumeByDate} />
                   </div>
                 </div>
               )}

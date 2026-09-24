@@ -14,6 +14,7 @@ import {
 } from './server/database.ts';
 import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
 import { createMediaUploadSession, getMediaFile } from './server/storage.ts';
+import { extractJobPageWithBrowser, validatePublicJobUrl } from './server/browser.ts';
 
 dotenv.config();
 
@@ -718,40 +719,59 @@ ${JSON.stringify(interviews, null, 2)}`;
           const { url: targetUrl, rawJdText, currentResume } = body;
 
           let fetchedHtmlOrText = '';
+          let extractionMethod: 'pasted-text' | 'http' | 'browser' = rawJdText ? 'pasted-text' : 'http';
+          let sourceTitle = '';
 
           // If URL is provided, fetch via server-side proxy
-          if (targetUrl && typeof targetUrl === 'string' && targetUrl.startsWith('http')) {
+          if (!rawJdText && targetUrl && typeof targetUrl === 'string') {
             try {
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-              const fetchRes = await fetch(targetUrl, {
-                signal: controller.signal,
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                },
-              });
+              let currentUrl = await validatePublicJobUrl(targetUrl);
+              let fetchRes: Response | undefined;
+              for (let redirectCount = 0; redirectCount <= 4; redirectCount += 1) {
+                fetchRes = await fetch(currentUrl, {
+                  signal: controller.signal,
+                  redirect: 'manual',
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                  },
+                });
+                if (![301, 302, 303, 307, 308].includes(fetchRes.status)) break;
+                const location = fetchRes.headers.get('location');
+                if (!location || redirectCount === 4) throw new Error('招聘页面重定向过多。');
+                currentUrl = await validatePublicJobUrl(new URL(location, currentUrl).toString());
+              }
               clearTimeout(timeoutId);
 
-              if (fetchRes.ok) {
+              if (fetchRes?.ok) {
                 const html = await fetchRes.text();
-                // Strip scripts, styles, and html tags
-                fetchedHtmlOrText = html
-                  .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                  .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-                  .replace(/<(br|p|div|li|tr|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n')
-                  .replace(/<[^>]+>/g, ' ')
-                  .replace(/&nbsp;/g, ' ')
-                  .replace(/&amp;/g, '&')
-                  .replace(/&lt;/g, '<')
-                  .replace(/&gt;/g, '>')
-                  .replace(/\n\s*\n/g, '\n')
-                  .trim();
+                const isChallenge = /\/security\.html|captcha|安全验证|正在加载中|请稍候/i.test(`${currentUrl}\n${html.slice(0, 50_000)}`);
+                if (!isChallenge) {
+                  fetchedHtmlOrText = html
+                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+                    .replace(/<(br|p|div|li|tr|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/&nbsp;/g, ' ')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/\n\s*\n/g, '\n')
+                    .trim();
+                }
               }
             } catch (fetchErr: any) {
               console.warn('Direct fetch proxy failed or timed out:', fetchErr.message);
+            }
+
+            if (fetchedHtmlOrText.trim().length < 80) {
+              const browserResult = await extractJobPageWithBrowser(targetUrl);
+              fetchedHtmlOrText = browserResult.text;
+              sourceTitle = browserResult.title;
+              extractionMethod = 'browser';
             }
           }
 
@@ -837,6 +857,8 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
           res.end(JSON.stringify({
             success: true,
             rawTextLength: combinedJdSource.length,
+            extractionMethod,
+            sourceTitle,
             parsedJd: result.parsedJd,
             matchAnalysis: result.matchAnalysis,
           }));

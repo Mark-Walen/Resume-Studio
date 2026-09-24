@@ -206,6 +206,8 @@ export async function fetchAndAnalyzeJd(params: {
 }): Promise<{
   parsedJd: ParsedJdInfo;
   matchAnalysis: JdMatchAnalysis;
+  extractionMethod?: 'pasted-text' | 'http' | 'browser';
+  sourceTitle?: string;
 }> {
   const customKey = getCustomApiKey();
 
@@ -226,13 +228,15 @@ export async function fetchAndAnalyzeJd(params: {
     if (json.success && json.parsedJd && json.matchAnalysis) {
       return {
         parsedJd: json.parsedJd,
-        matchAnalysis: json.matchAnalysis
+        matchAnalysis: json.matchAnalysis,
+        extractionMethod: json.extractionMethod,
+        sourceTitle: json.sourceTitle,
       };
     }
     throw new Error(json.error || '职位代理或匹配分析异常');
   } catch (err: any) {
-    console.warn('API fetchAndAnalyzeJd failed, using heuristic fallback:', err);
-    return fallbackAnalyzeJd(params.url, params.rawJdText, params.currentResume);
+    console.warn('API fetchAndAnalyzeJd failed:', err);
+    throw err instanceof Error ? err : new Error('获取或分析职位信息失败。');
   }
 }
 
