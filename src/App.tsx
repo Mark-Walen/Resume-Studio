@@ -13,6 +13,10 @@ import { WorkDailyLog } from './types/journal';
 import {
   loadResumeData,
   saveResumeData,
+  loadResumeLibrary,
+  saveResumeLibrary,
+  loadActiveResumeId,
+  saveActiveResumeId,
   loadJobApplications,
   saveJobApplications,
   loadInterviewRecords,
@@ -34,6 +38,7 @@ import { migrateOrLoadCloudWorkspace, saveCloudWorkspace } from './services/work
 import { migrateLocalMediaToCloud } from './services/mediaStorageService';
 import { Header, MainTab } from './components/Header';
 import { ResumePreview } from './components/resume/ResumePreview';
+import { ResumeLibraryControls } from './components/resume/ResumeLibraryControls';
 import { ResumeEditor } from './components/resume/ResumeEditor';
 import { ResumeImportModal } from './components/resume/ResumeImportModal';
 import { AiResumeGeneratorModal } from './components/resume/AiResumeGeneratorModal';
@@ -54,6 +59,24 @@ import {
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 
+function createBlankResume(index: number): ResumeData {
+  const now = new Date().toISOString();
+  return {
+    id: `resume-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: `未命名简历 ${index}`,
+    lastModified: now,
+    personalInfo: { fullName: '', jobTitle: '', email: '', phone: '', location: '' },
+    jobIntent: { desiredPosition: '', desiredSalary: '', desiredCity: '', jobStatus: '', workType: '' },
+    summary: '',
+    skills: [],
+    workExperience: [],
+    projects: [],
+    education: [],
+    certificates: [],
+    customSections: [],
+  };
+}
+
 export default function App() {
   const { signOutUser, user } = useAuth();
   const hadLocalWorkspaceOnLogin = useRef(hasLocalWorkspaceData()).current;
@@ -66,7 +89,13 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<MainTab>('resume');
 
   // Resume State
-  const [resume, setResume] = useState<ResumeData>(() => loadResumeData(defaultResume));
+  const [resumeLibrary, setResumeLibrary] = useState<ResumeData[]>(() => loadResumeLibrary(defaultResume));
+  const [activeResumeId, setActiveResumeId] = useState<string>(() => loadActiveResumeId(loadResumeLibrary(defaultResume)));
+  const [resume, setResume] = useState<ResumeData>(() => {
+    const library = loadResumeLibrary(defaultResume);
+    const activeId = loadActiveResumeId(library);
+    return library.find(item => item.id === activeId) || loadResumeData(defaultResume);
+  });
   const [templateId, setTemplateId] = useState<ResumeTemplateId>('modern');
   const [resumeViewMode, setResumeViewMode] = useState<'split' | 'edit' | 'preview'>('split');
 
@@ -131,6 +160,8 @@ export default function App() {
         if (cancelled) return;
         const synced = applyCloudWorkspaceSnapshot(result.payload);
         setResume(synced.resume);
+        setResumeLibrary(synced.resumes);
+        setActiveResumeId(synced.activeResumeId);
         setJobs(synced.jobs);
         setInterviews(synced.interviews);
         setDiagnosticReport(synced.diagnosticReport);
@@ -196,8 +227,16 @@ export default function App() {
 
   // Auto persist
   useEffect(() => {
-    if (workspaceReady) saveResumeData(resume);
-  }, [resume, workspaceReady]);
+    if (!workspaceReady) return;
+    const updatedResume = { ...resume, lastModified: new Date().toISOString() };
+    const updatedLibrary = resumeLibrary.some(item => item.id === activeResumeId)
+      ? resumeLibrary.map(item => item.id === activeResumeId ? updatedResume : item)
+      : [...resumeLibrary, updatedResume];
+    setResumeLibrary(updatedLibrary);
+    saveResumeData(updatedResume);
+    saveResumeLibrary(updatedLibrary);
+    saveActiveResumeId(activeResumeId);
+  }, [resume, activeResumeId, workspaceReady]);
 
   useEffect(() => {
     if (workspaceReady) saveJobApplications(jobs);
@@ -240,6 +279,48 @@ export default function App() {
       certificates: imported.certificates || prev.certificates,
       customSections: imported.customSections || prev.customSections,
     }));
+  };
+
+  const handleSelectResume = (id: string) => {
+    const selected = resumeLibrary.find(item => item.id === id);
+    if (!selected || id === activeResumeId) return;
+    setActiveResumeId(id);
+    setResume(selected);
+  };
+
+  const handleCreateResume = () => {
+    const created = createBlankResume(resumeLibrary.length + 1);
+    setResumeLibrary(prev => [...prev, created]);
+    setActiveResumeId(created.id);
+    setResume(created);
+  };
+
+  const handleDuplicateResume = () => {
+    const duplicated: ResumeData = {
+      ...structuredClone(resume),
+      id: `resume-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title: `${resume.title || resume.personalInfo.fullName || '未命名简历'} 副本`,
+      lastModified: new Date().toISOString(),
+    };
+    setResumeLibrary(prev => [...prev, duplicated]);
+    setActiveResumeId(duplicated.id);
+    setResume(duplicated);
+  };
+
+  const handleRenameResume = () => {
+    const nextTitle = prompt('请输入新的简历名称：', resume.title || resume.personalInfo.fullName || '未命名简历')?.trim();
+    if (!nextTitle) return;
+    setResume(prev => ({ ...prev, title: nextTitle }));
+  };
+
+  const handleDeleteResume = () => {
+    if (resumeLibrary.length <= 1) return;
+    if (!confirm(`确定删除“${resume.title || '当前简历'}”吗？`)) return;
+    const remaining = resumeLibrary.filter(item => item.id !== activeResumeId);
+    const next = remaining[0];
+    setResumeLibrary(remaining);
+    setActiveResumeId(next.id);
+    setResume(next);
   };
 
   const handleSaveJob = (job: JobApplication) => {
@@ -319,6 +400,15 @@ export default function App() {
         {/* ================= TAB 1: RESUME STUDIO ================= */}
         {currentTab === 'resume' && (
           <div className="space-y-4">
+            <ResumeLibraryControls
+              resumes={resumeLibrary}
+              activeResumeId={activeResumeId}
+              onSelect={handleSelectResume}
+              onCreate={handleCreateResume}
+              onDuplicate={handleDuplicateResume}
+              onRename={handleRenameResume}
+              onDelete={handleDeleteResume}
+            />
             {/* Template Selector & Toolbar */}
             <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 transition-colors">
               {/* Template Chips */}
@@ -415,7 +505,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       if (confirm('确定重置为您提供的默认优质高阶简历模板吗？')) {
-                        setResume(defaultResume);
+                        setResume({ ...structuredClone(defaultResume), id: activeResumeId, title: resume.title });
                       }
                     }}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"

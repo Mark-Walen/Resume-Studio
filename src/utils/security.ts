@@ -21,6 +21,36 @@ export interface SecurityScanResult {
   scanTimestamp: string;
 }
 
+const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
+
+export function sanitizeExternalUrl(value?: string): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || CONTROL_CHARS.test(trimmed)) return undefined;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function sanitizeImageUrl(value?: string): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (/^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('blob:')) return trimmed;
+  return sanitizeExternalUrl(trimmed);
+}
+
+export function sanitizeMarkdownUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || CONTROL_CHARS.test(trimmed)) return '';
+  if (trimmed.startsWith('#') || trimmed.startsWith('/')) return trimmed;
+  if (/^mailto:/i.test(trimmed)) return trimmed.replace(/[\r\n]/g, '');
+  return sanitizeExternalUrl(trimmed) || '';
+}
+
 // 严禁上传的可执行脚本与危险二进制后缀黑名单
 const BLOCKED_EXTENSIONS = new Set([
   'exe', 'dll', 'so', 'dylib', 'bat', 'cmd', 'sh', 'bash', 'zsh', 'ps1',

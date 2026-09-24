@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   X
 } from 'lucide-react';
+import { sanitizeExternalUrl } from '../utils/security';
 import { JobApplication } from '../types/job';
 
 interface InterviewCalendarViewProps {
@@ -58,13 +59,18 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
     e.preventDefault();
     const app = jobApplications.find((a) => a.id === selectedAppId);
     if (!app) return;
+    const safeMeetingUrl = formMeetingUrl.trim() ? sanitizeExternalUrl(formMeetingUrl) : undefined;
+    if (formMeetingUrl.trim() && !safeMeetingUrl) {
+      alert('会议地址仅支持安全的 HTTP/HTTPS 链接。');
+      return;
+    }
 
     const updated: JobApplication = {
       ...app,
       scheduledInterviewDate: formDate,
       scheduledInterviewRound: formRound,
       scheduledInterviewFormat: formFormat,
-      scheduledInterviewMeetingUrl: formMeetingUrl.trim(),
+      scheduledInterviewMeetingUrl: safeMeetingUrl,
       scheduledInterviewReminderMinutes: formReminderEnabled ? formReminderMinutes : undefined,
       updatedAt: new Date().toISOString().split('T')[0]
     };
@@ -165,7 +171,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
 
               {nextInterview.scheduledInterviewMeetingUrl && (
                 <a
-                  href={nextInterview.scheduledInterviewMeetingUrl}
+                  href={sanitizeExternalUrl(nextInterview.scheduledInterviewMeetingUrl)}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center space-x-1.5 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl shadow-xs transition-colors"
@@ -277,7 +283,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
 
                   {app.scheduledInterviewMeetingUrl && (
                     <a
-                      href={app.scheduledInterviewMeetingUrl}
+                      href={sanitizeExternalUrl(app.scheduledInterviewMeetingUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-medium transition-colors flex items-center space-x-1"

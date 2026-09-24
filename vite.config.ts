@@ -17,6 +17,25 @@ import { createMediaUploadSession, getMediaFile } from './server/storage.ts';
 
 dotenv.config();
 
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com https://*.googleapis.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+
 function readBody(req: any): Promise<any> {
   return new Promise((resolve, reject) => {
     let data = '';
@@ -212,6 +231,8 @@ async function authenticateApiRequest(req: any, res: any): Promise<boolean> {
 
 const apiMiddleware = async (req: any, res: any, next: () => void) => {
       const url = req.url?.split('?')[0];
+
+      Object.entries(SECURITY_HEADERS).forEach(([name, value]) => res.setHeader(name, value));
 
       // 1. Health check
       if (url === '/api/health' && req.method === 'GET') {
@@ -1113,10 +1134,12 @@ export default defineConfig(() => {
       },
     },
     server: {
+      headers: SECURITY_HEADERS,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
     preview: {
+      headers: SECURITY_HEADERS,
       allowedHosts: ['resume-pilot-565432383818.asia-east1.run.app'],
     },
   };

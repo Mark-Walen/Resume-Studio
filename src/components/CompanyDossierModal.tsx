@@ -17,6 +17,7 @@ import {
   Check
 } from 'lucide-react';
 import { JobApplication, CompanyDossier, DossierLink } from '../types/job';
+import { sanitizeExternalUrl } from '../utils/security';
 
 interface CompanyDossierModalProps {
   isOpen: boolean;
@@ -92,10 +93,15 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
 
   const handleAddLink = () => {
     if (!newLinkTitle.trim() || !newLinkUrl.trim()) return;
+    const safeUrl = sanitizeExternalUrl(newLinkUrl);
+    if (!safeUrl) {
+      alert('链接仅支持安全的 HTTP/HTTPS 地址。');
+      return;
+    }
     const newL: DossierLink = {
       id: `dl-${Date.now()}`,
       title: newLinkTitle.trim(),
-      url: newLinkUrl.trim(),
+      url: safeUrl,
       note: newLinkNote.trim()
     };
     setDossier({
@@ -419,7 +425,7 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
                 >
                   <div className="flex items-center space-x-2 truncate">
                     <a
-                      href={link.url}
+                      href={sanitizeExternalUrl(link.url)}
                       target="_blank"
                       rel="noreferrer"
                       className="font-semibold text-[#0071e3] hover:underline flex items-center space-x-1"

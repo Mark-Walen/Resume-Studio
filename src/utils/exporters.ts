@@ -1,12 +1,39 @@
 import { ResumeData } from '../types/resume';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import DOMPurify from 'dompurify';
+import { sanitizeExternalUrl, sanitizeImageUrl } from './security';
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeResumeForHtml(resume: ResumeData): ResumeData {
+  const escapeValue = (value: unknown): unknown => {
+    if (typeof value === 'string') return escapeHtml(value);
+    if (Array.isArray(value)) return value.map(escapeValue);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, escapeValue(item)]));
+    }
+    return value;
+  };
+  const escaped = escapeValue(resume) as ResumeData;
+  const safeAvatar = sanitizeImageUrl(resume.personalInfo.avatarUrl);
+  escaped.personalInfo.avatarUrl = safeAvatar ? escapeHtml(safeAvatar) : undefined;
+  return escaped;
+}
 
 /**
  * 导出为 Word 格式 (.doc)
  * 基于标准 HTML+Office 命名空间生成，能在 Microsoft Word、WPS 和 Pages 中完美保留排版和样式
  */
 export function exportToWord(resume: ResumeData): void {
+  resume = escapeResumeForHtml(resume);
   const htmlContent = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
@@ -95,7 +122,8 @@ export function exportToWord(resume: ResumeData): void {
     </html>
   `;
 
-  const blob = new Blob(['\ufeff' + htmlContent], {
+  const sanitizedDocument = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style'] });
+  const blob = new Blob(['\ufeff' + sanitizedDocument], {
     type: 'application/msword;charset=utf-8'
   });
   const url = URL.createObjectURL(blob);
@@ -112,6 +140,12 @@ export function exportToWord(resume: ResumeData): void {
  * 导出为标准 Markdown 格式 (.md)
  */
 export function exportToMarkdown(resume: ResumeData): void {
+  const safeLinks = {
+    website: sanitizeExternalUrl(resume.personalInfo.website),
+    github: sanitizeExternalUrl(resume.personalInfo.github),
+    linkedin: sanitizeExternalUrl(resume.personalInfo.linkedin),
+  };
+  resume = escapeResumeForHtml(resume);
   const lines: string[] = [];
 
   lines.push(`# ${resume.personalInfo.fullName}`);
@@ -119,9 +153,9 @@ export function exportToMarkdown(resume: ResumeData): void {
   lines.push(`- 📧 **邮箱**: ${resume.personalInfo.email}`);
   lines.push(`- 📱 **电话**: ${resume.personalInfo.phone}`);
   lines.push(`- 📍 **城市**: ${resume.personalInfo.location}`);
-  if (resume.personalInfo.website) lines.push(`- 🌐 **个人主页**: [${resume.personalInfo.website}](${resume.personalInfo.website})`);
-  if (resume.personalInfo.github) lines.push(`- 💻 **GitHub**: [${resume.personalInfo.github}](${resume.personalInfo.github})`);
-  if (resume.personalInfo.linkedin) lines.push(`- 💼 **LinkedIn**: [${resume.personalInfo.linkedin}](${resume.personalInfo.linkedin})`);
+  if (safeLinks.website) lines.push(`- 🌐 **个人主页**: [${escapeHtml(safeLinks.website)}](${safeLinks.website})`);
+  if (safeLinks.github) lines.push(`- 💻 **GitHub**: [${escapeHtml(safeLinks.github)}](${safeLinks.github})`);
+  if (safeLinks.linkedin) lines.push(`- 💼 **LinkedIn**: [${escapeHtml(safeLinks.linkedin)}](${safeLinks.linkedin})`);
   lines.push('\n---\n');
 
   lines.push(`## 📌 个人优势与专业总结\n`);
@@ -183,6 +217,7 @@ export function exportToMarkdown(resume: ResumeData): void {
  * 生成可用于无头/离屏渲染的 HTML 简历结构
  */
 function createOffscreenResumeNode(resume: ResumeData): HTMLDivElement {
+  resume = escapeResumeForHtml(resume);
   const container = document.createElement('div');
   container.id = 'temp-resume-export-container';
   container.style.position = 'fixed';
@@ -318,7 +353,7 @@ function createOffscreenResumeNode(resume: ResumeData): HTMLDivElement {
     `;
   }
 
-  container.innerHTML = html;
+  container.innerHTML = DOMPurify.sanitize(html);
   return container;
 }
 
@@ -525,5 +560,6 @@ ${params.candidateName}
 联系方式：${params.recipientEmail ? '' : '请查阅简历上方联系信息'}`;
 
   const body = encodeURIComponent(params.customBody || defaultBody);
-  return `mailto:${params.recipientEmail}?subject=${subject}&body=${body}`;
+  const recipient = encodeURIComponent(params.recipientEmail.trim().replace(/[\r\n]/g, ''));
+  return `mailto:${recipient}?subject=${subject}&body=${body}`;
 }

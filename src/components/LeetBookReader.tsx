@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { KnowledgeBook, BookChapter, BookSection } from '../types/knowledge';
 import ReactMarkdown from 'react-markdown';
+import { sanitizeMarkdownUrl } from '../utils/security';
 
 interface LeetBookReaderProps {
   books: KnowledgeBook[];
@@ -486,7 +487,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
 
                 {/* Markdown body */}
                 <div className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm space-y-4">
-                  <ReactMarkdown>{currentSection.content}</ReactMarkdown>
+                  <ReactMarkdown urlTransform={sanitizeMarkdownUrl}>{currentSection.content}</ReactMarkdown>
                 </div>
               </div>
             ) : (

@@ -15,6 +15,8 @@ import { encryptApiKey, decryptApiKey } from './crypto';
 import { auth } from '../services/firebase';
 
 const RESUME_KEY = 'ai_resume_data_v2';
+const RESUME_LIBRARY_KEY = 'ai_resume_library_v1';
+const ACTIVE_RESUME_ID_KEY = 'ai_active_resume_id_v1';
 const JOBS_KEY = 'ai_jobs_data_v2';
 const INTERVIEWS_KEY = 'ai_interviews_data_v2';
 const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v2';
@@ -27,8 +29,10 @@ const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v1';
 export const WORKSPACE_DATA_CHANGED_EVENT = 'resume-pilot-workspace-data-changed';
 
 export interface WorkspaceSnapshot {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   resume: ResumeData;
+  resumes: ResumeData[];
+  activeResumeId: string;
   jobs: JobApplication[];
   interviews: InterviewRecord[];
   diagnosticReport: CrossInterviewDiagnosticReport | null;
@@ -40,6 +44,8 @@ export interface WorkspaceSnapshot {
 
 const WORKSPACE_STORAGE_KEYS = [
   RESUME_KEY,
+  RESUME_LIBRARY_KEY,
+  ACTIVE_RESUME_ID_KEY,
   JOBS_KEY,
   INTERVIEWS_KEY,
   DIAGNOSTIC_KEY,
@@ -391,6 +397,36 @@ export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
   }
 }
 
+export function loadResumeLibrary(fallback: ResumeData = DEFAULT_RESUME): ResumeData[] {
+  try {
+    const raw = readScopedStorage(RESUME_LIBRARY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {
+    console.warn('Failed to load resume library:', err);
+  }
+  return [loadResumeData(fallback)];
+}
+
+export function saveResumeLibrary(resumes: ResumeData[]): void {
+  try {
+    writeScopedStorage(RESUME_LIBRARY_KEY, JSON.stringify(resumes));
+  } catch (err) {
+    console.warn('Failed to save resume library:', err);
+  }
+}
+
+export function loadActiveResumeId(resumes: ResumeData[] = loadResumeLibrary()): string {
+  const stored = readScopedStorage(ACTIVE_RESUME_ID_KEY);
+  return resumes.some(item => item.id === stored) ? stored! : resumes[0].id;
+}
+
+export function saveActiveResumeId(id: string): void {
+  writeScopedStorage(ACTIVE_RESUME_ID_KEY, id);
+}
+
 export function hasLocalWorkspaceData(): boolean {
   return WORKSPACE_STORAGE_KEYS.some(key => (
     localStorage.getItem(scopedStorageKey(key)) !== null || localStorage.getItem(key) !== null
@@ -402,9 +438,14 @@ function withoutCloudApiKeys(profiles: AiModelProfile[]): AiModelProfile[] {
 }
 
 export function createLocalWorkspaceSnapshot(): WorkspaceSnapshot {
+  const resumes = loadResumeLibrary();
+  const activeResumeId = loadActiveResumeId(resumes);
+  const resume = resumes.find(item => item.id === activeResumeId) || loadResumeData();
   return {
-    schemaVersion: 1,
-    resume: loadResumeData(),
+    schemaVersion: 2,
+    resume,
+    resumes,
+    activeResumeId,
     jobs: loadJobApplications(),
     interviews: loadInterviewRecords(),
     diagnosticReport: loadDiagnosticReport(),
@@ -422,9 +463,16 @@ export function applyCloudWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>
     ...profile,
     encryptedApiKey: localKeys.get(profile.id) || '',
   }));
+  const legacyResume = snapshot.resume || loadResumeData();
+  const resumes = snapshot.resumes?.length ? snapshot.resumes : [legacyResume];
+  const activeResumeId = resumes.some(item => item.id === snapshot.activeResumeId)
+    ? snapshot.activeResumeId!
+    : resumes[0].id;
   const normalized: WorkspaceSnapshot = {
-    schemaVersion: 1,
-    resume: snapshot.resume || loadResumeData(),
+    schemaVersion: 2,
+    resume: resumes.find(item => item.id === activeResumeId) || resumes[0],
+    resumes,
+    activeResumeId,
     jobs: snapshot.jobs || loadJobApplications(),
     interviews: snapshot.interviews || loadInterviewRecords(),
     diagnosticReport: snapshot.diagnosticReport ?? null,
@@ -435,6 +483,8 @@ export function applyCloudWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>
   };
 
   saveResumeData(normalized.resume);
+  saveResumeLibrary(normalized.resumes);
+  saveActiveResumeId(normalized.activeResumeId);
   saveJobApplications(normalized.jobs);
   saveInterviewRecords(normalized.interviews);
   if (normalized.diagnosticReport) saveDiagnosticReport(normalized.diagnosticReport);

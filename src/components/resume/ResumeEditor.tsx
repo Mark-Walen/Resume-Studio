@@ -9,6 +9,7 @@ import {
   JobIntent,
   CustomSection
 } from '../../types/resume';
+import { sanitizeImageUrl } from '../../utils/security';
 import {
   User,
   Briefcase,
@@ -350,7 +351,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
               <div className="flex items-center gap-3.5">
                 {resume.personalInfo.avatarUrl ? (
                   <img
-                    src={resume.personalInfo.avatarUrl}
+                    src={sanitizeImageUrl(resume.personalInfo.avatarUrl)}
                     alt={resume.personalInfo.fullName}
                     className="w-10 h-13 object-cover rounded-xs border border-slate-200 dark:border-slate-700 shadow-xs flex-shrink-0"
                   />
@@ -636,7 +637,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
               <div className="relative">
                 {resume.personalInfo.avatarUrl ? (
                   <img
-                    src={resume.personalInfo.avatarUrl}
+                    src={sanitizeImageUrl(resume.personalInfo.avatarUrl)}
                     alt="证件照"
                     className="w-20 h-26 object-cover border border-slate-300 dark:border-slate-600 rounded-xs shadow-xs bg-white dark:bg-slate-900"
                   />

@@ -3,6 +3,7 @@ import { ResumeData } from '../../types/resume';
 import { JobApplication } from '../../types/job';
 import { ParsedJdInfo, JdMatchAnalysis } from '../../types/proxy';
 import { fetchAndAnalyzeJd } from '../../services/geminiService';
+import { sanitizeExternalUrl } from '../../utils/security';
 import {
   Globe,
   Link,
@@ -385,9 +386,9 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-blue-100 dark:border-slate-700">
-                  {urlInput ? (
+                  {sanitizeExternalUrl(urlInput) ? (
                     <a
-                      href={urlInput}
+                      href={sanitizeExternalUrl(urlInput)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[#0071e3] hover:underline font-semibold text-xs"

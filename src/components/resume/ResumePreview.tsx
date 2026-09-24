@@ -21,6 +21,7 @@ import {
   Code,
   User
 } from 'lucide-react';
+import { sanitizeImageUrl } from '../../utils/security';
 
 interface ResumePreviewProps {
   resume: ResumeData;
@@ -29,7 +30,7 @@ interface ResumePreviewProps {
 
 export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId }) => {
   const {
-    personalInfo,
+    personalInfo: rawPersonalInfo,
     jobIntent,
     summary,
     skills = [],
@@ -39,6 +40,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
     certificates = [],
     customSections = []
   } = resume;
+  const personalInfo = { ...rawPersonalInfo, avatarUrl: sanitizeImageUrl(rawPersonalInfo.avatarUrl) };
 
   // Active section ordering & visibility
   const sectionOrder = resume.sectionOrder || [
