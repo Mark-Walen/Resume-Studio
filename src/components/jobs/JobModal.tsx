@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { JobApplication, ApplicationStatus } from '../../types/job';
 import { showAppMessage } from '../common/AppFeedback';
 import {
@@ -38,7 +38,7 @@ interface JobModalProps {
 }
 
 export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, editingJob }) => {
-  const [formData, setFormData] = useState<Partial<JobApplication>>(editingJob || {
+  const createEmptyForm = (): Partial<JobApplication> => ({
     companyName: '',
     position: '',
     salaryExpectation: '',
@@ -51,6 +51,12 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
     notes: '',
     wishlistTargetDate: new Date().toISOString().split('T')[0]
   });
+  const [formData, setFormData] = useState<Partial<JobApplication>>(createEmptyForm);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData(editingJob ? { ...editingJob } : createEmptyForm());
+  }, [isOpen, editingJob]);
 
   if (!isOpen) return null;
 
@@ -62,10 +68,12 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
     }
 
     const application: JobApplication = {
+      ...editingJob,
       id: editingJob?.id || 'job-' + Date.now(),
       companyName: formData.companyName.trim(),
       position: formData.position.trim(),
       salaryExpectation: formData.salaryExpectation?.trim(),
+      salary: formData.salaryExpectation?.trim(),
       location: formData.location?.trim(),
       status: formData.status as ApplicationStatus,
       priority: formData.priority as 'high' | 'medium' | 'low',
@@ -75,6 +83,7 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
       appliedDate: formData.status === 'applied' ? (formData.appliedDate || new Date().toISOString().split('T')[0]) : formData.appliedDate,
       wishlistTargetDate: formData.wishlistTargetDate,
       notes: formData.notes?.trim(),
+      createdAt: editingJob?.createdAt || formData.createdAt || new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0]
     };
 

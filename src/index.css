@@ -82,6 +82,8 @@
 
   .resume-pdf-print-stage {
     display: block !important;
+    width: 100% !important;
+    margin: 0 auto !important;
   }
 
   #resume-print-document {
@@ -92,8 +94,8 @@
     min-height: 0 !important;
     height: auto !important;
     overflow: visible !important;
-    margin: 0 !important;
-    padding: 12mm 14mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -133,6 +135,6 @@
 
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 12mm 14mm;
   }
 }

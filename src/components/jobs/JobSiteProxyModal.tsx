@@ -102,20 +102,49 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
     if (!result) return;
     const { parsedJd, matchAnalysis } = result;
 
+    const sourceUrl = sanitizeExternalUrl(parsedJd.sourceUrl || urlInput);
+    const today = new Date().toISOString().split('T')[0];
+    const requiredSkills = parsedJd.requiredSkills || [];
+    const bonusSkills = parsedJd.bonusSkills || [];
+    const responsibilities = parsedJd.responsibilities || [];
     const newJob: JobApplication = {
       id: 'job-proxy-' + Date.now(),
       companyName: parsedJd.companyName || '目标招聘企业',
       position: parsedJd.position || '期望岗位',
       salaryExpectation: parsedJd.salaryRange || '面议',
+      salary: parsedJd.salaryRange || '面议',
       location: parsedJd.location || '待定',
       status: targetStatus,
       priority: matchAnalysis.matchScore >= 85 ? 'high' : 'medium',
       source: urlInput ? (urlInput.includes('zhipin') ? 'Boss直聘' : urlInput.includes('lagou') ? '拉勾招聘' : urlInput.includes('liepin') ? '猎聘' : '网页代理导入') : 'JD直接解析',
-      jobDescription: `【核心要求与职责】：\n${parsedJd.jobDescription}\n\n【必备技能】：${parsedJd.requiredSkills.join('、')}\n\n【匹配度得分】：${matchAnalysis.matchScore} (${matchAnalysis.matchGrade})\n\n【AI 建议】：\n${matchAnalysis.targetedResumeAdvice.join('\n')}`,
+      jobDescription: [
+        `【岗位概述】\n${parsedJd.jobDescription || '暂无'}`,
+        `【岗位职责】\n${responsibilities.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【经验与学历】\n经验：${parsedJd.experienceYears || '未注明'}；学历：${parsedJd.education || '未注明'}`,
+        `【必备技能】\n${requiredSkills.join('、') || '暂无'}`,
+        `【加分技能】\n${bonusSkills.join('、') || '暂无'}`,
+        sourceUrl ? `【来源网址】\n${sourceUrl}` : ''
+      ].filter(Boolean).join('\n\n'),
       wishlistTargetDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      appliedDate: targetStatus === 'applied' ? new Date().toISOString().split('T')[0] : undefined,
-      notes: `【AI 自荐信】：\n${matchAnalysis.customizedCoverLetter}`,
-      updatedAt: new Date().toISOString().split('T')[0]
+      appliedDate: targetStatus === 'applied' ? today : undefined,
+      notes: [
+        `【匹配度】${matchAnalysis.matchScore} 分 · ${matchAnalysis.matchGrade}`,
+        `【匹配结论】\n${matchAnalysis.matchSummary || '暂无'}`,
+        `【核心优势】\n${matchAnalysis.matchingStrengths.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【潜在风险】\n${matchAnalysis.potentialGaps.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【简历优化建议】\n${matchAnalysis.targetedResumeAdvice.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【面试准备】\n${matchAnalysis.recommendedInterviewPrep.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【AI 自荐信】\n${matchAnalysis.customizedCoverLetter || '暂无'}`
+      ].join('\n\n'),
+      companyDossier: {
+        teamAndTechStack: [...requiredSkills, ...bonusSkills].join(' · '),
+        keyInterviewStyle: matchAnalysis.recommendedInterviewPrep.join('\n'),
+        riskAlerts: matchAnalysis.potentialGaps,
+        collectedLinks: sourceUrl ? [{ id: `source-${Date.now()}`, title: result.sourceTitle || '原招聘页面', url: sourceUrl }] : [],
+        updatedAt: today
+      },
+      createdAt: today,
+      updatedAt: today
     };
 
     onAddJob(newJob);
