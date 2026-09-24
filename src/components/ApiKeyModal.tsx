@@ -16,7 +16,10 @@ import {
 import {
   ModelProviderType,
   AiModelProfile,
-  PROVIDER_CONFIGS
+  PROVIDER_CONFIGS,
+  PROVIDER_THINKING_EFFORTS,
+  THINKING_EFFORT_LABELS,
+  ThinkingEffort
 } from '../types/aiProvider';
 import {
   loadAiModelProfiles,
@@ -42,6 +45,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
   const [profileName, setProfileName] = useState('');
   const [provider, setProvider] = useState<ModelProviderType>('claude');
   const [modelName, setModelName] = useState('');
+  const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>('default');
   const [customBaseUrl, setCustomBaseUrl] = useState('');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showPlainKey, setShowPlainKey] = useState(false);
@@ -70,6 +74,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setProfileName(p.name);
     setProvider(p.provider);
     setModelName(p.modelName);
+    const savedEffort = p.thinkingEffort || 'default';
+    setThinkingEffort(PROVIDER_THINKING_EFFORTS[p.provider].includes(savedEffort) ? savedEffort : 'default');
     setModelOptions([...new Set([p.modelName, ...PROVIDER_CONFIGS[p.provider].supportedModels].filter(Boolean))]);
     setUseCustomModel(false);
     setModelFetchError('');
@@ -84,6 +90,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setModelOptions([...cfg.supportedModels]);
     setUseCustomModel(false);
     setModelFetchError('');
+    if (!PROVIDER_THINKING_EFFORTS[newProvider].includes(thinkingEffort)) setThinkingEffort('default');
     if (cfg.defaultBaseUrl) {
       setCustomBaseUrl(cfg.defaultBaseUrl);
     }
@@ -96,6 +103,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
       name: `方案 ${profiles.length + 1}`,
       provider: 'claude',
       modelName: PROVIDER_CONFIGS.claude.defaultModel,
+      thinkingEffort: 'default',
       encryptedApiKey: '',
       isActive: false,
       createdAt: new Date().toISOString(),
@@ -133,6 +141,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
           name: profileName.trim() || `${PROVIDER_CONFIGS[provider].label} 配置`,
           provider,
           modelName: modelName.trim() || PROVIDER_CONFIGS[provider].defaultModel,
+          thinkingEffort,
           customBaseUrl: customBaseUrl.trim() || undefined,
           encryptedApiKey: encKey,
           isActive: makeActive ? true : p.isActive,
@@ -351,6 +360,20 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               )}
               <p className="mt-1 text-[11px] text-slate-400">可从下拉列表选择或填写自定义标识；公开目录无需 Key，需认证的目录会使用当前 Key。内置目录更新于 {MODEL_CATALOG_UPDATED_AT}。</p>
               {modelFetchError && <p className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">{modelFetchError}</p>}
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">思考强度</label>
+              <select
+                value={thinkingEffort}
+                onChange={event => setThinkingEffort(event.target.value as ThinkingEffort)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+              >
+                {PROVIDER_THINKING_EFFORTS[provider].map(value => (
+                  <option key={value} value={value}>{THINKING_EFFORT_LABELS[value]}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-slate-400">此设置随当前模型方案保存；不支持所选强度的模型可能会返回错误，不确定时请选“跟随模型默认”。</p>
             </div>
 
             {/* If compatible provider, show Base URL */}

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { InterviewRecord, InterviewQuestionItem, MediaAttachment } from '../../types/interview';
 import { saveMediaBlob } from '../../utils/db';
 import { scanUploadedFile } from '../../utils/security';
+import { uploadMediaAttachment } from '../../services/mediaStorageService';
 import { X, Plus, Trash2, Video, Music, Upload, ShieldCheck, ShieldAlert, Sparkles } from 'lucide-react';
 
 interface InterviewModalProps {
@@ -84,6 +85,13 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
       };
 
       setMediaAttachments(prev => [...prev, attachment]);
+      try {
+        const cloud = await uploadMediaAttachment(mediaId, file, file.name);
+        setMediaAttachments(prev => prev.map(item => item.id === mediaId ? { ...item, ...cloud } : item));
+      } catch (cloudError) {
+        console.warn('Cloud media upload failed; local cache retained:', cloudError);
+        alert('附件已保存在本机，但云端上传失败。系统会在下次登录时自动重试。');
+      }
     } catch (err) {
       console.error('Failed to store media blob:', err);
       alert('保存媒体文件失败，请重试');
@@ -227,7 +235,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                   <Video className="w-3.5 h-3.5 text-[#0071e3]" />
                   面试过程音视频附件 (支持在线播放)
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block">自动安全查杀，本地 IndexedDB 安全持久化存储</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block">自动安全查杀，Cloud Storage 跨设备同步，IndexedDB 作为离线缓存</span>
               </div>
               <button
                 type="button"
@@ -256,6 +264,9 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
                       <span className="font-medium text-slate-800 dark:text-slate-200">{m.name}</span>
                       <span className="text-[10px] text-slate-400">
                         ({(((m.size ?? m.sizeBytes) || 0) / (1024 * 1024)).toFixed(1)} MB)
+                      </span>
+                      <span className={`text-[10px] font-semibold ${m.cloudObjectPath ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {m.cloudObjectPath ? '已上云' : '等待云端同步'}
                       </span>
                     </div>
                     <button

@@ -7,9 +7,11 @@ import {
   PenTool,
   Download,
   Upload,
-  Key,
   Calendar,
-  LogOut
+  LogOut,
+  Cloud,
+  CloudCheck,
+  LoaderCircle
 } from 'lucide-react';
 import { ThemeToggle } from './common/ThemeToggle';
 import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
@@ -27,6 +29,8 @@ interface HeaderProps {
   onOpenExport: () => void;
   onOpenApiKey: () => void;
   onOpenImportResume?: () => void;
+  onSaveWorkspace: () => void;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   userName: string;
   onSignOut: () => void;
 }
@@ -37,6 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenApiKey,
   onOpenImportResume,
+  onSaveWorkspace,
+  saveStatus,
   userName,
   onSignOut,
 }) => {
@@ -154,17 +160,20 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Quick AI Model Switcher (Trae / Workbuddy style) */}
           <ModelQuickSwitcher onOpenSettings={onOpenApiKey} />
 
+          <button
+            onClick={onSaveWorkspace}
+            disabled={saveStatus === 'saving'}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:text-[#0071e3] dark:hover:text-[#0071e3] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 flex-shrink-0 cursor-pointer disabled:cursor-wait"
+            title={saveStatus === 'error' ? '上次云端保存失败，点击重试' : '立即保存简历与工作区到云端'}
+          >
+            {saveStatus === 'saving' ? <LoaderCircle className="w-4 h-4 animate-spin" /> : saveStatus === 'saved' ? <CloudCheck className="w-4 h-4 text-emerald-600" /> : <Cloud className="w-4 h-4" />}
+            <span className="hidden 2xl:inline text-xs font-semibold">
+              {saveStatus === 'saving' ? '保存中' : saveStatus === 'saved' ? '已保存' : '云端保存'}
+            </span>
+          </button>
+
           {/* Theme Toggle Button */}
           <ThemeToggle />
-
-          {/* API Key Modal Button */}
-          <button
-            onClick={onOpenApiKey}
-            className="p-2 text-slate-600 dark:text-slate-300 hover:text-[#0071e3] dark:hover:text-[#0071e3] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 flex-shrink-0 cursor-pointer"
-            title="AI 模型与通用 API 设置"
-          >
-            <Key className="w-4 h-4" />
-          </button>
 
           <div className="hidden 2xl:flex max-w-36 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5" title={userName}>
             <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950 text-[10px] font-black uppercase text-blue-700 dark:text-blue-300">

@@ -262,9 +262,10 @@ export function loadAiModelProfiles(): AiModelProfile[] {
           const isLegacySystemDefault = profile.id === 'profile-gemini-default'
             && profile.provider === 'gemini'
             && ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].includes(profile.modelName);
+          const normalized = { ...profile, thinkingEffort: profile.thinkingEffort || 'default' } as AiModelProfile;
           return isLegacySystemDefault
-            ? { ...profile, modelName: PROVIDER_CONFIGS.gemini.defaultModel }
-            : profile;
+            ? { ...normalized, modelName: PROVIDER_CONFIGS.gemini.defaultModel }
+            : normalized;
         });
       }
     }
@@ -280,6 +281,7 @@ export function loadAiModelProfiles(): AiModelProfile[] {
       name: 'Google Gemini (默认配置)',
       provider: 'gemini',
       modelName: PROVIDER_CONFIGS.gemini.defaultModel,
+      thinkingEffort: 'default',
       encryptedApiKey: legacyKey.startsWith('SECURE_VAULT_V2::') ? legacyKey : (legacyKey ? encryptApiKey(legacyKey) : ''),
       isActive: true,
       createdAt: new Date().toISOString(),

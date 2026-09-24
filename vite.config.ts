@@ -13,6 +13,7 @@ import {
   saveWorkspaceDocument,
 } from './server/database.ts';
 import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
+import { createMediaUploadSession, getMediaFile } from './server/storage.ts';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ function readBody(req: any): Promise<any> {
 
 type ProviderId = 'anthropic' | 'openai' | 'xai' | 'google' | 'deepseek' | 'zai' | 'custom';
 type Compatibility = 'openai' | 'anthropic';
+type ThinkingEffort = 'default' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 const PROVIDER_BASE_URLS: Record<Exclude<ProviderId, 'custom'>, string> = {
   anthropic: 'https://api.anthropic.com/v1',
@@ -57,14 +59,25 @@ function getPublicCustomBaseUrl(rawUrl?: string): string {
   return url.toString().replace(/\/$/, '');
 }
 
-function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string, compatibility: Compatibility = 'openai', customBaseUrl?: string) {
+function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string, compatibility: Compatibility = 'openai', customBaseUrl?: string, thinkingEffort: ThinkingEffort = 'default') {
   const apiKey = customKey || process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('未检测到 AI 服务 API Key。请在“AI 服务与模型配置中心”配置。');
   }
   if (provider === 'google') {
     const client = new GoogleGenAI({ apiKey, httpOptions: { headers: { 'User-Agent': 'resume-pilot' } } });
-    return { models: { generateContent: (request: any) => client.models.generateContent({ ...request, model: selectedModel || request.model }) } };
+    return { models: { generateContent: (request: any) => {
+      const thinkingConfig = thinkingEffort === 'default'
+        ? {}
+        : thinkingEffort === 'none'
+          ? { thinkingLevel: 'minimal' }
+          : { thinkingLevel: (thinkingEffort === 'xhigh' || thinkingEffort === 'max' ? 'high' : thinkingEffort) };
+      return client.models.generateContent({
+        ...request,
+        model: selectedModel || request.model,
+        config: { ...request.config, ...(thinkingEffort === 'default' ? {} : { thinkingConfig }) },
+      });
+    } } };
   }
 
   return {
@@ -81,13 +94,24 @@ function getAiClient(customKey?: string, provider: ProviderId = 'google', select
           response = await fetch(`${baseUrl}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-            body: JSON.stringify({ model, max_tokens: 8192, system: systemInstruction, messages: [{ role: 'user', content: request.contents }] }),
+            body: JSON.stringify({
+              model,
+              max_tokens: 8192,
+              system: systemInstruction,
+              messages: [{ role: 'user', content: request.contents }],
+              ...(thinkingEffort === 'default' ? {} : { output_config: { effort: thinkingEffort === 'none' ? 'low' : thinkingEffort } }),
+            }),
           });
         } else {
           response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-            body: JSON.stringify({ model, messages: [{ role: 'system', content: systemInstruction }, { role: 'user', content: request.contents }], ...(wantsJson ? { response_format: { type: 'json_object' } } : {}) }),
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'system', content: systemInstruction }, { role: 'user', content: request.contents }],
+              ...(wantsJson ? { response_format: { type: 'json_object' } } : {}),
+              ...(thinkingEffort === 'default' ? {} : { reasoning_effort: thinkingEffort }),
+            }),
           });
         }
 
@@ -100,16 +124,18 @@ function getAiClient(customKey?: string, provider: ProviderId = 'google', select
   };
 }
 
-function getProviderConfig(req: any): { provider: ProviderId; model?: string; compatibility: Compatibility; baseUrl?: string } {
+function getProviderConfig(req: any): { provider: ProviderId; model?: string; compatibility: Compatibility; baseUrl?: string; thinkingEffort: ThinkingEffort } {
   const rawProvider = String(req.headers['x-ai-provider'] || 'google') as ProviderId;
   const provider = (rawProvider in PROVIDER_BASE_URLS || rawProvider === 'custom') ? rawProvider : 'google';
   const compatibility = req.headers['x-ai-compatibility'] === 'anthropic' ? 'anthropic' : 'openai';
-  return { provider, model: String(req.headers['x-ai-model'] || '') || undefined, compatibility, baseUrl: String(req.headers['x-ai-base-url'] || '') || undefined };
+  const rawEffort = String(req.headers['x-ai-thinking-effort'] || 'default') as ThinkingEffort;
+  const thinkingEffort: ThinkingEffort = ['default', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(rawEffort) ? rawEffort : 'default';
+  return { provider, model: String(req.headers['x-ai-model'] || '') || undefined, compatibility, baseUrl: String(req.headers['x-ai-base-url'] || '') || undefined, thinkingEffort };
 }
 
 function getConfiguredAiClient(customKey: string | undefined, req: any) {
-  const { provider, model, compatibility, baseUrl } = getProviderConfig(req);
-  return getAiClient(customKey, provider, model, compatibility, baseUrl);
+  const { provider, model, compatibility, baseUrl, thinkingEffort } = getProviderConfig(req);
+  return getAiClient(customKey, provider, model, compatibility, baseUrl, thinkingEffort);
 }
 
 async function fetchProviderModels(req: any): Promise<string[]> {
@@ -235,6 +261,51 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '保存云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/media/upload-session' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const session = await createMediaUploadSession({
+            uid: req.authUser.uid,
+            mediaId: String(body.mediaId || ''),
+            mimeType: String(body.mimeType || ''),
+            sizeBytes: Number(body.sizeBytes),
+            originalName: String(body.originalName || ''),
+            origin: typeof req.headers.origin === 'string' ? req.headers.origin : undefined,
+          });
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, ...session }));
+        } catch (error) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '创建上传会话失败。' }));
+        }
+        return;
+      }
+
+      const mediaMatch = url?.match(/^\/api\/media\/([A-Za-z0-9._-]{1,160})$/);
+      if (mediaMatch && req.method === 'GET') {
+        try {
+          const stored = await getMediaFile(req.authUser.uid, mediaMatch[1]);
+          if (!stored) {
+            res.statusCode = 404;
+            res.end('附件不存在。');
+            return;
+          }
+          res.setHeader('Content-Type', stored.metadata.contentType || 'application/octet-stream');
+          res.setHeader('Content-Length', stored.metadata.size || '0');
+          res.setHeader('Cache-Control', 'private, max-age=3600');
+          stored.file.createReadStream().on('error', error => {
+            console.error('Cloud Storage media stream failed:', error);
+            if (!res.headersSent) res.statusCode = 500;
+            res.end();
+          }).pipe(res);
+        } catch (error) {
+          res.statusCode = 500;
+          res.end(error instanceof Error ? error.message : '读取附件失败。');
         }
         return;
       }

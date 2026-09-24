@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ResumeData, ResumeTemplateId } from './types/resume';
 import { JobApplication, ApplicationStatus } from './types/job';
 import { InterviewRecord } from './types/interview';
@@ -31,6 +31,7 @@ import {
   WORKSPACE_DATA_CHANGED_EVENT,
 } from './utils/db';
 import { migrateOrLoadCloudWorkspace, saveCloudWorkspace } from './services/workspaceSyncService';
+import { migrateLocalMediaToCloud } from './services/mediaStorageService';
 import { Header, MainTab } from './components/Header';
 import { ResumePreview } from './components/resume/ResumePreview';
 import { ResumeEditor } from './components/resume/ResumeEditor';
@@ -58,6 +59,9 @@ export default function App() {
   const hadLocalWorkspaceOnLogin = useRef(hasLocalWorkspaceData()).current;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [syncError, setSyncError] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaMigrationUser = useRef<string | null>(null);
   // Navigation
   const [currentTab, setCurrentTab] = useState<MainTab>('resume');
 
@@ -144,18 +148,29 @@ export default function App() {
     return () => { cancelled = true; };
   }, [hadLocalWorkspaceOnLogin, user?.uid]);
 
+  const saveWorkspaceNow = useCallback(async () => {
+    if (!workspaceReady) return;
+    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+    setSaveStatus('saving');
+    try {
+      await saveCloudWorkspace(createLocalWorkspaceSnapshot());
+      setSyncError('');
+      setSaveStatus('saved');
+      saveStatusTimer.current = setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (error) {
+      console.error('Cloud workspace save failed:', error);
+      setSyncError(error instanceof Error ? error.message : '云端保存失败。');
+      setSaveStatus('error');
+    }
+  }, [workspaceReady]);
+
   useEffect(() => {
     if (!workspaceReady) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const queueCloudSave = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        void saveCloudWorkspace(createLocalWorkspaceSnapshot())
-          .then(() => setSyncError(''))
-          .catch(error => {
-            console.error('Cloud workspace save failed:', error);
-            setSyncError(error instanceof Error ? error.message : '云端保存失败。');
-          });
+        void saveWorkspaceNow();
       }, 900);
     };
     window.addEventListener(WORKSPACE_DATA_CHANGED_EVENT, queueCloudSave);
@@ -163,7 +178,21 @@ export default function App() {
       window.removeEventListener(WORKSPACE_DATA_CHANGED_EVENT, queueCloudSave);
       if (timer) clearTimeout(timer);
     };
-  }, [workspaceReady]);
+  }, [workspaceReady, saveWorkspaceNow]);
+
+  useEffect(() => {
+    if (!workspaceReady || !user?.uid || mediaMigrationUser.current === user.uid) return;
+    mediaMigrationUser.current = user.uid;
+    void migrateLocalMediaToCloud(interviews).then(result => {
+      if (result.migrated > 0) setInterviews(result.records);
+      if (result.failed > 0) {
+        setSyncError(`${result.failed} 个本地附件暂未上传到 Cloud Storage，下次登录会继续重试。`);
+      }
+    }).catch(error => {
+      console.error('Local media migration failed:', error);
+      setSyncError(error instanceof Error ? error.message : '附件迁移失败。');
+    });
+  }, [interviews, user?.uid, workspaceReady]);
 
   // Auto persist
   useEffect(() => {
@@ -266,6 +295,8 @@ export default function App() {
         onOpenExport={() => handleOpenExport('export')}
         onOpenApiKey={() => setIsApiKeyOpen(true)}
         onOpenImportResume={() => setIsResumeImportOpen(true)}
+        onSaveWorkspace={() => void saveWorkspaceNow()}
+        saveStatus={saveStatus}
         userName={user?.displayName || user?.email || '用户'}
         onSignOut={() => void signOutUser()}
       />

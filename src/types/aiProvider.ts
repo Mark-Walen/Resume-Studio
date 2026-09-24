@@ -10,6 +10,30 @@ export type ModelProviderType =
   | 'openai_compatible'
   | 'anthropic_compatible';
 
+export type ThinkingEffort = 'default' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+export const THINKING_EFFORT_LABELS: Record<ThinkingEffort, string> = {
+  default: '跟随模型默认',
+  none: '关闭思考',
+  minimal: '最低',
+  low: '低',
+  medium: '中',
+  high: '高',
+  xhigh: '超高',
+  max: '最高',
+};
+
+export const PROVIDER_THINKING_EFFORTS: Record<ModelProviderType, ThinkingEffort[]> = {
+  gemini: ['default', 'minimal', 'low', 'medium', 'high'],
+  chatgpt: ['default', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh'],
+  claude: ['default', 'low', 'medium', 'high', 'xhigh', 'max'],
+  grok: ['default', 'low', 'high'],
+  deepseek: ['default'],
+  zhipu: ['default'],
+  openai_compatible: ['default', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
+  anthropic_compatible: ['default', 'low', 'medium', 'high', 'xhigh', 'max'],
+};
+
 export interface ProviderOption {
   type: ModelProviderType;
   label: string;
@@ -103,6 +127,7 @@ export interface AiModelProfile {
   name: string;
   provider: ModelProviderType;
   modelName: string;
+  thinkingEffort: ThinkingEffort;
   customBaseUrl?: string;
   encryptedApiKey: string;
   isActive: boolean;

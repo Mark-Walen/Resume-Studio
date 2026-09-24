@@ -30,6 +30,7 @@ async function requestAiApi(path: string, init: RequestInit): Promise<Response> 
   if (profile) {
     headers.set('x-ai-provider', PROVIDER_IDS[profile.provider]);
     headers.set('x-ai-model', profile.modelName);
+    headers.set('x-ai-thinking-effort', profile.thinkingEffort || 'default');
     headers.set('x-ai-compatibility', profile.provider === 'anthropic_compatible' ? 'anthropic' : 'openai');
     if (profile.customBaseUrl) headers.set('x-ai-base-url', profile.customBaseUrl);
   }
