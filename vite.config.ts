@@ -4,6 +4,15 @@ import path from 'path';
 import {defineConfig, Plugin} from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { applicationDefault, getApps as getAdminApps, initializeApp as initializeAdminApp } from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import {
+  getDatabaseStatus,
+  loadWorkspaceDocument,
+  migrateOrLoadWorkspace,
+  saveWorkspaceDocument,
+} from './server/database.ts';
+import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
 
 dotenv.config();
 
@@ -22,32 +31,224 @@ function readBody(req: any): Promise<any> {
   });
 }
 
-function getAiClient(customKey?: string) {
-  const apiKey = customKey || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('未检测到 Gemini API Key。请在设置中配置 API Key，或在环境变量中提供 GEMINI_API_KEY。');
+type ProviderId = 'anthropic' | 'openai' | 'xai' | 'google' | 'deepseek' | 'zai' | 'custom';
+type Compatibility = 'openai' | 'anthropic';
+
+const PROVIDER_BASE_URLS: Record<Exclude<ProviderId, 'custom'>, string> = {
+  anthropic: 'https://api.anthropic.com/v1',
+  openai: 'https://api.openai.com/v1',
+  xai: 'https://api.x.ai/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+  deepseek: 'https://api.deepseek.com',
+  zai: 'https://api.z.ai/api/paas/v4',
+};
+
+const PROVIDER_MODEL_FALLBACKS: Record<Exclude<ProviderId, 'custom'>, readonly string[]> = PROVIDER_MODEL_CATALOG;
+
+function getPublicCustomBaseUrl(rawUrl?: string): string {
+  if (!rawUrl) throw new Error('请先填写自定义兼容服务的 Base URL。');
+  const url = new URL(rawUrl);
+  if (url.protocol !== 'https:') throw new Error('自定义兼容服务仅支持 HTTPS 地址。');
+  const hostname = url.hostname.toLowerCase();
+  const blockedIpv4 = /^(0|10|127|169\.254|192\.168)\./.test(hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
+  if (hostname === 'localhost' || hostname === '::1' || hostname.endsWith('.local') || blockedIpv4) {
+    throw new Error('自定义兼容服务不能使用本机或内网地址。');
   }
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
+  return url.toString().replace(/\/$/, '');
 }
 
-const apiPlugin: Plugin = {
-  name: 'gemini-api-server',
-  configureServer(server) {
-    server.middlewares.use(async (req, res, next) => {
+function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string, compatibility: Compatibility = 'openai', customBaseUrl?: string) {
+  const apiKey = customKey || process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('未检测到 AI 服务 API Key。请在“AI 服务与模型配置中心”配置。');
+  }
+  if (provider === 'google') {
+    const client = new GoogleGenAI({ apiKey, httpOptions: { headers: { 'User-Agent': 'resume-pilot' } } });
+    return { models: { generateContent: (request: any) => client.models.generateContent({ ...request, model: selectedModel || request.model }) } };
+  }
+
+  return {
+    models: {
+      generateContent: async (request: any) => {
+        const model = selectedModel || request.model;
+        const systemInstruction = request.config?.systemInstruction || '';
+        const wantsJson = request.config?.responseMimeType === 'application/json';
+        const protocol = provider === 'custom' ? compatibility : provider;
+        const baseUrl = provider === 'custom' ? getPublicCustomBaseUrl(customBaseUrl) : PROVIDER_BASE_URLS[provider];
+        let response: Response;
+
+        if (protocol === 'anthropic') {
+          response = await fetch(`${baseUrl}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({ model, max_tokens: 8192, system: systemInstruction, messages: [{ role: 'user', content: request.contents }] }),
+          });
+        } else {
+          response = await fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({ model, messages: [{ role: 'system', content: systemInstruction }, { role: 'user', content: request.contents }], ...(wantsJson ? { response_format: { type: 'json_object' } } : {}) }),
+          });
+        }
+
+        const payload: any = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error?.message || payload?.message || `AI 服务请求失败（${response.status}）`);
+        const text = protocol === 'anthropic' ? payload?.content?.map((item: any) => item.text || '').join('') : payload?.choices?.[0]?.message?.content;
+        return { text: text || '' };
+      },
+    },
+  };
+}
+
+function getProviderConfig(req: any): { provider: ProviderId; model?: string; compatibility: Compatibility; baseUrl?: string } {
+  const rawProvider = String(req.headers['x-ai-provider'] || 'google') as ProviderId;
+  const provider = (rawProvider in PROVIDER_BASE_URLS || rawProvider === 'custom') ? rawProvider : 'google';
+  const compatibility = req.headers['x-ai-compatibility'] === 'anthropic' ? 'anthropic' : 'openai';
+  return { provider, model: String(req.headers['x-ai-model'] || '') || undefined, compatibility, baseUrl: String(req.headers['x-ai-base-url'] || '') || undefined };
+}
+
+function getConfiguredAiClient(customKey: string | undefined, req: any) {
+  const { provider, model, compatibility, baseUrl } = getProviderConfig(req);
+  return getAiClient(customKey, provider, model, compatibility, baseUrl);
+}
+
+async function fetchProviderModels(req: any): Promise<string[]> {
+  const apiKey = String(req.headers['x-ai-api-key'] || req.headers['x-gemini-api-key'] || '');
+  const { provider, compatibility, baseUrl: requestedBaseUrl } = getProviderConfig(req);
+  const protocol = provider === 'custom' ? compatibility : provider;
+  const baseUrl = provider === 'custom' ? getPublicCustomBaseUrl(requestedBaseUrl) : PROVIDER_BASE_URLS[provider];
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  let endpoint = `${baseUrl.replace(/\/$/, '')}/models`;
+
+  if (provider === 'google') {
+    endpoint += apiKey ? `?key=${encodeURIComponent(apiKey)}&pageSize=1000` : '?pageSize=1000';
+  } else if (protocol === 'anthropic' && apiKey) {
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+  } else if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  try {
+    const response = await fetch(endpoint, { headers, signal: AbortSignal.timeout(10_000) });
+    const payload: any = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (!apiKey && provider !== 'custom' && (response.status === 401 || response.status === 403)) {
+        return [...PROVIDER_MODEL_FALLBACKS[provider]];
+      }
+      throw new Error(payload?.error?.message || payload?.message || `获取模型失败（${response.status}）`);
+    }
+    const rows: any[] = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
+    const models = [...new Set(rows
+      .filter((item: any) => provider !== 'google' || !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent'))
+      .map((item: any) => String(item.id || item.name || '').replace(/^models\//, ''))
+      .filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    if (!models.length && provider !== 'custom') return [...PROVIDER_MODEL_FALLBACKS[provider]];
+    return models;
+  } catch (error) {
+    if (!apiKey && provider !== 'custom') return [...PROVIDER_MODEL_FALLBACKS[provider]];
+    throw error;
+  }
+}
+
+async function authenticateApiRequest(req: any, res: any): Promise<boolean> {
+  const authorization = String(req.headers.authorization || '');
+  const idToken = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  if (!idToken) {
+    res.statusCode = 401;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ success: false, error: '请先登录后再使用该功能。' }));
+    return false;
+  }
+
+  try {
+    const adminApp = getAdminApps()[0] || initializeAdminApp({
+      credential: applicationDefault(),
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || 'resume-pilot-509509',
+    });
+    const decoded = await getAdminAuth(adminApp).verifyIdToken(idToken);
+    if (decoded.email && decoded.email_verified === false) {
+      res.statusCode = 403;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: false, error: '请先完成邮箱验证。' }));
+      return false;
+    }
+    req.authUser = { uid: decoded.uid, email: decoded.email || '', displayName: decoded.name || '' };
+    return true;
+  } catch (error) {
+    console.warn('Identity token verification failed:', error instanceof Error ? error.message : error);
+    res.statusCode = 401;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ success: false, error: '登录状态无效或已过期，请重新登录。' }));
+    return false;
+  }
+}
+
+const apiMiddleware = async (req: any, res: any, next: () => void) => {
       const url = req.url?.split('?')[0];
 
       // 1. Health check
       if (url === '/api/health' && req.method === 'GET') {
         const hasEnvKey = !!process.env.GEMINI_API_KEY;
+        const database = await getDatabaseStatus();
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ status: 'ok', hasEnvKey }));
+        res.end(JSON.stringify({ status: 'ok', hasEnvKey, database }));
+        return;
+      }
+
+      if (url?.startsWith('/api/') && !(await authenticateApiRequest(req, res))) return;
+
+      if (url === '/api/workspace' && req.method === 'GET') {
+        try {
+          const document = await loadWorkspaceDocument(req.authUser);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '读取云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace/sync' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const document = await migrateOrLoadWorkspace(req.authUser, body.payload || {}, body.hasLocalData === true);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '同步云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace' && req.method === 'PUT') {
+        try {
+          const body = await readBody(req);
+          const document = await saveWorkspaceDocument(req.authUser, body.payload || {});
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '保存云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/models' && req.method === 'GET') {
+        try {
+          const models = await fetchProviderModels(req);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, models }));
+        } catch (error) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '获取模型失败。' }));
+        }
         return;
       }
 
@@ -55,8 +256,8 @@ const apiPlugin: Plugin = {
       if (url === '/api/generate-resume' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { prompt, existingResume, auxiliaryText } = body;
 
@@ -151,8 +352,8 @@ ${existingResume ? `【参考现有简历】：\n${JSON.stringify(existingResume
       if (url === '/api/interview-feedback' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { companyName, round, position, interviewNotes, questions } = body;
 
@@ -225,8 +426,8 @@ ${JSON.stringify(questions, null, 2)}`;
       if (url === '/api/cross-interview-diagnostic' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { interviews } = body;
 
@@ -303,8 +504,8 @@ ${JSON.stringify(interviews, null, 2)}`;
       if (url === '/api/parse-resume' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { rawContent, format } = body;
           if (!rawContent || typeof rawContent !== 'string' || rawContent.trim().length === 0) {
@@ -419,8 +620,8 @@ ${JSON.stringify(interviews, null, 2)}`;
       if (url === '/api/proxy-jd' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { url: targetUrl, rawJdText, currentResume } = body;
 
@@ -560,8 +761,8 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 8000) : '未提供具�
       if (url === '/api/recommend-knowledge-points' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { companyName, position, jobDescription, currentResume } = body;
 
@@ -634,8 +835,8 @@ ${currentResume ? JSON.stringify(currentResume).slice(0, 7000) : '常规高级�
       if (url === '/api/multi-company-resume-optimizer' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { companies, currentResume } = body;
 
@@ -735,8 +936,8 @@ ${JSON.stringify({
       if (url === '/api/convert-journal-to-resume-bullets' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const customKey = (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
-          const ai = getAiClient(customKey);
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string) || body.customApiKey;
+          const ai = getConfiguredAiClient(customKey, req);
 
           const { journalLogs, targetRole, existingResume } = body;
 
@@ -820,7 +1021,15 @@ ${existingResume ? JSON.stringify({
 
 
       next();
-    });
+};
+
+const apiPlugin: Plugin = {
+  name: 'gemini-api-server',
+  configureServer(server) {
+    server.middlewares.use(apiMiddleware);
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use(apiMiddleware);
   },
 };
 
@@ -829,12 +1038,15 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), apiPlugin],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+    preview: {
+      allowedHosts: ['resume-pilot-565432383818.asia-east1.run.app'],
     },
   };
 });

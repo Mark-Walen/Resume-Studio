@@ -10,7 +10,8 @@ import {
   Trash2,
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCw
 } from 'lucide-react';
 import {
   ModelProviderType,
@@ -24,6 +25,8 @@ import {
   setActiveAiProfile
 } from '../utils/db';
 import { encryptApiKey, decryptApiKey } from '../utils/crypto';
+import { fetchAvailableModels } from '../services/modelCatalogService';
+import { MODEL_CATALOG_UPDATED_AT } from '../config/modelCatalog';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -43,6 +46,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showPlainKey, setShowPlainKey] = useState(false);
   const [isSavedToast, setIsSavedToast] = useState(false);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [useCustomModel, setUseCustomModel] = useState(false);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelFetchError, setModelFetchError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -63,6 +70,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setProfileName(p.name);
     setProvider(p.provider);
     setModelName(p.modelName);
+    setModelOptions([...new Set([p.modelName, ...PROVIDER_CONFIGS[p.provider].supportedModels].filter(Boolean))]);
+    setUseCustomModel(false);
+    setModelFetchError('');
     setCustomBaseUrl(p.customBaseUrl || '');
     setApiKeyInput(p.encryptedApiKey ? decryptApiKey(p.encryptedApiKey) : '');
   };
@@ -71,6 +81,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
     setProvider(newProvider);
     const cfg = PROVIDER_CONFIGS[newProvider];
     setModelName(cfg.defaultModel);
+    setModelOptions([...cfg.supportedModels]);
+    setUseCustomModel(false);
+    setModelFetchError('');
     if (cfg.defaultBaseUrl) {
       setCustomBaseUrl(cfg.defaultBaseUrl);
     }
@@ -141,6 +154,22 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
       if (onSave) onSave();
       onClose();
     }, 600);
+  };
+
+  const handleFetchModels = async () => {
+    setIsFetchingModels(true);
+    setModelFetchError('');
+    try {
+      const fetched = await fetchAvailableModels({ provider, apiKey: apiKeyInput, baseUrl: customBaseUrl });
+      const merged = [...new Set([...fetched, modelName, ...currentProviderConfig.supportedModels].filter(Boolean))];
+      setModelOptions(merged);
+      if (!modelName && merged[0]) setModelName(merged[0]);
+      if (!fetched.length) setModelFetchError('服务商未返回可用模型，你仍可手动输入模型名称。');
+    } catch (error) {
+      setModelFetchError(error instanceof Error ? error.message : '获取模型失败。');
+    } finally {
+      setIsFetchingModels(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -264,46 +293,64 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
               >
                 <optgroup label="主流原生内置提供商">
-                  <option value="claude">Claude (Anthropic Claude 3.7 Sonnet / Opus)</option>
-                  <option value="chatgpt">ChatGPT (OpenAI GPT-4o / o3-mini)</option>
-                  <option value="deepseek">DeepSeek (深度求索 V3 / R1)</option>
-                  <option value="grok">Grok (xAI Grok-3)</option>
-                  <option value="gemini">Google Gemini (Gemini 2.5 Flash / Pro)</option>
-                  <option value="zhipu">Z.ai (智谱清言 GLM-4)</option>
+                  <option value="claude">Anthropic</option>
+                  <option value="chatgpt">OpenAI</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="grok">xAI</option>
+                  <option value="gemini">Google AI</option>
+                  <option value="zhipu">Z.ai</option>
                 </optgroup>
                 <optgroup label="通用开放协议提供商">
-                  <option value="openai_compatible">OpenAI 兼容协议 (Ollama / vLLM / Moonshot / 硅基流动等)</option>
-                  <option value="anthropic_compatible">Anthropic 兼容协议</option>
+                  <option value="openai_compatible">OpenAI-compatible endpoint</option>
+                  <option value="anthropic_compatible">Anthropic-compatible endpoint</option>
                 </optgroup>
               </select>
             </div>
 
             {/* Model Name */}
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                模型标识名称 (Model Name) *
-              </label>
-              {isCompatibleProvider ? (
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                  模型标识名称 (Model Name) *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handleFetchModels()}
+                  disabled={isFetchingModels}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0071e3] hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                  title="从服务商获取模型列表；如该服务需要认证，将使用当前 Key"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isFetchingModels ? 'animate-spin' : ''}`} />
+                  {isFetchingModels ? '正在获取' : '联网获取'}
+                </button>
+              </div>
+              <select
+                value={useCustomModel ? '__custom__' : modelName}
+                onChange={event => {
+                  if (event.target.value === '__custom__') {
+                    setUseCustomModel(true);
+                    setModelName('');
+                  } else {
+                    setUseCustomModel(false);
+                    setModelName(event.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+              >
+                {modelOptions.map(model => <option key={model} value={model}>{model}</option>)}
+                <option value="__custom__">自定义模型标识…</option>
+              </select>
+              {useCustomModel && (
                 <input
                   type="text"
                   value={modelName}
-                  onChange={e => setModelName(e.target.value)}
-                  placeholder="例如：deepseek-ai/DeepSeek-V3 或 llama3.3:70b"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  onChange={event => setModelName(event.target.value)}
+                  placeholder="输入供应商支持的模型标识"
+                  className="mt-2 w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
                 />
-              ) : (
-                <select
-                  value={modelName}
-                  onChange={e => setModelName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#0071e3] bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
-                >
-                  {currentProviderConfig?.supportedModels.map((m: string) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
               )}
+              <p className="mt-1 text-[11px] text-slate-400">可从下拉列表选择或填写自定义标识；公开目录无需 Key，需认证的目录会使用当前 Key。内置目录更新于 {MODEL_CATALOG_UPDATED_AT}。</p>
+              {modelFetchError && <p className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">{modelFetchError}</p>}
             </div>
 
             {/* If compatible provider, show Base URL */}
@@ -324,7 +371,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-slate-700 dark:text-slate-300">
-                  API Key (密钥凭证) *
+                  API Key (可选)
                 </label>
                 <button
                   type="button"
@@ -348,7 +395,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               </div>
 
               <p className="text-[11px] text-slate-400 mt-1">
-                密钥保存在本地安全隔离存储，前端及网页源码绝不暴露明文。
+                密钥仅保存在当前用户的本地隔离存储，只在调用所选 AI 服务时通过本站后端代理使用。
               </p>
             </div>
           </div>
@@ -360,7 +407,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               <span>本地隔离与反探针安全保护</span>
             </div>
             <ul className="space-y-0.5 pl-4 list-disc text-slate-500 dark:text-slate-400">
-              <li>API Key 仅存放于浏览器本地沙箱安全层，绝不向第三方服务器泄露</li>
+              <li>公开模型目录可不填 Key；需要认证时才会把 Key 发送给所选 AI 服务商</li>
               <li>支持保存多组模型方案，随时无缝切换主力与备用模型</li>
             </ul>
           </div>

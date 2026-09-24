@@ -9,8 +9,10 @@ import { KnowledgeItem, KnowledgeBook } from '../types/knowledge';
 import { WorkDailyLog } from '../types/journal';
 import { DEFAULT_LEETBOOKS } from '../data/defaultBooks';
 import { INITIAL_WORK_DAILY_LOGS } from '../data/defaultJournals';
+import { INITIAL_KNOWLEDGE_BASE } from '../data/knowledgeBaseData';
 import { AiModelProfile, PROVIDER_CONFIGS } from '../types/aiProvider';
 import { encryptApiKey, decryptApiKey } from './crypto';
+import { auth } from '../services/firebase';
 
 const RESUME_KEY = 'ai_resume_data_v2';
 const JOBS_KEY = 'ai_jobs_data_v2';
@@ -22,10 +24,73 @@ const KNOWLEDGE_KEY = 'ai_knowledge_items_v1';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v1';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v1';
 
+export const WORKSPACE_DATA_CHANGED_EVENT = 'resume-pilot-workspace-data-changed';
+
+export interface WorkspaceSnapshot {
+  schemaVersion: 1;
+  resume: ResumeData;
+  jobs: JobApplication[];
+  interviews: InterviewRecord[];
+  diagnosticReport: CrossInterviewDiagnosticReport | null;
+  knowledgeItems: KnowledgeItem[];
+  books: KnowledgeBook[];
+  workLogs: WorkDailyLog[];
+  aiProfiles: AiModelProfile[];
+}
+
+const WORKSPACE_STORAGE_KEYS = [
+  RESUME_KEY,
+  JOBS_KEY,
+  INTERVIEWS_KEY,
+  DIAGNOSTIC_KEY,
+  AI_PROFILES_KEY,
+  KNOWLEDGE_KEY,
+  LEETBOOKS_KEY,
+  WORK_JOURNAL_KEY,
+];
+
 // --- IndexedDB for Media Blobs ---
 const DB_NAME = 'ResumeInterviewMediaDB';
 const DB_VERSION = 1;
 const MEDIA_STORE = 'media_files';
+
+function currentUserId(): string {
+  return auth.currentUser?.uid || 'anonymous';
+}
+
+function scopedStorageKey(baseKey: string): string {
+  return `${baseKey}:${currentUserId()}`;
+}
+
+function readScopedStorage(baseKey: string): string | null {
+  const scopedKey = scopedStorageKey(baseKey);
+  const scopedValue = localStorage.getItem(scopedKey);
+  if (scopedValue !== null) return scopedValue;
+
+  if (currentUserId() !== 'anonymous') {
+    const legacyValue = localStorage.getItem(baseKey);
+    if (legacyValue !== null) {
+      localStorage.setItem(scopedKey, legacyValue);
+      localStorage.removeItem(baseKey);
+      return legacyValue;
+    }
+  }
+  return null;
+}
+
+function writeScopedStorage(baseKey: string, value: string): void {
+  localStorage.setItem(scopedStorageKey(baseKey), value);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(WORKSPACE_DATA_CHANGED_EVENT));
+}
+
+function removeScopedStorage(baseKey: string): void {
+  localStorage.removeItem(scopedStorageKey(baseKey));
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(WORKSPACE_DATA_CHANGED_EVENT));
+}
+
+function scopedRecordId(id: string): string {
+  return `${currentUserId()}:${id}`;
+}
 
 function openMediaDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -46,7 +111,7 @@ export async function saveMediaBlob(id: string, blob: Blob): Promise<void> {
     const db = await openMediaDB();
     const tx = db.transaction(MEDIA_STORE, 'readwrite');
     const store = tx.objectStore(MEDIA_STORE);
-    store.put({ id, blob, createdAt: Date.now() });
+    store.put({ id: scopedRecordId(id), blob, createdAt: Date.now() });
     return new Promise((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -61,9 +126,30 @@ export async function getMediaBlob(id: string): Promise<Blob | null> {
     const db = await openMediaDB();
     const tx = db.transaction(MEDIA_STORE, 'readonly');
     const store = tx.objectStore(MEDIA_STORE);
-    const req = store.get(id);
+    const scopedId = scopedRecordId(id);
+    const req = store.get(scopedId);
     return new Promise((resolve, reject) => {
-      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onsuccess = () => {
+        if (req.result) {
+          resolve(req.result.blob);
+          return;
+        }
+        if (currentUserId() === 'anonymous') {
+          resolve(null);
+          return;
+        }
+        const legacyReq = store.get(id);
+        legacyReq.onsuccess = () => {
+          if (!legacyReq.result) {
+            resolve(null);
+            return;
+          }
+          const migrationTx = db.transaction(MEDIA_STORE, 'readwrite');
+          migrationTx.objectStore(MEDIA_STORE).put({ ...legacyReq.result, id: scopedId });
+          resolve(legacyReq.result.blob);
+        };
+        legacyReq.onerror = () => reject(legacyReq.error);
+      };
       req.onerror = () => reject(req.error);
     });
   } catch (err) {
@@ -75,7 +161,7 @@ export async function getMediaBlob(id: string): Promise<Blob | null> {
 // --- Local Storage Helpers ---
 export function loadResumeData(fallback?: ResumeData): ResumeData {
   try {
-    const raw = localStorage.getItem(RESUME_KEY);
+    const raw = readScopedStorage(RESUME_KEY);
     if (raw) {
       const parsed: ResumeData = JSON.parse(raw);
       if (parsed.personalInfo && !parsed.personalInfo.avatarUrl) {
@@ -91,7 +177,7 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
 
 export function saveResumeData(data: ResumeData): void {
   try {
-    localStorage.setItem(RESUME_KEY, JSON.stringify(data));
+    writeScopedStorage(RESUME_KEY, JSON.stringify(data));
   } catch (err) {
     console.warn('LocalStorage save failed for resume:', err);
   }
@@ -99,7 +185,7 @@ export function saveResumeData(data: ResumeData): void {
 
 export function loadJobApplications(): JobApplication[] {
   try {
-    const raw = localStorage.getItem(JOBS_KEY);
+    const raw = readScopedStorage(JOBS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -109,7 +195,7 @@ export function loadJobApplications(): JobApplication[] {
 
 export function saveJobApplications(jobs: JobApplication[]): void {
   try {
-    localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
+    writeScopedStorage(JOBS_KEY, JSON.stringify(jobs));
   } catch (err) {
     console.warn('LocalStorage save failed for jobs:', err);
   }
@@ -117,7 +203,7 @@ export function saveJobApplications(jobs: JobApplication[]): void {
 
 export function loadInterviewRecords(): InterviewRecord[] {
   try {
-    const raw = localStorage.getItem(INTERVIEWS_KEY);
+    const raw = readScopedStorage(INTERVIEWS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -127,7 +213,7 @@ export function loadInterviewRecords(): InterviewRecord[] {
 
 export function saveInterviewRecords(records: InterviewRecord[]): void {
   try {
-    localStorage.setItem(INTERVIEWS_KEY, JSON.stringify(records));
+    writeScopedStorage(INTERVIEWS_KEY, JSON.stringify(records));
   } catch (err) {
     console.warn('LocalStorage save failed for interviews:', err);
   }
@@ -141,7 +227,7 @@ export function getCustomApiKey(): string {
       return decryptApiKey(active.encryptedApiKey);
     }
     // 2. Fallback to legacy
-    const raw = localStorage.getItem(API_KEY_STORAGE);
+    const raw = readScopedStorage(API_KEY_STORAGE);
     if (raw) {
       return decryptApiKey(raw);
     }
@@ -155,9 +241,9 @@ export function setCustomApiKey(key: string): void {
   try {
     if (key.trim()) {
       const encrypted = encryptApiKey(key.trim());
-      localStorage.setItem(API_KEY_STORAGE, encrypted);
+      writeScopedStorage(API_KEY_STORAGE, encrypted);
     } else {
-      localStorage.removeItem(API_KEY_STORAGE);
+      removeScopedStorage(API_KEY_STORAGE);
     }
   } catch (err) {
     console.warn('Failed to save custom api key:', err);
@@ -168,17 +254,26 @@ export const saveCustomApiKey = setCustomApiKey;
 
 export function loadAiModelProfiles(): AiModelProfile[] {
   try {
-    const raw = localStorage.getItem(AI_PROFILES_KEY);
+    const raw = readScopedStorage(AI_PROFILES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((profile: AiModelProfile) => {
+          const isLegacySystemDefault = profile.id === 'profile-gemini-default'
+            && profile.provider === 'gemini'
+            && ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].includes(profile.modelName);
+          return isLegacySystemDefault
+            ? { ...profile, modelName: PROVIDER_CONFIGS.gemini.defaultModel }
+            : profile;
+        });
+      }
     }
   } catch (err) {
     console.warn('Failed to load AI model profiles', err);
   }
 
   // Initial default profile
-  const legacyKey = localStorage.getItem(API_KEY_STORAGE) || '';
+  const legacyKey = readScopedStorage(API_KEY_STORAGE) || '';
   const initial: AiModelProfile[] = [
     {
       id: 'profile-gemini-default',
@@ -196,12 +291,13 @@ export function loadAiModelProfiles(): AiModelProfile[] {
 
 export function saveAiModelProfiles(profiles: AiModelProfile[]): void {
   try {
-    localStorage.setItem(AI_PROFILES_KEY, JSON.stringify(profiles));
+    writeScopedStorage(AI_PROFILES_KEY, JSON.stringify(profiles));
     // Also sync active profile key to legacy storage for seamless backward compatibility
     const active = profiles.find(p => p.isActive);
     if (active && active.encryptedApiKey) {
-      localStorage.setItem(API_KEY_STORAGE, active.encryptedApiKey);
+      writeScopedStorage(API_KEY_STORAGE, active.encryptedApiKey);
     }
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('ai-profile-updated'));
   } catch (err) {
     console.warn('Failed to save AI model profiles', err);
   }
@@ -223,7 +319,7 @@ export function setActiveAiProfile(id: string): void {
 
 export function loadDiagnosticReport(): CrossInterviewDiagnosticReport | null {
   try {
-    const raw = localStorage.getItem(DIAGNOSTIC_KEY);
+    const raw = readScopedStorage(DIAGNOSTIC_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -233,7 +329,7 @@ export function loadDiagnosticReport(): CrossInterviewDiagnosticReport | null {
 
 export function saveDiagnosticReport(report: CrossInterviewDiagnosticReport): void {
   try {
-    localStorage.setItem(DIAGNOSTIC_KEY, JSON.stringify(report));
+    writeScopedStorage(DIAGNOSTIC_KEY, JSON.stringify(report));
   } catch (err) {
     console.warn('Failed to save diagnostic report:', err);
   }
@@ -241,7 +337,7 @@ export function saveDiagnosticReport(report: CrossInterviewDiagnosticReport): vo
 
 export function loadKnowledgeItems(fallback: KnowledgeItem[]): KnowledgeItem[] {
   try {
-    const raw = localStorage.getItem(KNOWLEDGE_KEY);
+    const raw = readScopedStorage(KNOWLEDGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -251,7 +347,7 @@ export function loadKnowledgeItems(fallback: KnowledgeItem[]): KnowledgeItem[] {
 
 export function saveKnowledgeItems(items: KnowledgeItem[]): void {
   try {
-    localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(items));
+    writeScopedStorage(KNOWLEDGE_KEY, JSON.stringify(items));
   } catch (err) {
     console.warn('Failed to save knowledge items:', err);
   }
@@ -259,7 +355,7 @@ export function saveKnowledgeItems(items: KnowledgeItem[]): void {
 
 export function loadLeetBooks(fallback: KnowledgeBook[] = DEFAULT_LEETBOOKS): KnowledgeBook[] {
   try {
-    const raw = localStorage.getItem(LEETBOOKS_KEY);
+    const raw = readScopedStorage(LEETBOOKS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -269,7 +365,7 @@ export function loadLeetBooks(fallback: KnowledgeBook[] = DEFAULT_LEETBOOKS): Kn
 
 export function saveLeetBooks(books: KnowledgeBook[]): void {
   try {
-    localStorage.setItem(LEETBOOKS_KEY, JSON.stringify(books));
+    writeScopedStorage(LEETBOOKS_KEY, JSON.stringify(books));
   } catch (err) {
     console.warn('Failed to save LeetBooks:', err);
   }
@@ -277,7 +373,7 @@ export function saveLeetBooks(books: KnowledgeBook[]): void {
 
 export function loadWorkDailyLogs(fallback: WorkDailyLog[] = INITIAL_WORK_DAILY_LOGS): WorkDailyLog[] {
   try {
-    const raw = localStorage.getItem(WORK_JOURNAL_KEY);
+    const raw = readScopedStorage(WORK_JOURNAL_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // fallback
@@ -287,10 +383,65 @@ export function loadWorkDailyLogs(fallback: WorkDailyLog[] = INITIAL_WORK_DAILY_
 
 export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
   try {
-    localStorage.setItem(WORK_JOURNAL_KEY, JSON.stringify(logs));
+    writeScopedStorage(WORK_JOURNAL_KEY, JSON.stringify(logs));
   } catch (err) {
     console.warn('Failed to save work daily logs:', err);
   }
+}
+
+export function hasLocalWorkspaceData(): boolean {
+  return WORKSPACE_STORAGE_KEYS.some(key => (
+    localStorage.getItem(scopedStorageKey(key)) !== null || localStorage.getItem(key) !== null
+  ));
+}
+
+function withoutCloudApiKeys(profiles: AiModelProfile[]): AiModelProfile[] {
+  return profiles.map(profile => ({ ...profile, encryptedApiKey: '' }));
+}
+
+export function createLocalWorkspaceSnapshot(): WorkspaceSnapshot {
+  return {
+    schemaVersion: 1,
+    resume: loadResumeData(),
+    jobs: loadJobApplications(),
+    interviews: loadInterviewRecords(),
+    diagnosticReport: loadDiagnosticReport(),
+    knowledgeItems: loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE),
+    books: loadLeetBooks(),
+    workLogs: loadWorkDailyLogs(),
+    aiProfiles: withoutCloudApiKeys(loadAiModelProfiles()),
+  };
+}
+
+export function applyCloudWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>): WorkspaceSnapshot {
+  const currentProfiles = loadAiModelProfiles();
+  const localKeys = new Map(currentProfiles.map(profile => [profile.id, profile.encryptedApiKey]));
+  const mergedProfiles = (snapshot.aiProfiles?.length ? snapshot.aiProfiles : currentProfiles).map(profile => ({
+    ...profile,
+    encryptedApiKey: localKeys.get(profile.id) || '',
+  }));
+  const normalized: WorkspaceSnapshot = {
+    schemaVersion: 1,
+    resume: snapshot.resume || loadResumeData(),
+    jobs: snapshot.jobs || loadJobApplications(),
+    interviews: snapshot.interviews || loadInterviewRecords(),
+    diagnosticReport: snapshot.diagnosticReport ?? null,
+    knowledgeItems: snapshot.knowledgeItems || loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE),
+    books: snapshot.books || loadLeetBooks(),
+    workLogs: snapshot.workLogs || loadWorkDailyLogs(),
+    aiProfiles: mergedProfiles,
+  };
+
+  saveResumeData(normalized.resume);
+  saveJobApplications(normalized.jobs);
+  saveInterviewRecords(normalized.interviews);
+  if (normalized.diagnosticReport) saveDiagnosticReport(normalized.diagnosticReport);
+  else removeScopedStorage(DIAGNOSTIC_KEY);
+  saveKnowledgeItems(normalized.knowledgeItems);
+  saveLeetBooks(normalized.books);
+  saveWorkDailyLogs(normalized.workLogs);
+  saveAiModelProfiles(normalized.aiProfiles);
+  return normalized;
 }
 
 

@@ -8,7 +8,8 @@ import {
   Download,
   Upload,
   Key,
-  Calendar
+  Calendar,
+  LogOut
 } from 'lucide-react';
 import { ThemeToggle } from './common/ThemeToggle';
 import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
@@ -26,6 +27,8 @@ interface HeaderProps {
   onOpenExport: () => void;
   onOpenApiKey: () => void;
   onOpenImportResume?: () => void;
+  userName: string;
+  onSignOut: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,16 +37,18 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenApiKey,
   onOpenImportResume,
+  userName,
+  onSignOut,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 font-sans transition-colors">
-      <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 xl:gap-6">
+    <header className="sticky top-0 z-40 w-full min-w-0 overflow-visible bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 font-sans transition-colors">
+      <div className="max-w-[1720px] w-full min-w-0 mx-auto px-3 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2 xl:gap-4">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-3 flex-shrink-0 cursor-pointer" onClick={() => onSelectTab('resume')}>
+        <div className="flex min-w-0 items-center gap-3 flex-shrink-0 cursor-pointer" onClick={() => onSelectTab('resume')}>
           <div className="w-9 h-9 rounded-xl bg-[#0071e3] text-white flex items-center justify-center font-black shadow-xs tracking-wider text-sm flex-shrink-0">
             AI
           </div>
-          <div className="flex flex-col">
+          <div className="hidden min-w-0 flex-col md:flex">
             <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight flex items-center gap-1.5 whitespace-nowrap">
               智能简历与求职工作台
               <span className="hidden sm:inline-block px-1.5 py-0.2 bg-blue-50 dark:bg-blue-950/60 text-[#0071e3] border border-blue-100 dark:border-blue-900/60 text-[10px] font-semibold rounded-full">
@@ -57,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center Tabs Navigation */}
-        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-semibold flex-shrink-0">
+        <nav className="hidden 2xl:flex items-center gap-0.5 xl:gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-semibold flex-shrink-0">
           <button
             id="tab-resume"
             onClick={() => onSelectTab('resume')}
@@ -125,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         {/* Right action buttons */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2 flex-shrink-0">
           {currentTab === 'resume' && onOpenImportResume && (
             <button
               onClick={onOpenImportResume}
@@ -133,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
               title="导入已有简历文件或文本"
             >
               <Upload className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>导入简历</span>
+              <span className="hidden xl:inline">导入简历</span>
             </button>
           )}
 
@@ -143,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="导出高保真 PDF、Word 或发送求职信"
           >
             <Download className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>导出与发送</span>
+            <span className="hidden xl:inline">导出与发送</span>
           </button>
 
           {/* Quick AI Model Switcher (Trae / Workbuddy style) */}
@@ -160,11 +165,25 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Key className="w-4 h-4" />
           </button>
+
+          <div className="hidden 2xl:flex max-w-36 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5" title={userName}>
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950 text-[10px] font-black uppercase text-blue-700 dark:text-blue-300">
+              {userName.slice(0, 1)}
+            </span>
+            <span className="truncate text-[11px] font-bold text-slate-600 dark:text-slate-300">{userName}</span>
+          </div>
+          <button
+            onClick={onSignOut}
+            className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors border border-slate-200 dark:border-slate-800"
+            title="退出登录"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* Mobile Sub-Navigation */}
-      <div className="lg:hidden flex overflow-x-auto px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs font-medium gap-1 scrollbar-none">
+      <div className="2xl:hidden flex overflow-x-auto px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs font-medium gap-1 scrollbar-none">
         <button
           onClick={() => onSelectTab('resume')}
           className={`px-3 py-1 rounded-lg whitespace-nowrap ${
