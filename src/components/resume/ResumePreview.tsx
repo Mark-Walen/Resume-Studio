@@ -27,6 +27,7 @@ interface ResumePreviewProps {
   resume: ResumeData;
   templateId: ResumeTemplateId;
   sortByDate?: boolean;
+  documentId?: string;
 }
 
 function dateRank(value?: string, current = false): number {
@@ -43,7 +44,12 @@ function newestFirst<T extends { startDate?: string; endDate?: string; current?:
   });
 }
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId, sortByDate = true }) => {
+export const ResumePreview: React.FC<ResumePreviewProps> = ({
+  resume,
+  templateId,
+  sortByDate = true,
+  documentId = 'resume-document'
+}) => {
   const {
     personalInfo: rawPersonalInfo,
     jobIntent,
@@ -970,7 +976,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
 
   return (
     <div
-      id="resume-document"
+      id={documentId}
       className="resume-print-container bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-8 sm:p-12 shadow-sm rounded-xl border border-slate-200 dark:border-slate-800 min-h-[1050px] font-sans max-w-4xl mx-auto transition-colors duration-200 print:bg-white print:text-black print:border-none print:shadow-none print:p-0"
     >
       {templateId === 'modern' && renderModernTemplate()}

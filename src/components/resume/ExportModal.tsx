@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ResumeData } from '../../types/resume';
+import { ResumeData, ResumeTemplateId } from '../../types/resume';
+import { ResumePreview } from './ResumePreview';
 import {
   exportToWord,
   exportToMarkdown,
   exportToShareJson,
-  exportToPdf,
   exportToNativePrint,
   generateMailToLink
 } from '../../utils/exporters';
@@ -18,8 +18,6 @@ import {
   X,
   Send,
   ExternalLink,
-  Loader2,
-  Sparkles,
   Info,
   Share2
 } from 'lucide-react';
@@ -28,6 +26,8 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   resume: ResumeData;
+  templateId: ResumeTemplateId;
+  sortByDate?: boolean;
   initialTab?: 'export' | 'email';
 }
 
@@ -35,21 +35,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
   resume,
+  templateId,
+  sortByDate = true,
   initialTab = 'export'
 }) => {
   const [activeTab, setActiveTab] = useState<'export' | 'email'>(initialTab);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [targetCompany, setTargetCompany] = useState('');
   const [copied, setCopied] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfSuccessMessage, setPdfSuccessMessage] = useState<string | null>(null);
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
       setEmailNotice(null);
-      setPdfSuccessMessage(null);
     }
   }, [isOpen, initialTab]);
 
@@ -77,21 +76,8 @@ ${resume.personalInfo.fullName}
 
   if (!isOpen) return null;
 
-  const handleExportPdf = async () => {
-    setIsGeneratingPdf(true);
-    setPdfSuccessMessage(null);
-    try {
-      const success = await exportToPdf(resume, resume.personalInfo.fullName);
-      if (success) {
-        setPdfSuccessMessage('PDF 简历已成功生成并下载至本地！');
-        setTimeout(() => setPdfSuccessMessage(null), 4000);
-      }
-    } catch {
-      setPdfSuccessMessage('已调用系统打印引擎作为备用导出方式');
-      setTimeout(() => setPdfSuccessMessage(null), 4000);
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+  const handleExportPdf = () => {
+    exportToNativePrint();
   };
 
   const handleCopyEmail = () => {
@@ -140,7 +126,17 @@ ${resume.personalInfo.fullName}
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <>
+      <div className="resume-pdf-print-stage" aria-hidden="true">
+        <ResumePreview
+          resume={resume}
+          templateId={templateId}
+          sortByDate={sortByDate}
+          documentId="resume-print-document"
+        />
+      </div>
+
+      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
@@ -194,55 +190,28 @@ ${resume.personalInfo.fullName}
         <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4 bg-white dark:bg-slate-900">
           {activeTab === 'export' ? (
             <div className="space-y-3">
-              {pdfSuccessMessage && (
-                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                  <span>{pdfSuccessMessage}</span>
-                </div>
-              )}
-
-              {/* 1. PDF Download Card */}
+              {/* 1. PDF Preview / Export Card */}
               <div className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-[#0071e3] dark:hover:border-[#0071e3] transition-all flex items-center justify-between gap-3 bg-white dark:bg-slate-800/60">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm">
                     PDF
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">高保真 PDF 简历</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">标准 A4 页面排版，保留矢量字体与排版样式</p>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">矢量无损 PDF (.pdf)</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">进入系统 A4 打印预览，再选择“保存为 PDF”</p>
                   </div>
                 </div>
                 <button
                   id="btn-export-pdf"
                   onClick={handleExportPdf}
-                  disabled={isGeneratingPdf}
-                  className="px-3.5 py-2 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex-shrink-0 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-2 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex-shrink-0 cursor-pointer flex items-center gap-1.5"
                 >
-                  {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-                  <span>{isGeneratingPdf ? '生成中...' : '下载 PDF'}</span>
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>打印 / 保存 PDF</span>
                 </button>
               </div>
 
-              {/* 2. Native Print Card */}
-              <div className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-[#0071e3] dark:hover:border-[#0071e3] transition-all flex items-center justify-between gap-3 bg-white dark:bg-slate-800/60">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center">
-                    <Printer className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">系统原生物理打印</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">唤起浏览器原生打印面板，支持另存为 PDF 或直接纸质打印</p>
-                  </div>
-                </div>
-                <button
-                  onClick={exportToNativePrint}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex-shrink-0 cursor-pointer"
-                >
-                  调起打印
-                </button>
-              </div>
-
-              {/* 3. Word (.doc) Card */}
+              {/* 2. Word (.doc) Card */}
               <div className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-[#0071e3] dark:hover:border-[#0071e3] transition-all flex items-center justify-between gap-3 bg-white dark:bg-slate-800/60">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-[#0071e3] flex items-center justify-center font-bold text-xs">
@@ -262,7 +231,7 @@ ${resume.personalInfo.fullName}
                 </button>
               </div>
 
-              {/* 4. Markdown (.md) Card */}
+              {/* 3. Markdown (.md) Card */}
               <div className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-[#0071e3] dark:hover:border-[#0071e3] transition-all flex items-center justify-between gap-3 bg-white dark:bg-slate-800/60">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">
@@ -417,15 +386,15 @@ ${resume.personalInfo.fullName}
           ) : (
             <button
               onClick={handleExportPdf}
-              disabled={isGeneratingPdf}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-60 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
-              <span>{isGeneratingPdf ? '正在生成 PDF...' : '立即下载 PDF 简历'}</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>预览并保存 PDF</span>
             </button>
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

@@ -672,6 +672,8 @@ export default function App() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         resume={resume}
+        templateId={templateId}
+        sortByDate={sortResumeByDate}
         initialTab={exportInitialTab}
       />
 
