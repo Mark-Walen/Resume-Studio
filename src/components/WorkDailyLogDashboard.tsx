@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showAppConfirm, showAppMessage } from './common/AppFeedback';
 import {
   Plus,
   Sparkles,
@@ -149,8 +150,8 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
     setShowAddLogModal(true);
   };
 
-  const handleDeleteLog = (id: string) => {
-    if (confirm('确定要删除此条工作日志吗？')) {
+  const handleDeleteLog = async (id: string) => {
+    if (await showAppConfirm('确定要删除此条工作日志吗？', { title: '删除工作日志', confirmLabel: '删除', danger: true })) {
       const updated = logs.filter((l) => l.id !== id);
       onSaveLogs(updated);
       selectedLogIds.delete(id);
@@ -174,7 +175,7 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
   const handleRunAiExtract = async () => {
     const chosen = logs.filter((l) => selectedLogIds.has(l.id));
     if (chosen.length === 0) {
-      alert('请先勾选需要提炼为简历亮点的日志条目！');
+      showAppMessage('请先勾选需要提炼为简历亮点的日志条目！', 'warning');
       return;
     }
 
@@ -187,7 +188,7 @@ export const WorkDailyLogDashboard: React.FC<WorkDailyLogDashboardProps> = ({
       setExtractResult(res);
       setAppliedBulletIds(new Set());
     } catch (err: any) {
-      alert('AI 提炼失败：' + (err.message || '网络繁忙，请稍后重试'));
+      showAppMessage('AI 提炼失败：' + (err.message || '网络繁忙，请稍后重试'), 'error');
     } finally {
       setIsExtracting(false);
     }

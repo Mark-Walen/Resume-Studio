@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ResumeData } from '../../types/resume';
 import { requestGenerateResume } from '../../services/geminiService';
 import { scanUploadedFile, SecurityScanResult } from '../../utils/security';
+import { showAppMessage } from '../common/AppFeedback';
 import { Mic, MicOff, Upload, ShieldCheck, ShieldAlert, Sparkles, X, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface AiResumeGeneratorModalProps {
@@ -71,7 +72,7 @@ export const AiResumeGeneratorModal: React.FC<AiResumeGeneratorModalProps> = ({
 
   const toggleVoiceRecording = () => {
     if (!recognitionRef.current) {
-      alert('当前浏览器未原生支持 Web Speech 语音听写，建议直接文本输入，或使用 Chrome/Edge 浏览器。');
+      showAppMessage('当前浏览器未原生支持 Web Speech 语音听写，建议直接文本输入，或使用 Chrome/Edge 浏览器。', 'warning', 5200);
       return;
     }
 

@@ -3,6 +3,7 @@ import { InterviewRecord, InterviewQuestionItem, MediaAttachment, UnansweredSolu
 import { getMediaBlob } from '../../utils/db';
 import { downloadMediaAttachment } from '../../services/mediaStorageService';
 import { requestInterviewFeedback } from '../../services/geminiService';
+import { showAppMessage } from '../common/AppFeedback';
 import {
   Sparkles,
   Play,
@@ -61,11 +62,11 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
         setActiveMediaType(attachment.type);
         setActiveMediaName(attachment.name);
       } else {
-        alert('未找到可用的本地或云端附件，请重新上传。');
+        showAppMessage('未找到可用的本地或云端附件，请重新上传。', 'warning');
       }
     } catch (err) {
       console.error('Error playing media:', err);
-      alert(err instanceof Error ? err.message : '附件读取失败。');
+      showAppMessage(err instanceof Error ? err.message : '附件读取失败。', 'error');
     }
   };
 
@@ -116,7 +117,7 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
 
       onUpdateRecord(updatedRecord);
     } catch (err: any) {
-      alert('AI 复盘分析失败：' + err.message);
+      showAppMessage('AI 复盘分析失败：' + err.message, 'error');
     } finally {
       setIsGeneratingFeedback(false);
     }

@@ -420,7 +420,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 教育背景
               </div>
               {education.map(edu => (
-                <div key={edu.id} className="text-xs">
+                <div key={edu.id} className="resume-print-item text-xs">
                   <div className="font-bold text-slate-900 dark:text-white">{edu.school}</div>
                   <div className="text-slate-600 dark:text-slate-400 text-[11px]">{edu.degree} · {edu.major}</div>
                   <div className="text-slate-400 dark:text-slate-500 text-[10px] font-mono">{edu.startDate} ~ {edu.endDate}</div>
@@ -437,7 +437,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 资质与荣誉
               </div>
               {certificates.map(c => (
-                <div key={c.id} className="text-xs">
+                <div key={c.id} className="resume-print-item text-xs">
                   <div className="font-semibold text-slate-900 dark:text-white">{c.name}</div>
                   <div className="text-slate-400 dark:text-slate-500 text-[10px]">{c.issuer} {c.date ? `(${c.date})` : ''}</div>
                 </div>
@@ -475,7 +475,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
               </div>
               <div className="space-y-4">
                 {workExperience.map(exp => (
-                  <div key={exp.id} className="text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                  <div key={exp.id} className="resume-print-item text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
                     <div className="flex justify-between items-baseline font-bold text-slate-900 dark:text-white mb-0.5 gap-2">
                       <span className="text-sm flex-1 min-w-0 pr-2">{exp.company} <span className="font-normal text-slate-600 dark:text-slate-400">| {exp.position}</span></span>
                       <span className="text-slate-500 dark:text-slate-400 font-medium text-xs font-mono flex-shrink-0 whitespace-nowrap ml-2">{exp.startDate} ~ {exp.endDate}</span>
@@ -509,7 +509,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
               </div>
               <div className="space-y-4">
                 {projects.map(proj => (
-                  <div key={proj.id} className="text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                  <div key={proj.id} className="resume-print-item text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
                     <div className="flex justify-between items-baseline font-bold text-slate-900 dark:text-white mb-0.5 gap-2">
                       <span className="text-sm flex-1 min-w-0 pr-2">{proj.name} <span className="font-normal text-slate-600 dark:text-slate-400">({proj.role})</span></span>
                       <span className="text-slate-500 dark:text-slate-400 font-medium text-xs font-mono flex-shrink-0 whitespace-nowrap ml-2">{proj.startDate} ~ {proj.endDate}</span>
@@ -749,7 +749,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
           <div className={isTimeline ? 'relative pl-5 border-l-2 border-blue-500/30 dark:border-blue-400/30 space-y-5' : isCompact ? 'space-y-2.5' : 'space-y-4'}>
             {workExperience.map(exp => (
-              <div key={exp.id} className={`text-xs ${isTimeline ? 'relative' : ''}`}>
+              <div key={exp.id} className={`resume-print-item text-xs ${isTimeline ? 'relative' : ''}`}>
                 {isTimeline && (
                   <div className="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-[#0071e3] border-2 border-white dark:border-slate-900" />
                 )}
@@ -799,7 +799,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
           <div className={isTimeline ? 'relative pl-5 border-l-2 border-blue-500/30 dark:border-blue-400/30 space-y-5' : isCompact ? 'space-y-2.5' : 'space-y-4'}>
             {projects.map(proj => (
-              <div key={proj.id} className={`text-xs ${isTimeline ? 'relative' : ''}`}>
+              <div key={proj.id} className={`resume-print-item text-xs ${isTimeline ? 'relative' : ''}`}>
                 {isTimeline && (
                   <div className="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-[#0071e3] border-2 border-white dark:border-slate-900" />
                 )}
@@ -886,7 +886,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
           <div className="space-y-2.5">
             {education.map(edu => (
-              <div key={edu.id} className="text-xs">
+              <div key={edu.id} className="resume-print-item text-xs">
                 <div className="flex justify-between items-baseline gap-2">
                   <div className="font-bold text-slate-900 dark:text-white flex-1 min-w-0 pr-2">
                     <span>{edu.school}</span>
@@ -933,7 +933,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
           <div className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
             {certificates.map(c => (
-              <div key={c.id} className="flex items-baseline justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <div key={c.id} className="resume-print-item flex items-baseline justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
                 <div className="flex items-center gap-2">
                   <Award className="w-3.5 h-3.5 text-[#0071e3] flex-shrink-0" />
                   <span className="font-semibold text-slate-900 dark:text-white">{c.name}</span>

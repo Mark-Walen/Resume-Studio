@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showAppMessage } from './common/AppFeedback';
 import {
   X,
   Building,
@@ -95,7 +96,7 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
     if (!newLinkTitle.trim() || !newLinkUrl.trim()) return;
     const safeUrl = sanitizeExternalUrl(newLinkUrl);
     if (!safeUrl) {
-      alert('链接仅支持安全的 HTTP/HTTPS 地址。');
+      showAppMessage('链接仅支持安全的 HTTP/HTTPS 地址。', 'warning');
       return;
     }
     const newL: DossierLink = {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { showAppConfirm } from './components/common/AppFeedback';
 import { ResumeData, ResumeTemplateId } from './types/resume';
 import { JobApplication, ApplicationStatus } from './types/job';
 import { InterviewRecord } from './types/interview';
@@ -337,9 +338,9 @@ export default function App() {
     setResume(prev => ({ ...prev, title: nextTitle }));
   };
 
-  const handleDeleteResume = () => {
+  const handleDeleteResume = async () => {
     if (resumeLibrary.length <= 1) return;
-    if (!confirm(`确定删除“${resume.title || '当前简历'}”吗？`)) return;
+    if (!(await showAppConfirm(`确定删除“${resume.title || '当前简历'}”吗？`, { title: '删除简历', confirmLabel: '删除', danger: true }))) return;
     const remaining = resumeLibrary.filter(item => item.id !== activeResumeId);
     const next = remaining[0];
     setResumeLibrary(remaining);
@@ -357,8 +358,8 @@ export default function App() {
     });
   };
 
-  const handleDeleteJob = (id: string) => {
-    if (confirm('确定删除该投递记录吗？')) {
+  const handleDeleteJob = async (id: string) => {
+    if (await showAppConfirm('确定删除该投递记录吗？', { title: '删除投递记录', confirmLabel: '删除', danger: true })) {
       setJobs((prev) => prev.filter((j) => j.id !== id));
     }
   };
@@ -536,8 +537,8 @@ export default function App() {
                     按时间倒序
                   </label>
                   <button
-                    onClick={() => {
-                      if (confirm('确定重置为您提供的默认优质高阶简历模板吗？')) {
+                    onClick={async () => {
+                      if (await showAppConfirm('确定重置为默认优质高阶简历模板吗？当前简历内容将被替换。', { title: '重置简历模板', confirmLabel: '确认重置', danger: true })) {
                         setResume({ ...structuredClone(defaultResume), id: activeResumeId, title: resume.title });
                       }
                     }}

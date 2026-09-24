@@ -3,6 +3,7 @@ import { InterviewRecord, InterviewQuestionItem, MediaAttachment } from '../../t
 import { saveMediaBlob } from '../../utils/db';
 import { scanUploadedFile } from '../../utils/security';
 import { uploadMediaAttachment } from '../../services/mediaStorageService';
+import { showAppMessage } from '../common/AppFeedback';
 import { X, Plus, Trash2, Video, Music, Upload, ShieldCheck, ShieldAlert, Sparkles } from 'lucide-react';
 
 interface InterviewModalProps {
@@ -64,7 +65,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
     // 1. Security scan
     const scan = await scanUploadedFile(file);
     if (!scan.isSafe) {
-      alert(`文件未通过安全查杀：${scan.detectedThreats.join(';')}`);
+      showAppMessage(`文件未通过安全查杀：${scan.detectedThreats.join(';')}`, 'error');
       setMediaUploading(false);
       return;
     }
@@ -90,11 +91,11 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
         setMediaAttachments(prev => prev.map(item => item.id === mediaId ? { ...item, ...cloud } : item));
       } catch (cloudError) {
         console.warn('Cloud media upload failed; local cache retained:', cloudError);
-        alert('附件已保存在本机，但云端上传失败。系统会在下次登录时自动重试。');
+        showAppMessage('附件已保存在本机，但云端上传失败。系统会在下次登录时自动重试。', 'warning', 5200);
       }
     } catch (err) {
       console.error('Failed to store media blob:', err);
-      alert('保存媒体文件失败，请重试');
+      showAppMessage('保存媒体文件失败，请重试。', 'error');
     } finally {
       setMediaUploading(false);
       if (mediaInputRef.current) mediaInputRef.current.value = '';
@@ -123,7 +124,7 @@ export const InterviewModal: React.FC<InterviewModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName.trim() || !round.trim()) {
-      alert('请填写公司名称与面试轮次');
+      showAppMessage('请填写公司名称与面试轮次。', 'warning');
       return;
     }
 

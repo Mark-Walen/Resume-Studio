@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { JobApplication, ApplicationStatus } from '../../types/job';
+import { showAppMessage } from '../common/AppFeedback';
 import {
   X,
   Building2,
@@ -56,7 +57,7 @@ export const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, onSave, edi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.companyName?.trim() || !formData.position?.trim()) {
-      alert('请填写公司名称与目标岗位！');
+      showAppMessage('请填写公司名称与目标岗位！', 'warning');
       return;
     }
 

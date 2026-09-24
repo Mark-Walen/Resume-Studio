@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showAppMessage } from './common/AppFeedback';
 import {
   X,
   Key,
@@ -116,7 +117,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
 
   const handleDeleteProfile = (id: string) => {
     if (profiles.length <= 1) {
-      alert('至少需要保留一组模型方案。');
+      showAppMessage('至少需要保留一组模型方案。', 'warning');
       return;
     }
     const updated = profiles.filter(p => p.id !== id);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showAppMessage } from './common/AppFeedback';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -61,7 +62,7 @@ export const InterviewCalendarView: React.FC<InterviewCalendarViewProps> = ({
     if (!app) return;
     const safeMeetingUrl = formMeetingUrl.trim() ? sanitizeExternalUrl(formMeetingUrl) : undefined;
     if (formMeetingUrl.trim() && !safeMeetingUrl) {
-      alert('会议地址仅支持安全的 HTTP/HTTPS 链接。');
+      showAppMessage('会议地址仅支持安全的 HTTP/HTTPS 链接。', 'warning');
       return;
     }
 

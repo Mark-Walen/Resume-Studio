@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { InterviewRecord } from '../../types/interview';
 import { CrossInterviewDiagnosticReport } from '../../types/diagnostic';
 import { requestCrossInterviewDiagnostic } from '../../services/geminiService';
+import { showAppMessage } from '../common/AppFeedback';
 import {
   AlertOctagon,
   Flame,
@@ -32,7 +33,7 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({
 
   const handleRunDiagnostic = async () => {
     if (interviews.length === 0) {
-      alert('请先至少添加或记录一场面试！');
+      showAppMessage('请先至少添加或记录一场面试！', 'warning');
       return;
     }
 
@@ -41,7 +42,7 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({
       const newReport = await requestCrossInterviewDiagnostic(interviews);
       onUpdateReport(newReport);
     } catch (err: any) {
-      alert('跨轮复盘诊断失败：' + err.message);
+      showAppMessage('跨轮复盘诊断失败：' + err.message, 'error');
     } finally {
       setIsAnalyzing(false);
     }

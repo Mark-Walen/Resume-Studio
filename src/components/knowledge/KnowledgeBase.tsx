@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KnowledgeItem, KnowledgeCategory, KnowledgeDifficulty, KnowledgeBook } from '../../types/knowledge';
 import { LeetBookReader } from '../LeetBookReader';
+import { showAppMessage } from '../common/AppFeedback';
 import {
   BookOpen,
   Search,
@@ -115,7 +116,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
   const handleAddNewItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newSummary.trim()) {
-      alert('请填写标题和考点提要');
+      showAppMessage('请填写标题和考点提要。', 'warning');
       return;
     }
 

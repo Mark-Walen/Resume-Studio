@@ -54,6 +54,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isAddedSuccess, setIsAddedSuccess] = useState(false);
   const [targetStatus, setTargetStatus] = useState<'wishlist' | 'applied'>('wishlist');
+  const [showBrowserImportHelp, setShowBrowserImportHelp] = useState(false);
 
   if (!isOpen) return null;
 
@@ -79,7 +80,9 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
       setIsLoading(false);
     } catch (err: any) {
       setIsLoading(false);
-      setErrorMsg(err.message || '抓取或分析岗位信息失败，请检查网络或在右上角配置通用 API Key');
+      const message = err.message || '抓取或分析岗位信息失败，请检查网络或在右上角配置通用 API Key';
+      setErrorMsg(message);
+      if (/安全验证|登录|验证码|反爬虫|复制.*JD/i.test(message)) setShowBrowserImportHelp(true);
     }
   };
 
@@ -187,9 +190,19 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <div>
-                  <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
-                    浏览器辅助导入 / 直接粘贴 JD：
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
+                      浏览器辅助导入 / 直接粘贴 JD：
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowBrowserImportHelp(value => !value)}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0071e3] hover:underline"
+                    >
+                      <HelpCircle className="h-3 w-3" />
+                      {showBrowserImportHelp ? '收起说明' : '怎么使用？'}
+                    </button>
+                  </div>
                   <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">遇到登录或验证码时，在原页面复制可见职位内容，再从剪贴板导入。</p>
                 </div>
                 <button
@@ -216,6 +229,33 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                 onChange={e => setRawJdInput(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3] font-mono"
               />
+
+              {showBrowserImportHelp && (
+                <div className="mt-2.5 rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-[11px] text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-bold">需要登录或安全验证时，按以下步骤操作</div>
+                    {sanitizeExternalUrl(urlInput) && (
+                      <a
+                        href={sanitizeExternalUrl(urlInput)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 font-bold text-[#0071e3] hover:underline dark:text-blue-300"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        打开原网页
+                      </a>
+                    )}
+                  </div>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 leading-5">
+                    <li>在招聘网站原页面完成登录、滑块或短信验证，确认岗位详情已经完整显示。</li>
+                    <li>选中岗位名称、公司、薪资、职责和要求等可见文字并复制；也可以使用仓库中的 Chrome“Resume Pilot 岗位导入器”扩展一键复制当前页。</li>
+                    <li>返回这里点击“读取剪贴板”，确认下方文本框已有内容，再点击“代理抓取并分析”。有粘贴内容时系统不会再次抓取受限网页。</li>
+                  </ol>
+                  <p className="mt-2 border-t border-blue-200/70 pt-2 text-[10px] text-blue-700 dark:border-blue-800 dark:text-blue-300">
+                    浏览器辅助导入只处理你主动复制的可见文字，不读取招聘网站 Cookie、密码或浏览历史。
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
