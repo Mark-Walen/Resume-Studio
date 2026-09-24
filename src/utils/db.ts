@@ -397,12 +397,28 @@ export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
   }
 }
 
+function deduplicateResumeLibrary(resumes: ResumeData[]): ResumeData[] {
+  const byId = new Map<string, ResumeData>();
+  resumes.forEach((resume, index) => {
+    if (!resume || typeof resume !== 'object') return;
+    const id = typeof resume.id === 'string' && resume.id.trim()
+      ? resume.id
+      : `resume-recovered-${index}`;
+    byId.set(id, { ...resume, id });
+  });
+  return [...byId.values()];
+}
+
 export function loadResumeLibrary(fallback: ResumeData = DEFAULT_RESUME): ResumeData[] {
   try {
     const raw = readScopedStorage(RESUME_LIBRARY_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const normalized = deduplicateResumeLibrary(parsed);
+        if (normalized.length !== parsed.length) saveResumeLibrary(normalized);
+        if (normalized.length > 0) return normalized;
+      }
     }
   } catch (err) {
     console.warn('Failed to load resume library:', err);
@@ -412,7 +428,7 @@ export function loadResumeLibrary(fallback: ResumeData = DEFAULT_RESUME): Resume
 
 export function saveResumeLibrary(resumes: ResumeData[]): void {
   try {
-    writeScopedStorage(RESUME_LIBRARY_KEY, JSON.stringify(resumes));
+    writeScopedStorage(RESUME_LIBRARY_KEY, JSON.stringify(deduplicateResumeLibrary(resumes)));
   } catch (err) {
     console.warn('Failed to save resume library:', err);
   }
@@ -464,7 +480,7 @@ export function applyCloudWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>
     encryptedApiKey: localKeys.get(profile.id) || '',
   }));
   const legacyResume = snapshot.resume || loadResumeData();
-  const resumes = snapshot.resumes?.length ? snapshot.resumes : [legacyResume];
+  const resumes = deduplicateResumeLibrary(snapshot.resumes?.length ? snapshot.resumes : [legacyResume]);
   const activeResumeId = resumes.some(item => item.id === snapshot.activeResumeId)
     ? snapshot.activeResumeId!
     : resumes[0].id;
