@@ -8,6 +8,7 @@ import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
 import { getActiveAiProfile, getCustomApiKey } from '../utils/db';
 import { auth } from './firebase';
 import { ModelProviderType } from '../types/aiProvider';
+import { JobApplication, JobCommunicationAdvice } from '../types/job';
 
 const PROVIDER_IDS: Record<ModelProviderType, string> = {
   claude: 'anthropic',
@@ -238,6 +239,26 @@ export async function fetchAndAnalyzeJd(params: {
     console.warn('API fetchAndAnalyzeJd failed:', err);
     throw err instanceof Error ? err : new Error('获取或分析职位信息失败。');
   }
+}
+
+export async function requestJobCommunicationAdvice(params: {
+  question: string;
+  currentResume: ResumeData;
+  job: JobApplication;
+}): Promise<JobCommunicationAdvice> {
+  const customKey = getCustomApiKey();
+  const res = await requestAiApi('/api/job-communication', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+    },
+    body: JSON.stringify({ ...params, customApiKey: customKey })
+  });
+
+  const json = await res.json();
+  if (json.success && json.data) return json.data;
+  throw new Error(json.error || '职位沟通建议生成失败');
 }
 
 // ================= Fallback Logic =================

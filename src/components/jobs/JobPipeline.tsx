@@ -21,7 +21,8 @@ import {
   Bookmark,
   Send,
   HelpCircle,
-  Archive
+  Archive,
+  MessagesSquare
 } from 'lucide-react';
 
 interface JobPipelineProps {
@@ -35,6 +36,7 @@ interface JobPipelineProps {
   onOpenDossier?: (job: JobApplication) => void;
   onOpenCalendar?: () => void;
   onOpenJdRecommend?: (job: JobApplication) => void;
+  onOpenCommunication?: (job: JobApplication) => void;
 }
 
 const COLUMNS: Array<{ id: ApplicationStatus; title: string; color: string; badgeColor: string; icon: React.FC<{ className?: string }> }> = [
@@ -57,6 +59,7 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
   onOpenDossier,
   onOpenCalendar,
   onOpenJdRecommend,
+  onOpenCommunication,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
@@ -240,6 +243,20 @@ export const JobPipeline: React.FC<JobPipelineProps> = ({
                             className="text-[11px] text-slate-600 dark:text-slate-400 hover:text-[#0071e3] dark:hover:text-[#0071e3] hover:bg-slate-100 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded transition-colors"
                           >
                             背调档案
+                          </button>
+                        )}
+                        {onOpenCommunication && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenCommunication(job)}
+                            className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#0071e3] dark:text-slate-400 dark:hover:bg-blue-950/50 dark:hover:text-blue-300"
+                            title="准备并保存招聘沟通与面试问答"
+                          >
+                            <MessagesSquare className="h-3 w-3" />
+                            <span>职位沟通</span>
+                            {!!job.communicationRecords?.length && (
+                              <span className="ml-0.5 rounded-full bg-blue-100 px-1 text-[9px] font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-200">{job.communicationRecords.length}</span>
+                            )}
                           </button>
                         )}
                         {onOpenJdRecommend && job.jobDescription && (

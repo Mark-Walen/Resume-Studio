@@ -5,7 +5,8 @@ import { JobSiteProxyModal } from '../jobs/JobSiteProxyModal';
 import { InterviewCalendarView } from '../InterviewCalendarView';
 import { MultiCompanyResumeOptimizer } from '../MultiCompanyResumeOptimizer';
 import { CompanyDossierModal } from '../CompanyDossierModal';
-import { JobApplication, CompanyDossier, ApplicationStatus } from '../../types/job';
+import { JobCommunicationModal } from '../jobs/JobCommunicationModal';
+import { JobApplication, CompanyDossier, ApplicationStatus, JobCommunicationRecord } from '../../types/job';
 import { ResumeData } from '../../types/resume';
 import {
   Briefcase,
@@ -36,6 +37,7 @@ export const InterviewManagementDashboard: React.FC<InterviewManagementDashboard
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'pipeline' | 'calendar' | 'multi_optimize'>(initialSubTab);
   const [selectedDossierApp, setSelectedDossierApp] = useState<JobApplication | null>(null);
+  const [communicationApp, setCommunicationApp] = useState<JobApplication | null>(null);
 
   // Modal states for adding/editing job
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
@@ -63,6 +65,18 @@ export const InterviewManagementDashboard: React.FC<InterviewManagementDashboard
       status,
       updatedAt: new Date().toISOString().split('T')[0]
     });
+  };
+
+  const handleSaveCommunication = (appId: string, records: JobCommunicationRecord[]) => {
+    const app = jobApplications.find((item) => item.id === appId) || communicationApp;
+    if (!app) return;
+    const updated = {
+      ...app,
+      communicationRecords: records,
+      updatedAt: new Date().toISOString().split('T')[0]
+    };
+    setCommunicationApp(updated);
+    onUpdateApplication(updated);
   };
 
   return (
@@ -145,6 +159,7 @@ export const InterviewManagementDashboard: React.FC<InterviewManagementDashboard
           onOpenDossier={(app) => setSelectedDossierApp(app)}
           onOpenCalendar={() => setActiveSubTab('calendar')}
           onOpenJobProxy={() => setIsJobProxyOpen(true)}
+          onOpenCommunication={(app) => setCommunicationApp(app)}
         />
       )}
 
@@ -172,6 +187,16 @@ export const InterviewManagementDashboard: React.FC<InterviewManagementDashboard
           onClose={() => setSelectedDossierApp(null)}
           application={selectedDossierApp}
           onSaveDossier={handleSaveDossier}
+        />
+      )}
+
+      {communicationApp && (
+        <JobCommunicationModal
+          isOpen={!!communicationApp}
+          onClose={() => setCommunicationApp(null)}
+          application={communicationApp}
+          currentResume={currentResume}
+          onSave={(records) => handleSaveCommunication(communicationApp.id, records)}
         />
       )}
 
