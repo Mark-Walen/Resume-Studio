@@ -72,6 +72,21 @@
   line-height: 1.8;
 }
 
+.knowledge-block-editor.is-readonly .bn-block-content {
+  border-radius: 0.5rem;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.knowledge-block-editor.is-readonly .reading-highlighted-block {
+  background: rgba(250, 204, 21, 0.24);
+  box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.24);
+}
+
+.dark .knowledge-block-editor.is-readonly .reading-highlighted-block {
+  background: rgba(234, 179, 8, 0.18);
+  box-shadow: 0 0 0 5px rgba(234, 179, 8, 0.18);
+}
+
 @media (max-width: 768px) {
   .knowledge-block-editor .bn-editor {
     padding: 1.5rem 1.25rem 4rem;

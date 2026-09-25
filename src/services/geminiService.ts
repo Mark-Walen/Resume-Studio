@@ -277,21 +277,17 @@ function fallbackGenerateResume(
   return {
     title: isAi ? 'AI 架构与全栈研发专家' : isFrontend ? '资深前端技术专家 / 架构师' : '资深全栈研发工程师',
     personalInfo: {
-      fullName: existing?.personalInfo.fullName || '张伟 (Vincent Zhang)',
+      fullName: existing?.personalInfo.fullName || '',
       jobTitle: isAi ? 'AI 全栈架构师 / Tech Lead' : isFrontend ? '资深前端技术专家' : '资深全栈工程师',
-      email: existing?.personalInfo.email || 'vincent.zhang@example.com',
-      phone: existing?.personalInfo.phone || '+86 138-0013-8000',
-      location: existing?.personalInfo.location || '北京 / 远程',
+      email: existing?.personalInfo.email || '',
+      phone: existing?.personalInfo.phone || '',
+      location: existing?.personalInfo.location || '',
       website: existing?.personalInfo.website,
       github: existing?.personalInfo.github,
       linkedin: existing?.personalInfo.linkedin
     },
     summary: `具备丰富的大规模分布式与现代 Web 交互架构落地经验。根据输入信息自动提炼：深耕${prompt.slice(0, 45)}等关键业务场景，熟练主导技术方案选型、系统性能优化与工程化基建，兼具深厚底层编码功底与团队业务交付保障能力。`,
-    skills: existing?.skills || [
-      { id: 's-1', category: '核心技术栈', skills: ['React 19', 'TypeScript', 'Node.js', 'Next.js', 'Tailwind CSS'] },
-      { id: 's-2', category: '架构与性能', skills: ['高并发架构', '分布式缓存', 'Web Vitals 优化', 'Microfrontends', 'CI/CD'] },
-      { id: 's-3', category: 'AI 赋能', skills: ['Gemini API 编排', 'RAG 检索增强', 'Prompt 工程', '自动化工作流'] }
-    ]
+    skills: existing?.skills || []
   };
 }
 

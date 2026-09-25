@@ -16,11 +16,13 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import App from '../../App';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { APP_COPYRIGHT, APP_VERSION } from '../../config/appMeta';
 
 type AuthMode = 'signin' | 'register' | 'reset';
+
+const App = React.lazy(() => import('../../App'));
 
 function getAuthError(error: unknown): string {
   const code = error instanceof FirebaseError ? error.code : '';
@@ -238,18 +240,17 @@ function GuestLanding() {
                 <div className="rounded-2xl bg-blue-50 p-3 text-blue-600"><BarChart3 className="h-6 w-6" /></div>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-3">
-                {[['目标公司', '8'], ['面试安排', '3'], ['待复盘', '2']].map(([label, value]) => (
+                {['简历资料', '求职进度', '复盘知识'].map((label) => (
                   <div key={label} className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
-                    <p className="text-2xl font-black">{value}</p><p className="mt-1 text-[11px] font-semibold text-slate-500">{label}</p>
+                    <CheckCircle2 className="h-5 w-5 text-blue-500" /><p className="mt-2 text-[11px] font-semibold text-slate-500">{label}</p>
                   </div>
                 ))}
               </div>
               <div className="mt-4 space-y-3">
-                {['嵌入式软件工程师 · 技术二面', 'IoT 平台开发 · 简历精修', '系统工程师 · 公司背调'].map((item, index) => (
+                {['整理真实经历与成果', '跟踪自己的投递和面试', '沉淀个人笔记与闪卡'].map((item, index) => (
                   <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-100 dark:border-slate-800 p-3.5">
                     <span className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-orange-400' : index === 1 ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                     <span className="flex-1 text-xs font-bold text-slate-700 dark:text-slate-200">{item}</span>
-                    <span className="text-[10px] text-slate-400">私人数据</span>
                   </div>
                 ))}
               </div>
@@ -283,6 +284,8 @@ function GuestLanding() {
           <button onClick={() => setAuthMode('signin')} className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800"><LockKeyhole className="h-4 w-4" />进入安全工作台</button>
         </section>
       </main>
+
+      <footer className="border-t border-slate-200 px-5 py-5 text-center text-[11px] text-slate-400 dark:border-slate-800">{APP_COPYRIGHT} · Version {APP_VERSION}</footer>
 
       {authMode && <AuthDialog mode={authMode} onClose={() => setAuthMode(null)} />}
     </div>
@@ -323,5 +326,5 @@ export function AuthGate() {
   if (loading) return <LoadingScreen />;
   if (!user) return <GuestLanding />;
   if (!user.emailVerified && user.providerData.some(provider => provider.providerId === 'password')) return <VerifyEmailScreen />;
-  return <App />;
+  return <React.Suspense fallback={<LoadingScreen />}><App /></React.Suspense>;
 }

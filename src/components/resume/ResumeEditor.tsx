@@ -38,7 +38,6 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { RichTextEditor } from '../common/RichTextEditor';
-import { DEFAULT_TEST_AVATAR } from '../../data/defaultResume';
 
 interface ResumeEditorProps {
   resume: ResumeData;
@@ -368,7 +367,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                     </span>
                     {resume.personalInfo.avatarUrl && (
                       <span className="text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full font-medium border border-blue-200/60 dark:border-blue-800/60">
-                        {resume.personalInfo.avatarUrl === DEFAULT_TEST_AVATAR ? '已配置测试头像' : '已上传证件照'}
+                        已上传证件照
                       </span>
                     )}
                   </div>
@@ -592,7 +591,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                       </button>
                     )}
 
-                    {meta.type === 'custom' && (
+                    {meta.type === 'custom' && !isOrganizing && (
                       <button
                         type="button"
                         onClick={() => handleRemoveCustomSection(key)}
@@ -642,14 +641,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                     className="w-20 h-26 object-cover border border-slate-300 dark:border-slate-600 rounded-xs shadow-xs bg-white dark:bg-slate-900"
                   />
                 ) : (
-                  <div
-                    onClick={() => updatePersonalInfo('avatarUrl', DEFAULT_TEST_AVATAR)}
-                    className="w-20 h-26 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-[#0071e3] dark:hover:border-[#0071e3] rounded-xs flex flex-col items-center justify-center text-slate-400 hover:text-[#0071e3] bg-white dark:bg-slate-900 cursor-pointer transition-colors group/ph"
-                    title="点击一键填入测试头像占位符"
-                  >
-                    <ImageIcon className="w-5 h-5 mb-1 group-hover/ph:scale-110 transition-transform" />
-                    <span className="text-[10px] font-medium">点击填入</span>
-                    <span className="text-[8px] text-slate-400">测试头像</span>
+                  <div className="w-20 h-26 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xs flex flex-col items-center justify-center text-slate-400 bg-white dark:bg-slate-900">
+                    <ImageIcon className="w-5 h-5 mb-1" />
+                    <span className="text-[10px] font-medium">尚未上传</span>
                   </div>
                 )}
               </div>
@@ -678,15 +672,6 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                       }}
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => updatePersonalInfo('avatarUrl', DEFAULT_TEST_AVATAR)}
-                    className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-[#0071e3] border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors inline-flex items-center gap-1"
-                    title="一键填入高清标准免冠证件照（仅用于效果测试）"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>使用测试头像</span>
-                  </button>
                   {resume.personalInfo.avatarUrl && (
                     <button
                       type="button"
@@ -708,7 +693,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                   value={resume.personalInfo.fullName}
                   onChange={e => updatePersonalInfo('fullName', e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
-                  placeholder="例如：张伟"
+                  placeholder="例如：姓名"
                 />
               </div>
               <div>

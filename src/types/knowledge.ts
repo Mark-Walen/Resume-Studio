@@ -43,6 +43,8 @@ export interface BookSection {
   tags?: string[];
   keyTakeaways?: string[];
   sourceFileName?: string; // If imported from PDF/Word/MD
+  readingHighlights?: Array<{ id: string; text: string; createdAt: string }>;
+  readingNotes?: Array<{ id: string; quote: string; content: string; createdAt: string }>;
 }
 
 export interface BookChapter {
@@ -77,6 +79,9 @@ export interface KnowledgeBook {
   previewSectionIds?: string[];
   isOfficial?: boolean;
   isSubscribed?: boolean;
+  publicationStatus?: 'draft' | 'published';
+  shareId?: string;
+  publishedAt?: string;
 }
 
 // ================= 根据简历与目标公司JD智能推荐知识点 =================

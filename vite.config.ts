@@ -12,7 +12,10 @@ import {
   listUserFeedback,
   loadWorkspaceDocument,
   migrateOrLoadWorkspace,
+  publishKnowledgeBook,
   saveWorkspaceDocument,
+  unpublishKnowledgeBook,
+  listPublishedKnowledgeBooks,
 } from './server/database.ts';
 import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
 import { createMediaUploadSession, getMediaFile } from './server/storage.ts';
@@ -285,6 +288,57 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '保存云端工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/knowledge-books/public' && req.method === 'GET') {
+        try {
+          const records = await listPublishedKnowledgeBooks();
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, books: records.map(record => record.payload) }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '读取公开专栏失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/knowledge-books/publish' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const shareId = String(body.shareId || '').trim();
+          const book = body.book && typeof body.book === 'object' ? body.book : null;
+          if (!/^[A-Za-z0-9-]{8,80}$/.test(shareId) || !book || JSON.stringify(book).length > 5_000_000) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: '专栏分享数据无效或超过 5MB。' }));
+            return;
+          }
+          const published = await publishKnowledgeBook(req.authUser, shareId, book);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, published }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '发布专栏失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/knowledge-books/publish' && req.method === 'DELETE') {
+        try {
+          const body = await readBody(req);
+          const shareId = String(body.shareId || '').trim();
+          if (!/^[A-Za-z0-9-]{8,80}$/.test(shareId)) throw new Error('分享标识无效。');
+          await unpublishKnowledgeBook(req.authUser, shareId);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true }));
+        } catch (error) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '撤回专栏失败。' }));
         }
         return;
       }

@@ -5,10 +5,6 @@ import { JobApplication, ApplicationStatus } from './types/job';
 import { InterviewRecord } from './types/interview';
 import { CrossInterviewDiagnosticReport } from './types/diagnostic';
 import { defaultResume } from './data/defaultResume';
-import { INITIAL_JOB_APPLICATIONS, mockInterviews } from './data/mockInterviews';
-import { INITIAL_KNOWLEDGE_BASE } from './data/knowledgeBaseData';
-import { DEFAULT_LEETBOOKS } from './data/defaultBooks';
-import { INITIAL_WORK_DAILY_LOGS } from './data/defaultJournals';
 import { KnowledgeItem, KnowledgeBook } from './types/knowledge';
 import { WorkDailyLog } from './types/journal';
 import {
@@ -38,19 +34,6 @@ import {
 import { migrateOrLoadCloudWorkspace, saveCloudWorkspace } from './services/workspaceSyncService';
 import { migrateLocalMediaToCloud } from './services/mediaStorageService';
 import { Header, MainTab } from './components/Header';
-import { ResumePreview } from './components/resume/ResumePreview';
-import { ResumeLibraryControls } from './components/resume/ResumeLibraryControls';
-import { ResumeEditor } from './components/resume/ResumeEditor';
-import { ResumeImportModal } from './components/resume/ResumeImportModal';
-import { AiResumeGeneratorModal } from './components/resume/AiResumeGeneratorModal';
-import { ExportModal } from './components/resume/ExportModal';
-import { InterviewManagementDashboard } from './components/interview_management/InterviewManagementDashboard';
-import { InterviewsAndReplayDashboard } from './components/interview/InterviewsAndReplayDashboard';
-import { InterviewModal } from './components/interview/InterviewModal';
-import { KnowledgeBase } from './components/knowledge/KnowledgeBase';
-import { ApiKeyModal } from './components/ApiKeyModal';
-import { WorkDailyLogDashboard } from './components/WorkDailyLogDashboard';
-import { JdKnowledgeRecommenderModal } from './components/JdKnowledgeRecommenderModal';
 import {
   RotateCcw,
   Layout,
@@ -59,7 +42,26 @@ import {
   FileEdit
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
-import { FeedbackModal } from './components/common/FeedbackModal';
+import { APP_COPYRIGHT, APP_VERSION } from './config/appMeta';
+
+const lazyNamed = <T extends React.ComponentType<any>>(loader: () => Promise<Record<string, unknown>>, name: string) =>
+  React.lazy(async () => ({ default: (await loader())[name] as T }));
+
+const ResumePreview = lazyNamed(() => import('./components/resume/ResumePreview'), 'ResumePreview');
+const ResumeLibraryControls = lazyNamed(() => import('./components/resume/ResumeLibraryControls'), 'ResumeLibraryControls');
+const ResumeEditor = lazyNamed(() => import('./components/resume/ResumeEditor'), 'ResumeEditor');
+const ResumeImportModal = lazyNamed(() => import('./components/resume/ResumeImportModal'), 'ResumeImportModal');
+const AiResumeGeneratorModal = lazyNamed(() => import('./components/resume/AiResumeGeneratorModal'), 'AiResumeGeneratorModal');
+const ExportModal = lazyNamed(() => import('./components/resume/ExportModal'), 'ExportModal');
+const InterviewManagementDashboard = lazyNamed(() => import('./components/interview_management/InterviewManagementDashboard'), 'InterviewManagementDashboard');
+const InterviewsAndReplayDashboard = lazyNamed(() => import('./components/interview/InterviewsAndReplayDashboard'), 'InterviewsAndReplayDashboard');
+const InterviewModal = lazyNamed(() => import('./components/interview/InterviewModal'), 'InterviewModal');
+const KnowledgeBase = lazyNamed(() => import('./components/knowledge/KnowledgeBase'), 'KnowledgeBase');
+const ApiKeyModal = lazyNamed(() => import('./components/ApiKeyModal'), 'ApiKeyModal');
+const WorkDailyLogDashboard = lazyNamed(() => import('./components/WorkDailyLogDashboard'), 'WorkDailyLogDashboard');
+const JdKnowledgeRecommenderModal = lazyNamed(() => import('./components/JdKnowledgeRecommenderModal'), 'JdKnowledgeRecommenderModal');
+const FeedbackModal = lazyNamed(() => import('./components/common/FeedbackModal'), 'FeedbackModal');
+const AccountSettingsModal = lazyNamed(() => import('./components/auth/AccountSettingsModal'), 'AccountSettingsModal');
 
 function createBlankResume(index: number): ResumeData {
   const now = new Date().toISOString();
@@ -88,7 +90,7 @@ export default function App() {
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaMigrationUser = useRef<string | null>(null);
   // Navigation
-  const [currentTab, setCurrentTab] = useState<MainTab>('resume');
+  const [currentTab, setCurrentTab] = useState<MainTab>(() => window.location.hash.startsWith('#knowledge-book=') ? 'knowledge' : 'resume');
 
   // Resume State
   const [resumeLibrary, setResumeLibrary] = useState<ResumeData[]>(() => loadResumeLibrary(defaultResume));
@@ -105,13 +107,13 @@ export default function App() {
   // Jobs Pipeline State
   const [jobs, setJobs] = useState<JobApplication[]>(() => {
     const saved = loadJobApplications();
-    return saved.length > 0 ? saved : INITIAL_JOB_APPLICATIONS;
+    return saved;
   });
 
   // Interviews State
   const [interviews, setInterviews] = useState<InterviewRecord[]>(() => {
     const saved = loadInterviewRecords();
-    return saved.length > 0 ? saved : mockInterviews;
+    return saved;
   });
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
 
@@ -122,17 +124,17 @@ export default function App() {
 
   // Basic Knowledge Base State
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>(() => {
-    return loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE);
+    return loadKnowledgeItems();
   });
 
   // LeetBooks State
   const [books, setBooks] = useState<KnowledgeBook[]>(() => {
-    return loadLeetBooks(DEFAULT_LEETBOOKS);
+    return loadLeetBooks();
   });
 
   // Work Daily Logs State
   const [workLogs, setWorkLogs] = useState<WorkDailyLog[]>(() => {
-    return loadWorkDailyLogs(INITIAL_WORK_DAILY_LOGS);
+    return loadWorkDailyLogs();
   });
 
   // JD Recommender Modal State
@@ -146,6 +148,7 @@ export default function App() {
   const [exportInitialTab, setExportInitialTab] = useState<'export' | 'email'>('export');
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<InterviewRecord | null>(null);
   const [initialInterviewCompany, setInitialInterviewCompany] = useState<string | undefined>();
@@ -406,8 +409,10 @@ export default function App() {
         onSaveWorkspace={() => void saveWorkspaceNow()}
         saveStatus={saveStatus}
         userName={user?.displayName || user?.email || '用户'}
+        userPhotoURL={user?.photoURL || undefined}
         onSignOut={() => void signOutUser()}
         onOpenFeedback={() => setIsFeedbackOpen(true)}
+        onOpenAccountSettings={() => setIsAccountSettingsOpen(true)}
       />
 
       {!workspaceReady && (
@@ -423,6 +428,7 @@ export default function App() {
         </div>
       )}
 
+      <React.Suspense fallback={<div className="flex flex-1 items-center justify-center py-24 text-sm font-semibold text-slate-400">正在加载工作区…</div>}>
       {/* Main Workspace */}
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-4 sm:p-6 lg:p-8">
         {/* ================= TAB 1: RESUME STUDIO ================= */}
@@ -541,15 +547,15 @@ export default function App() {
                   </label>
                   <button
                     onClick={async () => {
-                      if (await showAppConfirm('确定重置为默认优质高阶简历模板吗？当前简历内容将被替换。', { title: '重置简历模板', confirmLabel: '确认重置', danger: true })) {
+                      if (await showAppConfirm('确定清空当前简历内容吗？此操作不会影响其他简历。', { title: '清空当前简历', confirmLabel: '确认清空', danger: true })) {
                         setResume({ ...structuredClone(defaultResume), id: activeResumeId, title: resume.title });
                       }
                     }}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                    title="恢复默认简历数据"
+                    title="清空当前简历内容"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    重置模板
+                    清空内容
                   </button>
                 </div>
               </div>
@@ -585,7 +591,7 @@ export default function App() {
         {currentTab === 'interview_management' && (
           <InterviewManagementDashboard
             jobApplications={jobs}
-            onAddApplication={(app) => {
+            onAddApplication={(app: JobApplication) => {
               const newApp: JobApplication = {
                 ...app,
                 id: `job-${Date.now()}`,
@@ -598,7 +604,7 @@ export default function App() {
             onDeleteApplication={handleDeleteJob}
             currentResume={resume}
             onUpdateResume={setResume}
-            onStartMockInterview={(companyName) => {
+            onStartMockInterview={(companyName: string) => {
               setCurrentTab('interviews');
               setInitialInterviewCompany(companyName);
               setIsInterviewModalOpen(true);
@@ -611,14 +617,14 @@ export default function App() {
           <InterviewsAndReplayDashboard
             interviews={interviews}
             selectedInterviewId={selectedInterviewId}
-            onSelectInterview={(id) => setSelectedInterviewId(id)}
+            onSelectInterview={(id: string) => setSelectedInterviewId(id)}
             onAddInterview={() => {
               setEditingInterview(null);
               setInitialInterviewCompany(undefined);
               setIsInterviewModalOpen(true);
             }}
             onDeleteInterview={handleDeleteInterview}
-            onEditInterview={(rec) => {
+            onEditInterview={(rec: InterviewRecord) => {
               setEditingInterview(rec);
               setIsInterviewModalOpen(true);
             }}
@@ -635,7 +641,7 @@ export default function App() {
             onUpdateItems={setKnowledgeItems}
             books={books}
             onSaveBooks={setBooks}
-            onOpenJdRecommender={(sectionTitle) => {
+            onOpenJdRecommender={(sectionTitle?: string) => {
               setJdRecommenderInitialSection(sectionTitle);
               setIsJdRecommenderOpen(true);
             }}
@@ -653,15 +659,19 @@ export default function App() {
         )}
       </main>
 
+      <footer className="mx-auto flex w-full max-w-[1720px] flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-slate-200 px-5 py-5 text-[11px] text-slate-400 dark:border-slate-800">
+        <span>{APP_COPYRIGHT}</span><span>Version {APP_VERSION}</span><button type="button" onClick={() => setIsFeedbackOpen(true)} className="font-semibold hover:text-[#0071e3]">问题反馈</button>
+      </footer>
+
       {/* Global Modals */}
-      <ResumeImportModal
+      {isResumeImportOpen && <ResumeImportModal
         isOpen={isResumeImportOpen}
         onClose={() => setIsResumeImportOpen(false)}
         currentResume={resume}
         onImportSuccess={handleImportResumeSuccess}
-      />
+      />}
 
-      <AiResumeGeneratorModal
+      {isAiResumeOpen && <AiResumeGeneratorModal
         isOpen={isAiResumeOpen}
         onClose={() => setIsAiResumeOpen(false)}
         existingResume={resume}
@@ -670,38 +680,40 @@ export default function App() {
           setIsAiResumeOpen(false);
           setIsApiKeyOpen(true);
         }}
-      />
+      />}
 
-      <ExportModal
+      {isExportOpen && <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         resume={resume}
         templateId={templateId}
         sortByDate={sortResumeByDate}
         initialTab={exportInitialTab}
-      />
+      />}
 
-      <ApiKeyModal
+      {isApiKeyOpen && <ApiKeyModal
         isOpen={isApiKeyOpen}
         onClose={() => setIsApiKeyOpen(false)}
-      />
+      />}
 
-      <FeedbackModal
+      {isFeedbackOpen && <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
         pageContext={currentTab}
-      />
+      />}
 
-      <InterviewModal
+      {isAccountSettingsOpen && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} />}
+
+      {isInterviewModalOpen && <InterviewModal
         isOpen={isInterviewModalOpen}
         onClose={() => setIsInterviewModalOpen(false)}
         onSave={handleSaveInterview}
         editingRecord={editingInterview}
         initialCompanyName={initialInterviewCompany}
-      />
+      />}
 
       {/* JD to Knowledge Recommender Modal */}
-      <JdKnowledgeRecommenderModal
+      {isJdRecommenderOpen && <JdKnowledgeRecommenderModal
         isOpen={isJdRecommenderOpen}
         onClose={() => {
           setIsJdRecommenderOpen(false);
@@ -710,10 +722,11 @@ export default function App() {
         jobApplications={jobs}
         currentResume={resume}
         preselectedSectionTitle={jdRecommenderInitialSection}
-        onAddKnowledgeItem={(item) => {
+        onAddKnowledgeItem={(item: KnowledgeItem) => {
           setKnowledgeItems((prev) => [item, ...prev]);
         }}
-      />
+      />}
+      </React.Suspense>
     </div>
   );
 }

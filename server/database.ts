@@ -76,6 +76,17 @@ export async function ensureDatabaseSchema(): Promise<void> {
         );
         CREATE INDEX IF NOT EXISTS user_feedback_created_at_idx
           ON user_feedback(created_at DESC);
+        CREATE TABLE IF NOT EXISTS public_knowledge_books (
+          share_id TEXT PRIMARY KEY,
+          owner_uid TEXT NOT NULL,
+          payload JSONB NOT NULL,
+          published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT public_knowledge_books_user_fk
+            FOREIGN KEY (owner_uid) REFERENCES app_users(firebase_uid) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS public_knowledge_books_updated_at_idx
+          ON public_knowledge_books(updated_at DESC);
       `);
     })().catch(error => {
       schemaPromise = null;
@@ -184,6 +195,43 @@ export async function saveWorkspaceDocument(
     payload: result.rows[0].payload || {},
     updatedAt: new Date(result.rows[0].updated_at).toISOString(),
   };
+}
+
+export async function publishKnowledgeBook(
+  user: AuthenticatedUser,
+  shareId: string,
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `INSERT INTO public_knowledge_books (share_id, owner_uid, payload, published_at, updated_at)
+     VALUES ($1, $2, $3::jsonb, NOW(), NOW())
+     ON CONFLICT (share_id) DO UPDATE SET
+       payload = EXCLUDED.payload,
+       updated_at = NOW()
+     WHERE public_knowledge_books.owner_uid = EXCLUDED.owner_uid
+     RETURNING share_id, payload, published_at, updated_at`,
+    [shareId, user.uid, JSON.stringify(payload)],
+  );
+  if (!result.rows[0]) throw new Error('该分享标识不属于当前用户。');
+  return result.rows[0];
+}
+
+export async function unpublishKnowledgeBook(user: AuthenticatedUser, shareId: string): Promise<void> {
+  await ensureDatabaseSchema();
+  const pool = await getPool();
+  await pool.query('DELETE FROM public_knowledge_books WHERE share_id = $1 AND owner_uid = $2', [shareId, user.uid]);
+}
+
+export async function listPublishedKnowledgeBooks(): Promise<Array<Record<string, unknown>>> {
+  await ensureDatabaseSchema();
+  const pool = await getPool();
+  const result = await pool.query(
+    `SELECT share_id, payload, published_at, updated_at
+     FROM public_knowledge_books ORDER BY updated_at DESC LIMIT 200`,
+  );
+  return result.rows;
 }
 
 export async function migrateOrLoadWorkspace(

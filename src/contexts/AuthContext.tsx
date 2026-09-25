@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   GoogleAuthProvider,
+  EmailAuthProvider,
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -9,6 +10,8 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  reauthenticateWithCredential,
+  updatePassword,
   updateProfile,
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
@@ -22,6 +25,8 @@ interface AuthContextValue {
   sendPasswordReset: (email: string) => Promise<void>;
   resendVerification: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUserProfile: (displayName: string, photoURL: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -30,6 +35,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userRevision, setUserRevision] = useState(0);
 
   useEffect(() => onAuthStateChanged(auth, currentUser => {
     setUser(currentUser);
@@ -65,9 +71,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!auth.currentUser) return;
       await auth.currentUser.reload();
       setUser(auth.currentUser);
+      setUserRevision(value => value + 1);
+    },
+    updateUserProfile: async (displayName, photoURL) => {
+      if (!auth.currentUser) throw new Error('当前没有已登录用户。');
+      await updateProfile(auth.currentUser, {
+        displayName: displayName.trim() || null,
+        photoURL: photoURL.trim() || null,
+      });
+      await auth.currentUser.reload();
+      setUser(auth.currentUser);
+      setUserRevision(value => value + 1);
+    },
+    changePassword: async (currentPassword, newPassword) => {
+      const currentUser = auth.currentUser;
+      if (!currentUser?.email) throw new Error('当前账户没有可用于验证的邮箱。');
+      const supportsPassword = currentUser.providerData.some(provider => provider.providerId === 'password');
+      if (!supportsPassword) throw new Error('Google 登录账户请在 Google 账户中心管理密码。');
+      await reauthenticateWithCredential(currentUser, EmailAuthProvider.credential(currentUser.email, currentPassword));
+      await updatePassword(currentUser, newPassword);
     },
     signOutUser: () => signOut(auth),
-  }), [loading, user]);
+  }), [loading, user, userRevision]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

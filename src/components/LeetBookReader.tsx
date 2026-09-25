@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BookOpen,
   ChevronRight,
@@ -25,9 +25,15 @@ import {
   UserRound,
   LockKeyhole,
   Copy,
+  Highlighter,
+  StickyNote,
+  Share2,
+  Send,
+  Settings,
 } from 'lucide-react';
 import { KnowledgeBook, BookChapter, BookSection } from '../types/knowledge';
 import { showAppConfirm, showAppMessage } from './common/AppFeedback';
+import { publishBook as publishBookToCommunity, unpublishBook as unpublishBookFromCommunity } from '../services/knowledgePublishingService';
 
 const KnowledgeBlockEditor = React.lazy(() =>
   import('./knowledge/KnowledgeBlockEditor').then(module => ({ default: module.KnowledgeBlockEditor })),
@@ -37,12 +43,14 @@ interface LeetBookReaderProps {
   books: KnowledgeBook[];
   onSaveBooks: (books: KnowledgeBook[]) => void;
   onOpenJdRecommender?: (bookSectionTitle?: string) => void;
+  onAddFlashcard?: (title: string, content: string, tags: string[], category: KnowledgeBook['category']) => void;
 }
 
 export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
   books,
   onSaveBooks,
   onOpenJdRecommender,
+  onAddFlashcard,
 }) => {
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -61,6 +69,11 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
   const [showCreateBookModal, setShowCreateBookModal] = useState(false);
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showEditBookModal, setShowEditBookModal] = useState(false);
+  const [editBookTitle, setEditBookTitle] = useState('');
+  const [editBookDescription, setEditBookDescription] = useState('');
+  const [selectedReadingText, setSelectedReadingText] = useState('');
+  const [readingNoteDraft, setReadingNoteDraft] = useState('');
 
   // New Book form
   const [newBookTitle, setNewBookTitle] = useState('');
@@ -83,6 +96,13 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
 
   const selectedBook = books.find((b) => b.id === selectedBookId) || null;
 
+  useEffect(() => {
+    if (selectedBookId) return;
+    const shareId = window.location.hash.startsWith('#knowledge-book=') ? decodeURIComponent(window.location.hash.slice(16)) : '';
+    const sharedBook = shareId ? books.find(book => book.shareId === shareId) : undefined;
+    if (sharedBook) handleSelectBook(sharedBook);
+  }, [books, selectedBookId]);
+
   // Flatten sections to find active section
   const allSections: { section: BookSection; chapter: BookChapter }[] = [];
   if (selectedBook) {
@@ -101,7 +121,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
 
   const filteredBooks = books.filter((b) => {
     const ownership = getOwnership(b);
-    if (libraryScope === 'community' && ownership !== 'community') return false;
+    if (libraryScope === 'community' && ownership !== 'community' && b.publicationStatus !== 'published') return false;
     if (libraryScope === 'mine' && ownership !== 'personal' && ownership !== 'subscribed' && !b.isSubscribed) return false;
     const matchesCategory = activeCategory === 'all' || b.category === activeCategory;
     const matchesSearch =
@@ -120,6 +140,137 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
     }
     setIsInlineEditing(false);
     setIsCreatingSection(false);
+    setSelectedReadingText('');
+  };
+
+  const updateCurrentSection = (updater: (section: BookSection) => BookSection) => {
+    if (!selectedBook || !currentSection) return;
+    onSaveBooks(books.map(book => book.id !== selectedBook.id ? book : ({
+      ...book,
+      ...(getOwnership(book) === 'community' ? { isSubscribed: true } : {}),
+      updatedAt: new Date().toISOString(),
+      chapters: book.chapters.map(chapter => ({
+        ...chapter,
+        sections: chapter.sections.map(section => section.id === currentSection.id ? updater(section) : section),
+      })),
+    })));
+  };
+
+  const toggleReadingHighlight = () => {
+    const text = selectedReadingText.trim();
+    if (!text) return;
+    updateCurrentSection(section => {
+      const existing = section.readingHighlights || [];
+      const found = existing.some(item => item.text === text);
+      return {
+        ...section,
+        readingHighlights: found ? existing.filter(item => item.text !== text) : [...existing, { id: `hl-${Date.now()}`, text, createdAt: new Date().toISOString() }],
+      };
+    });
+    setSelectedReadingText('');
+    window.getSelection()?.removeAllRanges();
+    showAppMessage('阅读高亮已更新。', 'success');
+  };
+
+  const addReadingNote = () => {
+    const content = readingNoteDraft.trim();
+    if (!content || !selectedReadingText.trim()) return;
+    updateCurrentSection(section => ({
+      ...section,
+      readingNotes: [...(section.readingNotes || []), {
+        id: `note-${Date.now()}`,
+        quote: selectedReadingText.trim(),
+        content,
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+    setReadingNoteDraft('');
+    setSelectedReadingText('');
+    window.getSelection()?.removeAllRanges();
+    showAppMessage('阅读笔记已保存。', 'success');
+  };
+
+  const addSelectionToFlashcards = () => {
+    if (!selectedReadingText.trim() || !currentSection || !onAddFlashcard) return;
+    onAddFlashcard(currentSection.title, selectedReadingText.trim(), currentSection.tags || [], selectedBook?.category || 'backend');
+    setSelectedReadingText('');
+    window.getSelection()?.removeAllRanges();
+    showAppMessage('已添加至闪卡。', 'success');
+  };
+
+  const openBookSettings = () => {
+    if (!selectedBook || !canEditBook(selectedBook)) return;
+    setEditBookTitle(selectedBook.title);
+    setEditBookDescription(selectedBook.description);
+    setShowEditBookModal(true);
+  };
+
+  const saveBookSettings = async () => {
+    if (!selectedBook || !editBookTitle.trim()) return;
+    const nextBook: KnowledgeBook = {
+      ...selectedBook,
+      title: editBookTitle.trim(),
+      description: editBookDescription.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    if (nextBook.publicationStatus === 'published') {
+      try {
+        await publishBookToCommunity(nextBook);
+      } catch (error) {
+        showAppMessage(error instanceof Error ? error.message : '更新已发布专栏失败。', 'error');
+        return;
+      }
+    }
+    onSaveBooks(books.map(book => book.id === selectedBook.id ? {
+      ...book,
+      ...nextBook,
+    } : book));
+    setShowEditBookModal(false);
+    showAppMessage('专栏名称和描述已更新。', 'success');
+  };
+
+  const togglePublishBook = async () => {
+    if (!selectedBook || !canEditBook(selectedBook)) return;
+    const publishing = selectedBook.publicationStatus !== 'published';
+    const shareId = selectedBook.shareId || crypto.randomUUID();
+    const nextBook: KnowledgeBook = {
+      ...selectedBook,
+      publicationStatus: publishing ? 'published' : 'draft',
+      shareId,
+      publishedAt: publishing ? new Date().toISOString() : selectedBook.publishedAt,
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      if (publishing) await publishBookToCommunity(nextBook);
+      else await unpublishBookFromCommunity(shareId);
+    } catch (error) {
+      showAppMessage(error instanceof Error ? error.message : '专栏发布状态更新失败。', 'error');
+      return;
+    }
+    onSaveBooks(books.map(book => book.id === selectedBook.id ? {
+      ...book,
+      ...nextBook,
+    } : book));
+    showAppMessage(publishing ? '专栏已发布，现在可以分享。' : '专栏已撤回为草稿。', 'success');
+  };
+
+  const shareBook = async () => {
+    if (!selectedBook) return;
+    const markdown = selectedBook.chapters.flatMap(chapter => [
+      `# ${chapter.title}`,
+      ...chapter.sections.flatMap(section => [`## ${section.title}`, section.content]),
+    ]).join('\n\n');
+    const shareUrl = selectedBook.shareId ? `${window.location.origin}/#knowledge-book=${encodeURIComponent(selectedBook.shareId)}` : window.location.href;
+    const shareText = `# ${selectedBook.title}\n\n${selectedBook.description}\n\n${markdown}`;
+    const nativeShare = (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share;
+    try {
+      if (typeof nativeShare === 'function') await nativeShare.call(navigator, { title: selectedBook.title, text: selectedBook.description, url: shareUrl });
+      else await navigator.clipboard.writeText(`${shareUrl}\n\n${shareText}`);
+      showAppMessage(typeof nativeShare === 'function' ? '已打开系统分享面板。' : '专栏内容已复制，可发送给其他用户或 Agent。', 'success');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      showAppMessage('分享失败，请检查浏览器权限。', 'error');
+    }
   };
 
   const openSectionEditor = (createNew = false) => {
@@ -133,7 +284,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
     setEditorTags(createNew ? '' : (currentSection?.tags || []).join(', '));
   };
 
-  const saveInlineSection = () => {
+  const saveInlineSection = async () => {
     if (!selectedBook || !editorTitle.trim() || !editorContent.trim()) {
       showAppMessage('请填写小节标题和正文。', 'warning');
       return;
@@ -180,6 +331,14 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
       };
     });
     onSaveBooks(updated);
+    const updatedBook = updated.find(book => book.id === selectedBook.id);
+    if (updatedBook?.publicationStatus === 'published') {
+      try {
+        await publishBookToCommunity(updatedBook);
+      } catch (error) {
+        showAppMessage(error instanceof Error ? `内容已保存，但同步公开版本失败：${error.message}` : '内容已保存，但同步公开版本失败。', 'warning', 5200);
+      }
+    }
     setActiveSectionId(savedSectionId);
     setIsInlineEditing(false);
     setIsCreatingSection(false);
@@ -462,7 +621,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {onOpenJdRecommender && (
               <button
                 id="btn-jd-recommender-from-reader"
@@ -475,9 +634,12 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             )}
 
             {canEditBook(selectedBook) && (
+              <><button type="button" onClick={openBookSettings} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"><Settings className="h-3.5 w-3.5" />专栏设置</button>
+              <button type="button" onClick={() => void togglePublishBook()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"><Send className="h-3.5 w-3.5" />{selectedBook.publicationStatus === 'published' ? '撤回发布' : '发布'}</button>
+              {selectedBook.publicationStatus === 'published' && <button type="button" onClick={() => void shareBook()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"><Share2 className="h-3.5 w-3.5" />分享</button>}
               <button id="btn-add-section" onClick={() => openSectionEditor(true)} className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#0071e3] hover:bg-[#0077ed] rounded-xl transition-colors shadow-xs cursor-pointer">
                 <Edit3 className="w-3.5 h-3.5" /><span>新建小节</span>
-              </button>
+              </button></>
             )}
           </div>
         </div>
@@ -571,7 +733,7 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
               <div className="mx-auto flex min-h-full max-w-6xl flex-col">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
                   <div><div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"><Bot className="h-4 w-4 text-[#0071e3]" />{isCreatingSection ? '新建知识小节' : '编辑知识小节'}</div><p className="mt-1 text-[11px] text-slate-400">直接在最终排版中编辑；输入 / 可插入标题、列表、代码块等内容。</p></div>
-                  <div className="flex gap-2"><button type="button" onClick={() => void copyAgentMarkdown()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"><Copy className="h-3.5 w-3.5" />复制给 Agent</button><button type="button" onClick={() => { setIsInlineEditing(false); setIsCreatingSection(false); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">取消</button><button type="button" onClick={saveInlineSection} className="inline-flex items-center gap-1.5 rounded-xl bg-[#0071e3] px-4 py-2 text-xs font-bold text-white"><Save className="h-3.5 w-3.5" />保存</button></div>
+                  <div className="flex gap-2"><button type="button" onClick={() => void copyAgentMarkdown()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"><Copy className="h-3.5 w-3.5" />复制给 Agent</button><button type="button" onClick={() => { setIsInlineEditing(false); setIsCreatingSection(false); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">取消</button><button type="button" onClick={() => void saveInlineSection()} className="inline-flex items-center gap-1.5 rounded-xl bg-[#0071e3] px-4 py-2 text-xs font-bold text-white"><Save className="h-3.5 w-3.5" />保存</button></div>
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_240px]">
                   <input value={editorTitle} onChange={event => setEditorTitle(event.target.value)} placeholder="小节标题" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
@@ -649,6 +811,11 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                   </div>
                 )}
 
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]"><span className="font-bold text-slate-600 dark:text-slate-300">阅读工具</span><span className="text-slate-400">选中正文后，可高亮、制作闪卡或记录笔记。</span></div>
+                  {selectedReadingText && <div className="mt-3 space-y-2"><blockquote className="line-clamp-3 rounded-lg border-l-2 border-amber-400 bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">{selectedReadingText}</blockquote><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={toggleReadingHighlight} className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"><Highlighter className="h-3.5 w-3.5" />高亮行</button>{onAddFlashcard && <button type="button" onClick={addSelectionToFlashcards} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><Bookmark className="h-3.5 w-3.5" />添加至闪卡</button>}<input value={readingNoteDraft} onChange={event => setReadingNoteDraft(event.target.value)} placeholder="围绕选中内容写阅读笔记…" className="min-w-52 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-900" /><button type="button" onClick={addReadingNote} disabled={!readingNoteDraft.trim()} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"><StickyNote className="h-3.5 w-3.5" />保存笔记</button></div></div>}
+                </div>
+
                 {/* The same document canvas is used for reading and editing. */}
                 <React.Suspense fallback={<div className="py-10 text-center text-xs text-slate-400">正在加载正文…</div>}>
                   <KnowledgeBlockEditor
@@ -656,8 +823,12 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
                     initialMarkdown={currentSection.content}
                     initialDocument={currentSection.editorDocument}
                     editable={false}
+                    highlightedTexts={(currentSection.readingHighlights || []).map(item => item.text)}
+                    onTextSelected={setSelectedReadingText}
                   />
                 </React.Suspense>
+
+                {!!currentSection.readingNotes?.length && <div className="space-y-3 border-t border-slate-200 pt-5 dark:border-slate-800"><h2 className="flex items-center gap-2 text-sm font-bold"><StickyNote className="h-4 w-4 text-[#0071e3]" />阅读笔记</h2>{currentSection.readingNotes.map(note => <article key={note.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><blockquote className="text-[11px] leading-5 text-slate-400">“{note.quote}”</blockquote><p className="mt-2 text-xs leading-6 text-slate-700 dark:text-slate-200">{note.content}</p></article>)}</div>}
               </div>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
@@ -666,6 +837,15 @@ export const LeetBookReader: React.FC<LeetBookReaderProps> = ({
             )}
           </main>
         </div>
+
+        {showEditBookModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800"><h3 className="text-sm font-bold">编辑专栏资料</h3><button type="button" onClick={() => setShowEditBookModal(false)} className="rounded-lg p-1 text-slate-400"><X className="h-4 w-4" /></button></div>
+              <div className="space-y-4 p-5"><label className="block text-xs font-bold text-slate-600 dark:text-slate-300">专栏名称<input value={editBookTitle} onChange={event => setEditBookTitle(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-950" /></label><label className="block text-xs font-bold text-slate-600 dark:text-slate-300">专栏描述<textarea value={editBookDescription} onChange={event => setEditBookDescription(event.target.value)} rows={5} className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-6 outline-none focus:border-[#0071e3] dark:border-slate-700 dark:bg-slate-950" /></label><div className="flex justify-end gap-2"><button type="button" onClick={() => setShowEditBookModal(false)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-700">取消</button><button type="button" onClick={() => void saveBookSettings()} className="rounded-xl bg-[#0071e3] px-4 py-2 text-xs font-bold text-white">保存修改</button></div></div>
+            </div>
+          </div>
+        )}
 
         {/* Modal: Add Section */}
         {showAddSectionModal && (

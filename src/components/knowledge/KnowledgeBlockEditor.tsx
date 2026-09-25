@@ -11,11 +11,25 @@ interface KnowledgeBlockEditorProps {
   initialDocument?: unknown[];
   editable?: boolean;
   onChange?: (document: unknown[], markdown: string) => void;
+  highlightedTexts?: string[];
+  onTextSelected?: (text: string) => void;
   className?: string;
 }
 
 const isStoredBlockDocument = (value: unknown): value is PartialBlock[] =>
   Array.isArray(value) && value.length > 0 && value.every(block => !!block && typeof block === 'object' && 'type' in block);
+
+const normalizePastedMarkdown = (source: string) => {
+  const decoder = document.createElement('textarea');
+  decoder.innerHTML = source;
+  return decoder.value
+    .replace(/\u00a0/g, ' ')
+    .replace(/\\\s*\r?\n/g, '\n')
+    .replace(/\\([`*_[\]#>+.!~-])/g, '$1')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
 
 const looksLikeMarkdown = (text: string) => {
   const blockSyntax = [
@@ -43,6 +57,8 @@ export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
   initialDocument,
   editable = true,
   onChange,
+  highlightedTexts = [],
+  onTextSelected,
   className = '',
 }) => {
   const storedDocument = useMemo(
@@ -50,6 +66,7 @@ export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
     [initialDocument],
   );
   const hydrated = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
     document.documentElement.classList.contains('dark') ? 'dark' : 'light',
   );
@@ -77,6 +94,15 @@ export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
     }
   }, [editor, initialMarkdown, onChange, storedDocument]);
 
+  useEffect(() => {
+    if (editable || !rootRef.current) return;
+    const normalized = highlightedTexts.map(text => text.trim()).filter(Boolean);
+    rootRef.current.querySelectorAll<HTMLElement>('.bn-block-content').forEach(block => {
+      const blockText = (block.textContent || '').trim();
+      block.classList.toggle('reading-highlighted-block', normalized.some(text => blockText.includes(text) || text.includes(blockText)));
+    });
+  }, [editable, highlightedTexts]);
+
   const emitChange = () => {
     if (!onChange) return;
     const documentSnapshot = JSON.parse(JSON.stringify(editor.document)) as Block[];
@@ -85,7 +111,7 @@ export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     if (!editable) return;
-    const markdown = event.clipboardData.getData('text/plain').trim();
+    const markdown = normalizePastedMarkdown(event.clipboardData.getData('text/plain'));
     if (!markdown || !looksLikeMarkdown(markdown)) return;
 
     const parsedBlocks = editor.tryParseMarkdownToBlocks(markdown);
@@ -113,10 +139,20 @@ export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
     showAppMessage(`已将 Markdown 转换为 ${insertedBlocks.length} 个内容块。`, 'success');
   };
 
+  const handleMouseUp = () => {
+    if (editable || !onTextSelected || !rootRef.current) return;
+    const selection = window.getSelection();
+    const text = selection?.toString().trim() || '';
+    if (!text || text.length > 4000 || !selection?.anchorNode || !rootRef.current.contains(selection.anchorNode)) return;
+    onTextSelected(text);
+  };
+
   return (
     <div
       className={`knowledge-block-editor ${editable ? 'is-editable' : 'is-readonly'} ${className}`}
+      ref={rootRef}
       onPasteCapture={handlePaste}
+      onMouseUp={handleMouseUp}
     >
       <BlockNoteView
         editor={editor}

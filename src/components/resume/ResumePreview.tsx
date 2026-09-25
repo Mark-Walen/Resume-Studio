@@ -144,7 +144,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
               <div className="flex-shrink-0 w-20 h-26 border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 rounded-xs flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-[10px] print:hidden">
                 <User className="w-5 h-5 mb-0.5 text-slate-300 dark:text-slate-600" />
                 <span className="font-medium text-[10px]">1寸照片</span>
-                <span className="text-[8px] text-slate-400 dark:text-slate-500">测试占位</span>
+                <span className="text-[8px] text-slate-400 dark:text-slate-500">头像</span>
               </div>
             )}
 
@@ -253,7 +253,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             ) : (
               <div className="w-18 h-24 border border-dashed border-slate-400 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-[10px] mb-2 print:hidden">
                 <User className="w-5 h-5 mb-0.5 text-slate-400" />
-                <span className="text-[9px]">测试照</span>
+                <span className="text-[9px]">头像</span>
               </div>
             )}
           </div>
@@ -331,7 +331,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
               <div className="w-24 h-32 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 mb-3 mx-auto sm:mx-0 print:hidden">
                 <User className="w-8 h-8 mb-1 text-slate-300 dark:text-slate-600" />
                 <span className="text-[11px] font-medium">证件照</span>
-                <span className="text-[9px] text-slate-400">测试占位</span>
+                <span className="text-[9px] text-slate-400">头像</span>
               </div>
             )}
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">{personalInfo.fullName}</h1>
@@ -569,7 +569,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             ) : (
               <div className="w-20 h-26 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 flex flex-col items-center justify-center text-indigo-400 dark:text-indigo-400 text-[10px] print:hidden flex-shrink-0">
                 <User className="w-5 h-5 mb-0.5" />
-                <span className="font-medium text-[10px]">测试占位</span>
+                <span className="font-medium text-[10px]">头像</span>
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -672,7 +672,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             ) : (
               <div className="w-14 h-18 border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-[9px] flex-shrink-0 print:hidden">
                 <User className="w-4 h-4" />
-                <span>测试</span>
+                <span>头像</span>
               </div>
             )}
             <div>
