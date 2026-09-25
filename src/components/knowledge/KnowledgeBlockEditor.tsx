@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Block, PartialBlock } from '@blocknote/core';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
+import { showAppMessage } from '../common/AppFeedback';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
 
@@ -15,6 +16,27 @@ interface KnowledgeBlockEditorProps {
 
 const isStoredBlockDocument = (value: unknown): value is PartialBlock[] =>
   Array.isArray(value) && value.length > 0 && value.every(block => !!block && typeof block === 'object' && 'type' in block);
+
+const looksLikeMarkdown = (text: string) => {
+  const blockSyntax = [
+    /(^|\n)\s{0,3}#{1,6}\s+\S/m,
+    /(^|\n)\s{0,3}(?:[-+*]|\d+[.)])\s+\S/m,
+    /(^|\n)\s{0,3}>\s+\S/m,
+    /(^|\n)\s*```[\s\S]*```\s*$/m,
+    /(^|\n)\s*\|?.+\|.+\n\s*\|?\s*:?-{3,}/m,
+    /(^|\n)\s*---\s*(\n|$)/m,
+  ];
+  if (blockSyntax.some(pattern => pattern.test(text))) return true;
+
+  const inlineSyntaxMatches = [
+    /\*\*[^*\n]+\*\*/,
+    /~~[^~\n]+~~/,
+    /`[^`\n]+`/,
+    /\[[^\]\n]+\]\([^)\n]+\)/,
+    /!\[[^\]\n]*\]\([^)\n]+\)/,
+  ].filter(pattern => pattern.test(text)).length;
+  return inlineSyntaxMatches >= 2;
+};
 
 export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
   initialMarkdown,
@@ -61,8 +83,41 @@ export const KnowledgeBlockEditor: React.FC<KnowledgeBlockEditorProps> = ({
     onChange(documentSnapshot, editor.blocksToMarkdownLossy(editor.document));
   };
 
+  const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!editable) return;
+    const markdown = event.clipboardData.getData('text/plain').trim();
+    if (!markdown || !looksLikeMarkdown(markdown)) return;
+
+    const parsedBlocks = editor.tryParseMarkdownToBlocks(markdown);
+    if (!parsedBlocks.length) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const selection = editor.getSelection();
+    const cursorBlock = editor.getTextCursorPosition().block;
+    const currentBlockIsEmpty = !editor.blocksToMarkdownLossy([cursorBlock]).trim();
+    let insertedBlocks;
+
+    if (selection && editor.getSelectedText()) {
+      insertedBlocks = editor.insertBlocks(parsedBlocks, selection.blocks.at(-1) || cursorBlock, 'after');
+    } else if (currentBlockIsEmpty) {
+      insertedBlocks = editor.replaceBlocks([cursorBlock], parsedBlocks).insertedBlocks;
+    } else {
+      insertedBlocks = editor.insertBlocks(parsedBlocks, cursorBlock, 'after');
+    }
+
+    const lastInsertedBlock = insertedBlocks.at(-1);
+    if (lastInsertedBlock) editor.setTextCursorPosition(lastInsertedBlock, 'end');
+    emitChange();
+    showAppMessage(`已将 Markdown 转换为 ${insertedBlocks.length} 个内容块。`, 'success');
+  };
+
   return (
-    <div className={`knowledge-block-editor ${editable ? 'is-editable' : 'is-readonly'} ${className}`}>
+    <div
+      className={`knowledge-block-editor ${editable ? 'is-editable' : 'is-readonly'} ${className}`}
+      onPasteCapture={handlePaste}
+    >
       <BlockNoteView
         editor={editor}
         editable={editable}
