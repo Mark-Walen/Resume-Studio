@@ -54,7 +54,7 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
   const { registerWithEmail, sendPasswordReset, signInWithEmail, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('resume-pilot-next-account') || '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

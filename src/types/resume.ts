@@ -90,6 +90,8 @@ export interface ResumeData {
   customSections?: CustomSection[];
   sectionOrder?: string[];
   sectionVisibility?: Record<string, boolean>;
+  language?: string;
+  locale?: string;
 }
 
 export interface ResumeTheme {

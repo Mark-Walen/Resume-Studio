@@ -243,6 +243,17 @@ export async function fetchAndAnalyzeJd(params: {
   }
 }
 
+export async function requestTranslateResume(params: { resume: ResumeData; targetLanguage: string; mode: 'direct' | 'localized'; targetRegion?: string }): Promise<ResumeData> {
+  const response = await requestAiApi('/api/translate-resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success || !payload.data) throw new Error(payload.error || '简历翻译失败。');
+  return payload.data as ResumeData;
+}
+
 export async function requestJobCommunicationAdvice(params: {
   question: string;
   currentResume: ResumeData;

@@ -10,12 +10,15 @@ import {
   Calendar,
   LogOut,
   Cloud,
+  CloudOff,
   CloudCheck,
   LoaderCircle,
   ChevronDown,
   MessageSquareText,
   UserRound,
   Settings,
+  DatabaseBackup,
+  Users,
 } from 'lucide-react';
 import { ThemeToggle } from './common/ThemeToggle';
 import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
@@ -41,6 +44,11 @@ interface HeaderProps {
   onSignOut: () => void;
   onOpenFeedback: () => void;
   onOpenAccountSettings: () => void;
+  onOpenSyncCenter: () => void;
+  syncError?: string;
+  knownAccounts: Array<{ uid: string; email: string; displayName: string }>;
+  currentUserId?: string;
+  onSwitchAccount: (email?: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -56,6 +64,11 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onOpenFeedback,
   onOpenAccountSettings,
+  onOpenSyncCenter,
+  syncError,
+  knownAccounts,
+  currentUserId,
+  onSwitchAccount,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -188,9 +201,9 @@ export const Header: React.FC<HeaderProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:text-[#0071e3] dark:hover:text-[#0071e3] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 flex-shrink-0 cursor-pointer disabled:cursor-wait"
             title={saveStatus === 'error' ? '上次云端保存失败，点击重试' : '立即保存简历与工作区到云端'}
           >
-            {saveStatus === 'saving' ? <LoaderCircle className="w-4 h-4 animate-spin" /> : saveStatus === 'saved' ? <CloudCheck className="w-4 h-4 text-emerald-600" /> : <Cloud className="w-4 h-4" />}
+            {saveStatus === 'saving' ? <LoaderCircle className="w-4 h-4 animate-spin" /> : syncError || saveStatus === 'error' ? <CloudOff className="w-4 h-4 text-amber-600" /> : saveStatus === 'saved' ? <CloudCheck className="w-4 h-4 text-emerald-600" /> : <Cloud className="w-4 h-4" />}
             <span className="hidden 2xl:inline text-xs font-semibold">
-              {saveStatus === 'saving' ? '保存中' : saveStatus === 'saved' ? '已保存' : '云端保存'}
+              {saveStatus === 'saving' ? '保存中' : syncError || saveStatus === 'error' ? '同步异常' : saveStatus === 'saved' ? '已保存' : '云端保存'}
             </span>
           </button>
 
@@ -222,6 +235,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <button type="button" onClick={() => { setIsUserMenuOpen(false); onOpenAccountSettings(); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                   <Settings className="h-4 w-4 text-[#0071e3]" />账户设置
                 </button>
+                <button type="button" onClick={() => { setIsUserMenuOpen(false); onOpenSyncCenter(); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <DatabaseBackup className="h-4 w-4 text-[#0071e3]" />云端同步与还原
+                </button>
+                {knownAccounts.filter(account => account.uid !== currentUserId).map(account => <button key={account.uid} type="button" onClick={() => onSwitchAccount(account.email)} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"><Users className="h-4 w-4"/><span className="min-w-0"><b className="block truncate text-slate-700 dark:text-slate-200">{account.displayName}</b><span className="block truncate text-[10px]">{account.email}</span></span></button>)}
+                <button type="button" onClick={() => onSwitchAccount()} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><Users className="h-4 w-4 text-[#0071e3]"/>登录其他账户</button>
                 <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 dark:text-slate-300 dark:hover:bg-red-950/40">
                   <LogOut className="h-4 w-4" />退出登录
                 </button>

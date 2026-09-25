@@ -11,6 +11,10 @@ import {
   createUserFeedback,
   listUserFeedback,
   loadWorkspaceDocument,
+  patchWorkspaceDocument,
+  createWorkspaceRestorePoint,
+  listWorkspaceRestorePoints,
+  restoreWorkspaceRestorePoint,
   migrateOrLoadWorkspace,
   publishKnowledgeBook,
   saveWorkspaceDocument,
@@ -292,6 +296,63 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
         return;
       }
 
+      if (url === '/api/workspace' && req.method === 'PATCH') {
+        try {
+          const body = await readBody(req);
+          const document = await patchWorkspaceDocument(req.authUser, body.patch || {});
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '增量保存工作区失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace/restore-points' && req.method === 'GET') {
+        try {
+          const restorePoints = await listWorkspaceRestorePoints(req.authUser);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, restorePoints }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '读取还原点失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace/restore-points' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const restorePoint = await createWorkspaceRestorePoint(req.authUser, String(body.label || '手动还原点'));
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, restorePoint }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '创建还原点失败。' }));
+        }
+        return;
+      }
+
+      if (url === '/api/workspace/restore' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const restorePointId = String(body.restorePointId || '');
+          if (!/^\d+$/.test(restorePointId)) throw new Error('还原点标识无效。');
+          const document = await restoreWorkspaceRestorePoint(req.authUser, restorePointId);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, document }));
+        } catch (error) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '回滚工作区失败。' }));
+        }
+        return;
+      }
+
       if (url === '/api/knowledge-books/public' && req.method === 'GET') {
         try {
           const records = await listPublishedKnowledgeBooks();
@@ -444,6 +505,33 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
       }
 
       // 2. Generate Resume
+      if (url === '/api/translate-resume' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          if (!body.resume || JSON.stringify(body.resume).length > 2_000_000) throw new Error('简历数据无效或过大。');
+          const customKey = (req.headers['x-ai-api-key'] as string) || (req.headers['x-gemini-api-key'] as string);
+          const ai = getConfiguredAiClient(customKey, req);
+          const targetLanguage = String(body.targetLanguage || 'English').slice(0, 80);
+          const targetRegion = String(body.targetRegion || '').slice(0, 80);
+          const localized = body.mode === 'localized';
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Translate the following resume JSON into ${targetLanguage}${targetRegion ? ` for ${targetRegion}` : ''}. ${localized ? 'Adapt wording, professional conventions, date/location expressions and achievement style to the target job market while preserving every fact.' : 'Translate faithfully and directly without rewriting or adding facts.'}\n\nRules: preserve ids, dates, URLs, email, phone, array structure and all measurable facts; never invent information; return only valid JSON.\n\n${JSON.stringify(body.resume)}`,
+            config: { responseMimeType: 'application/json', systemInstruction: 'You are a professional resume localization specialist. Output one JSON object with the same schema as the input.' },
+          });
+          const translated = JSON.parse(response.text || '{}');
+          translated.language = targetLanguage;
+          translated.locale = targetRegion;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, data: translated }));
+        } catch (error) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '简历翻译失败。' }));
+        }
+        return;
+      }
+
       if (url === '/api/generate-resume' && req.method === 'POST') {
         try {
           const body = await readBody(req);

@@ -61,6 +61,17 @@ export async function ensureDatabaseSchema(): Promise<void> {
         );
         CREATE INDEX IF NOT EXISTS workspace_documents_updated_at_idx
           ON workspace_documents(updated_at DESC);
+        CREATE TABLE IF NOT EXISTS workspace_restore_points (
+          id BIGSERIAL PRIMARY KEY,
+          firebase_uid TEXT NOT NULL,
+          label TEXT NOT NULL DEFAULT '',
+          payload JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT workspace_restore_points_user_fk
+            FOREIGN KEY (firebase_uid) REFERENCES app_users(firebase_uid) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS workspace_restore_points_user_created_idx
+          ON workspace_restore_points(firebase_uid, created_at DESC);
         CREATE TABLE IF NOT EXISTS user_feedback (
           id BIGSERIAL PRIMARY KEY,
           firebase_uid TEXT NOT NULL,
@@ -195,6 +206,64 @@ export async function saveWorkspaceDocument(
     payload: result.rows[0].payload || {},
     updatedAt: new Date(result.rows[0].updated_at).toISOString(),
   };
+}
+
+export async function patchWorkspaceDocument(
+  user: AuthenticatedUser,
+  patch: Record<string, unknown>,
+): Promise<CloudWorkspaceDocument> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `INSERT INTO workspace_documents (firebase_uid, document_type, payload, updated_at)
+     VALUES ($1, 'workspace', $2::jsonb, NOW())
+     ON CONFLICT (firebase_uid, document_type) DO UPDATE SET
+       payload = workspace_documents.payload || EXCLUDED.payload,
+       updated_at = NOW()
+     RETURNING payload, updated_at`,
+    [user.uid, JSON.stringify(patch)],
+  );
+  return { payload: result.rows[0].payload || {}, updatedAt: new Date(result.rows[0].updated_at).toISOString() };
+}
+
+export async function createWorkspaceRestorePoint(user: AuthenticatedUser, label: string): Promise<Record<string, unknown>> {
+  const current = await loadWorkspaceDocument(user);
+  if (!current) throw new Error('当前没有可保存的云端工作区。');
+  const pool = await getPool();
+  const result = await pool.query(
+    `INSERT INTO workspace_restore_points (firebase_uid, label, payload)
+     VALUES ($1, $2, $3::jsonb)
+     RETURNING id, label, created_at`,
+    [user.uid, label.slice(0, 120), JSON.stringify(current.payload)],
+  );
+  return { id: String(result.rows[0].id), label: result.rows[0].label, createdAt: new Date(result.rows[0].created_at).toISOString() };
+}
+
+export async function listWorkspaceRestorePoints(user: AuthenticatedUser): Promise<Array<Record<string, unknown>>> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `SELECT id, label, created_at FROM workspace_restore_points
+     WHERE firebase_uid = $1 ORDER BY created_at DESC LIMIT 30`,
+    [user.uid],
+  );
+  return result.rows.map(row => ({ id: String(row.id), label: row.label, createdAt: new Date(row.created_at).toISOString() }));
+}
+
+export async function restoreWorkspaceRestorePoint(user: AuthenticatedUser, restorePointId: string): Promise<CloudWorkspaceDocument> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `UPDATE workspace_documents AS workspace
+     SET payload = point.payload, updated_at = NOW()
+     FROM workspace_restore_points AS point
+     WHERE workspace.firebase_uid = $1 AND workspace.document_type = 'workspace'
+       AND point.firebase_uid = $1 AND point.id = $2
+     RETURNING workspace.payload, workspace.updated_at`,
+    [user.uid, restorePointId],
+  );
+  if (!result.rows[0]) throw new Error('还原点不存在或无权访问。');
+  return { payload: result.rows[0].payload || {}, updatedAt: new Date(result.rows[0].updated_at).toISOString() };
 }
 
 export async function publishKnowledgeBook(

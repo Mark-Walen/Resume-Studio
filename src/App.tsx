@@ -31,7 +31,7 @@ import {
   hasLocalWorkspaceData,
   WORKSPACE_DATA_CHANGED_EVENT,
 } from './utils/db';
-import { migrateOrLoadCloudWorkspace, saveCloudWorkspace } from './services/workspaceSyncService';
+import { createWorkspacePatch, migrateOrLoadCloudWorkspace, restoreWorkspace, saveCloudWorkspace, saveCloudWorkspaceIncremental } from './services/workspaceSyncService';
 import { migrateLocalMediaToCloud } from './services/mediaStorageService';
 import { Header, MainTab } from './components/Header';
 import {
@@ -40,6 +40,9 @@ import {
   Columns,
   Eye,
   FileEdit
+  ,CloudOff
+  ,X
+  ,Languages
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { APP_COPYRIGHT, APP_VERSION } from './config/appMeta';
@@ -62,6 +65,8 @@ const WorkDailyLogDashboard = lazyNamed(() => import('./components/WorkDailyLogD
 const JdKnowledgeRecommenderModal = lazyNamed(() => import('./components/JdKnowledgeRecommenderModal'), 'JdKnowledgeRecommenderModal');
 const FeedbackModal = lazyNamed(() => import('./components/common/FeedbackModal'), 'FeedbackModal');
 const AccountSettingsModal = lazyNamed(() => import('./components/auth/AccountSettingsModal'), 'AccountSettingsModal');
+const WorkspaceSyncModal = lazyNamed(() => import('./components/sync/WorkspaceSyncModal'), 'WorkspaceSyncModal');
+const ResumeTranslationModal = lazyNamed(() => import('./components/resume/ResumeTranslationModal'), 'ResumeTranslationModal');
 
 function createBlankResume(index: number): ResumeData {
   const now = new Date().toISOString();
@@ -82,13 +87,14 @@ function createBlankResume(index: number): ResumeData {
 }
 
 export default function App() {
-  const { signOutUser, user } = useAuth();
+  const { signOutUser, user, knownAccounts, switchAccount } = useAuth();
   const hadLocalWorkspaceOnLogin = useRef(hasLocalWorkspaceData()).current;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [syncError, setSyncError] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaMigrationUser = useRef<string | null>(null);
+  const lastCloudSnapshot = useRef<ReturnType<typeof createLocalWorkspaceSnapshot> | null>(null);
   // Navigation
   const [currentTab, setCurrentTab] = useState<MainTab>(() => window.location.hash.startsWith('#knowledge-book=') ? 'knowledge' : 'resume');
 
@@ -149,6 +155,8 @@ export default function App() {
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
+  const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
+  const [isTranslationOpen, setIsTranslationOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<InterviewRecord | null>(null);
   const [initialInterviewCompany, setInitialInterviewCompany] = useState<string | undefined>();
@@ -175,6 +183,7 @@ export default function App() {
         setKnowledgeItems(synced.knowledgeItems);
         setBooks(synced.books);
         setWorkLogs(synced.workLogs);
+        lastCloudSnapshot.current = result.payload;
         setWorkspaceReady(true);
       })
       .catch(error => {
@@ -186,12 +195,22 @@ export default function App() {
     return () => { cancelled = true; };
   }, [hadLocalWorkspaceOnLogin, user?.uid]);
 
-  const saveWorkspaceNow = useCallback(async () => {
+  const saveWorkspaceNow = useCallback(async (mode: 'incremental' | 'full' = 'incremental') => {
     if (!workspaceReady) return;
     if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
     setSaveStatus('saving');
     try {
-      await saveCloudWorkspace(createLocalWorkspaceSnapshot());
+      const snapshot = createLocalWorkspaceSnapshot();
+      if (mode === 'full') {
+        await saveCloudWorkspace(snapshot);
+        lastCloudSnapshot.current = snapshot;
+      } else {
+        const patch = createWorkspacePatch(lastCloudSnapshot.current, snapshot);
+        if (Object.keys(patch).length) {
+          const result = await saveCloudWorkspaceIncremental(patch);
+          lastCloudSnapshot.current = result.payload;
+        }
+      }
       setSyncError('');
       setSaveStatus('saved');
       saveStatusTimer.current = setTimeout(() => setSaveStatus('idle'), 2500);
@@ -413,6 +432,11 @@ export default function App() {
         onSignOut={() => void signOutUser()}
         onOpenFeedback={() => setIsFeedbackOpen(true)}
         onOpenAccountSettings={() => setIsAccountSettingsOpen(true)}
+        onOpenSyncCenter={() => setIsSyncCenterOpen(true)}
+        syncError={syncError}
+        knownAccounts={knownAccounts}
+        currentUserId={user?.uid}
+        onSwitchAccount={email => void switchAccount(email)}
       />
 
       {!workspaceReady && (
@@ -423,8 +447,8 @@ export default function App() {
         </div>
       )}
       {workspaceReady && syncError && (
-        <div className="fixed right-4 top-20 z-[115] max-w-sm rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 shadow-lg">
-          云端同步暂时不可用，当前修改仍已保存在本机：{syncError}
+        <div className="fixed right-4 top-20 z-[115] flex max-w-sm items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 shadow-lg">
+          <CloudOff className="mt-0.5 h-4 w-4 flex-none"/><span>云端同步暂时不可用，当前修改仍已保存在本机：{syncError}</span><button type="button" onClick={() => setSyncError('')} aria-label="关闭同步提示" className="rounded p-0.5 hover:bg-amber-100 dark:hover:bg-amber-900"><X className="h-3.5 w-3.5"/></button>
         </div>
       )}
 
@@ -536,6 +560,7 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setIsTranslationOpen(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300"><Languages className="h-3.5 w-3.5"/>翻译与本地化</button>
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" title="只调整预览和导出顺序，不改写原始数据">
                     <input
                       type="checkbox"
@@ -703,6 +728,18 @@ export default function App() {
       />}
 
       {isAccountSettingsOpen && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} />}
+
+      {isSyncCenterOpen && <WorkspaceSyncModal isOpen={isSyncCenterOpen} onClose={() => setIsSyncCenterOpen(false)} onIncrementalSave={() => saveWorkspaceNow('incremental')} onFullSave={() => saveWorkspaceNow('full')} onRestore={async (id: string) => {
+        const result = await restoreWorkspace(id);
+        const synced = applyCloudWorkspaceSnapshot(result.payload);
+        setResume(synced.resume); setResumeLibrary(synced.resumes); setActiveResumeId(synced.activeResumeId); setJobs(synced.jobs); setInterviews(synced.interviews); setDiagnosticReport(synced.diagnosticReport); setKnowledgeItems(synced.knowledgeItems); setBooks(synced.books); setWorkLogs(synced.workLogs);
+        lastCloudSnapshot.current = result.payload;
+      }} />}
+
+      {isTranslationOpen && <ResumeTranslationModal isOpen={isTranslationOpen} onClose={() => setIsTranslationOpen(false)} resume={resume} onTranslated={(translatedResume: ResumeData, suggestedTemplate: ResumeTemplateId) => {
+        const copy = { ...translatedResume, id: `resume-${Date.now()}`, title: translatedResume.title || `${resume.title} · 翻译版`, lastModified: new Date().toISOString() };
+        setResumeLibrary(previous => [...previous, copy]); setResume(copy); setActiveResumeId(copy.id); setTemplateId(suggestedTemplate); setIsTranslationOpen(false);
+      }} onOpenApiKeySettings={() => { setIsTranslationOpen(false); setIsApiKeyOpen(true); }} />}
 
       {isInterviewModalOpen && <InterviewModal
         isOpen={isInterviewModalOpen}

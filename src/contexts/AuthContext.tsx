@@ -28,7 +28,13 @@ interface AuthContextValue {
   updateUserProfile: (displayName: string, photoURL: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signOutUser: () => Promise<void>;
+  knownAccounts: KnownAccount[];
+  switchAccount: (email?: string) => Promise<void>;
 }
+
+export interface KnownAccount { uid: string; email: string; displayName: string; photoURL?: string; }
+const KNOWN_ACCOUNTS_KEY = 'resume-pilot-known-accounts';
+const NEXT_ACCOUNT_KEY = 'resume-pilot-next-account';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -36,10 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRevision, setUserRevision] = useState(0);
+  const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>(() => {
+    try { return JSON.parse(localStorage.getItem(KNOWN_ACCOUNTS_KEY) || '[]'); } catch { return []; }
+  });
 
   useEffect(() => onAuthStateChanged(auth, currentUser => {
     setUser(currentUser);
     setLoading(false);
+    if (currentUser?.email) setKnownAccounts(previous => {
+      const next = [{ uid: currentUser.uid, email: currentUser.email!, displayName: currentUser.displayName || currentUser.email!, photoURL: currentUser.photoURL || undefined }, ...previous.filter(item => item.uid !== currentUser.uid)].slice(0, 8);
+      localStorage.setItem(KNOWN_ACCOUNTS_KEY, JSON.stringify(next));
+      return next;
+    });
   }), []);
 
   const value = useMemo<AuthContextValue>(() => ({
@@ -92,7 +106,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await updatePassword(currentUser, newPassword);
     },
     signOutUser: () => signOut(auth),
-  }), [loading, user, userRevision]);
+    knownAccounts,
+    switchAccount: async email => {
+      if (email) localStorage.setItem(NEXT_ACCOUNT_KEY, email);
+      else localStorage.removeItem(NEXT_ACCOUNT_KEY);
+      await signOut(auth);
+    },
+  }), [knownAccounts, loading, user, userRevision]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
