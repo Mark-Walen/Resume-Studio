@@ -2,6 +2,11 @@ node_modules/
 build/
 dist/
 coverage/
+.next/
+.sites-runtime/
+.vinext/
+.wrangler/
+next-env.d.ts
 .DS_Store
 *.log
 .env*
