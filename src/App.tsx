@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { APP_COPYRIGHT, APP_VERSION } from './config/appMeta';
+import { LegalLinks } from './components/legal/LegalCenter';
 
 const lazyNamed = <T extends React.ComponentType<any>>(loader: () => Promise<Record<string, unknown>>, name: string) =>
   React.lazy(async () => ({ default: (await loader())[name] as T }));
@@ -685,7 +686,7 @@ export default function App() {
       </main>
 
       <footer className="mx-auto flex w-full max-w-[1720px] flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-slate-200 px-5 py-5 text-[11px] text-slate-400 dark:border-slate-800">
-        <span>{APP_COPYRIGHT}</span><span>Version {APP_VERSION}</span><button type="button" onClick={() => setIsFeedbackOpen(true)} className="font-semibold hover:text-[#0071e3]">问题反馈</button>
+        <span>{APP_COPYRIGHT}</span><span>Version {APP_VERSION}</span><LegalLinks className="inline-flex items-center gap-2" /><button type="button" onClick={() => setIsFeedbackOpen(true)} className="font-semibold hover:text-[#0071e3]">问题反馈</button>
       </footer>
 
       {/* Global Modals */}

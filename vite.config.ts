@@ -20,6 +20,7 @@ import {
   saveWorkspaceDocument,
   unpublishKnowledgeBook,
   listPublishedKnowledgeBooks,
+  recordUserLegalConsent,
 } from './server/database.ts';
 import { PROVIDER_MODEL_CATALOG } from './src/config/modelCatalog.ts';
 import { createMediaUploadSession, getMediaFile } from './server/storage.ts';
@@ -30,16 +31,17 @@ dotenv.config();
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' https://www.google.com https://www.gstatic.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com https://*.googleapis.com",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com https://recaptchaenterprise.googleapis.com https://www.google.com https://*.googleapis.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    "frame-src https://www.google.com",
   ].join('; '),
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
@@ -49,7 +51,10 @@ const SECURITY_HEADERS = {
 function readBody(req: any): Promise<any> {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (chunk: any) => { data += chunk; });
+    req.on('data', (chunk: any) => {
+      data += chunk;
+      if (data.length > 8_000_000) reject(new Error('请求内容超过 8MB 限制。'));
+    });
     req.on('end', () => {
       try {
         resolve(data ? JSON.parse(data) : {});
@@ -86,6 +91,28 @@ function getPublicCustomBaseUrl(rawUrl?: string): string {
     throw new Error('自定义兼容服务不能使用本机或内网地址。');
   }
   return url.toString().replace(/\/$/, '');
+}
+
+const requestWindows = new Map<string, { startedAt: number; count: number }>();
+function enforceApiRateLimit(req: any, res: any): boolean {
+  const now = Date.now();
+  const route = String(req.url || '').split('?')[0];
+  const sensitive = /\/(generate-resume|translate-resume|proxy-jd|interview-feedback|job-communication|recommend-knowledge-points|multi-company-resume-optimizer)/.test(route);
+  const limit = sensitive ? 30 : 180;
+  const key = `${req.authUser?.uid || req.socket?.remoteAddress || 'unknown'}:${sensitive ? 'ai' : 'general'}`;
+  const current = requestWindows.get(key);
+  const window = !current || now - current.startedAt >= 60_000 ? { startedAt: now, count: 0 } : current;
+  window.count += 1;
+  requestWindows.set(key, window);
+  if (requestWindows.size > 10_000) {
+    for (const [entryKey, value] of requestWindows) if (now - value.startedAt >= 60_000) requestWindows.delete(entryKey);
+  }
+  if (window.count <= limit) return true;
+  res.statusCode = 429;
+  res.setHeader('Retry-After', '60');
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify({ success: false, error: '请求过于频繁，请稍后再试。' }));
+  return false;
 }
 
 function getAiClient(customKey?: string, provider: ProviderId = 'google', selectedModel?: string, compatibility: Compatibility = 'openai', customBaseUrl?: string, thinkingEffort: ThinkingEffort = 'default') {
@@ -222,7 +249,8 @@ async function authenticateApiRequest(req: any, res: any): Promise<boolean> {
       projectId: process.env.GOOGLE_CLOUD_PROJECT || 'resume-pilot-509509',
     });
     const decoded = await getAdminAuth(adminApp).verifyIdToken(idToken);
-    if (decoded.email && decoded.email_verified === false) {
+    const isConsentRecording = String(req.url || '').split('?')[0] === '/api/legal-consent';
+    if (decoded.email && decoded.email_verified === false && !isConsentRecording) {
       res.statusCode = 403;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ success: false, error: '请先完成邮箱验证。' }));
@@ -254,6 +282,30 @@ const apiMiddleware = async (req: any, res: any, next: () => void) => {
       }
 
       if (url?.startsWith('/api/') && !(await authenticateApiRequest(req, res))) return;
+      if (url?.startsWith('/api/') && !enforceApiRateLimit(req, res)) return;
+
+      if (url === '/api/legal-consent' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const userAgreementVersion = String(body.userAgreementVersion || '').slice(0, 32);
+          const privacyPolicyVersion = String(body.privacyPolicyVersion || '').slice(0, 32);
+          const source = ['email_registration', 'google_registration'].includes(body.source) ? body.source : '';
+          if (!/^\d{4}\.\d{2}$/.test(userAgreementVersion) || !/^\d{4}\.\d{2}$/.test(privacyPolicyVersion) || !source) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: '协议同意记录无效。' }));
+            return;
+          }
+          const consent = await recordUserLegalConsent(req.authUser, { userAgreementVersion, privacyPolicyVersion, source });
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, consent }));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : '协议记录失败。' }));
+        }
+        return;
+      }
 
       if (url === '/api/workspace' && req.method === 'GET') {
         try {

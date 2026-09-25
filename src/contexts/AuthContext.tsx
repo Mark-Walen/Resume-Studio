@@ -13,15 +13,17 @@ import {
   reauthenticateWithCredential,
   updatePassword,
   updateProfile,
+  initializeRecaptchaConfig,
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { clearPendingLegalConsent, queueCurrentLegalConsent, recordCurrentLegalConsent } from '../services/consentService';
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (name: string, email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (recordConsent?: boolean) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   resendVerification: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -49,12 +51,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => onAuthStateChanged(auth, currentUser => {
     setUser(currentUser);
     setLoading(false);
+    if (currentUser) void recordCurrentLegalConsent().catch(error => console.warn('Pending legal consent sync failed:', error instanceof Error ? error.message : error));
     if (currentUser?.email) setKnownAccounts(previous => {
       const next = [{ uid: currentUser.uid, email: currentUser.email!, displayName: currentUser.displayName || currentUser.email!, photoURL: currentUser.photoURL || undefined }, ...previous.filter(item => item.uid !== currentUser.uid)].slice(0, 8);
       localStorage.setItem(KNOWN_ACCOUNTS_KEY, JSON.stringify(next));
       return next;
     });
   }), []);
+
+  useEffect(() => {
+    initializeRecaptchaConfig(auth).catch(error => {
+      console.warn('Identity Platform reCAPTCHA configuration is not available yet:', error instanceof Error ? error.message : error);
+    });
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -63,16 +72,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signInWithEmailAndPassword(auth, email.trim(), password);
     },
     registerWithEmail: async (name, email, password) => {
-      const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      if (name.trim()) await updateProfile(credential.user, { displayName: name.trim() });
-      await sendEmailVerification(credential.user, { url: window.location.origin });
-      await credential.user.reload();
-      setUser(auth.currentUser);
+      queueCurrentLegalConsent('email_registration');
+      try {
+        const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        if (name.trim()) await updateProfile(credential.user, { displayName: name.trim() });
+        await recordCurrentLegalConsent('email_registration');
+        await sendEmailVerification(credential.user, { url: window.location.origin });
+        await credential.user.reload();
+        setUser(auth.currentUser);
+      } catch (error) {
+        if (!auth.currentUser) clearPendingLegalConsent();
+        throw error;
+      }
     },
-    signInWithGoogle: async () => {
+    signInWithGoogle: async (recordConsent = false) => {
+      if (recordConsent) queueCurrentLegalConsent('google_registration');
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
+      try {
+        await signInWithPopup(auth, provider);
+        if (recordConsent) await recordCurrentLegalConsent('google_registration');
+      } catch (error) {
+        if (!auth.currentUser) clearPendingLegalConsent();
+        throw error;
+      }
     },
     sendPasswordReset: async email => {
       await sendPasswordResetEmail(auth, email.trim(), { url: window.location.origin });

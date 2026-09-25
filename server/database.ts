@@ -87,6 +87,16 @@ export async function ensureDatabaseSchema(): Promise<void> {
         );
         CREATE INDEX IF NOT EXISTS user_feedback_created_at_idx
           ON user_feedback(created_at DESC);
+        CREATE TABLE IF NOT EXISTS user_legal_consents (
+          firebase_uid TEXT PRIMARY KEY,
+          user_agreement_version TEXT NOT NULL,
+          privacy_policy_version TEXT NOT NULL,
+          source TEXT NOT NULL,
+          consented_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT user_legal_consents_user_fk
+            FOREIGN KEY (firebase_uid) REFERENCES app_users(firebase_uid) ON DELETE CASCADE
+        );
         CREATE TABLE IF NOT EXISTS public_knowledge_books (
           share_id TEXT PRIMARY KEY,
           owner_uid TEXT NOT NULL,
@@ -155,6 +165,28 @@ export async function listUserFeedback(limit = 100): Promise<Array<Record<string
     [Math.max(1, Math.min(limit, 200))],
   );
   return result.rows;
+}
+
+export async function recordUserLegalConsent(
+  user: AuthenticatedUser,
+  input: { userAgreementVersion: string; privacyPolicyVersion: string; source: string },
+): Promise<{ consentedAt: string }> {
+  await upsertAppUser(user);
+  const pool = await getPool();
+  const result = await pool.query(
+    `INSERT INTO user_legal_consents
+       (firebase_uid, user_agreement_version, privacy_policy_version, source)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (firebase_uid) DO UPDATE SET
+       user_agreement_version = EXCLUDED.user_agreement_version,
+       privacy_policy_version = EXCLUDED.privacy_policy_version,
+       source = EXCLUDED.source,
+       consented_at = NOW(),
+       updated_at = NOW()
+     RETURNING consented_at`,
+    [user.uid, input.userAgreementVersion, input.privacyPolicyVersion, input.source],
+  );
+  return { consentedAt: new Date(result.rows[0].consented_at).toISOString() };
 }
 
 async function upsertAppUser(user: AuthenticatedUser): Promise<void> {
