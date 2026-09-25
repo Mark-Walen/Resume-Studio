@@ -1,18 +1,28 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FileText,
   Briefcase,
   Video,
   Library,
   PenTool,
-  Download,
-  Upload,
-  Key,
+  FileInput,
+  FileOutput,
   Calendar,
-  LogOut
+  LogOut,
+  Cloud,
+  CloudOff,
+  CloudCheck,
+  LoaderCircle,
+  ChevronDown,
+  MessageSquareText,
+  UserRound,
+  Settings,
+  DatabaseBackup,
+  Users,
 } from 'lucide-react';
 import { ThemeToggle } from './common/ThemeToggle';
 import { ModelQuickSwitcher } from './common/ModelQuickSwitcher';
+import { sanitizeImageUrl } from '../utils/security';
 
 export type MainTab =
   | 'resume'
@@ -27,8 +37,18 @@ interface HeaderProps {
   onOpenExport: () => void;
   onOpenApiKey: () => void;
   onOpenImportResume?: () => void;
+  onSaveWorkspace: () => void;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   userName: string;
+  userPhotoURL?: string;
   onSignOut: () => void;
+  onOpenFeedback: () => void;
+  onOpenAccountSettings: () => void;
+  onOpenSyncCenter: () => void;
+  syncError?: string;
+  knownAccounts: Array<{ uid: string; email: string; displayName: string }>;
+  currentUserId?: string;
+  onSwitchAccount: (email?: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,9 +57,30 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenApiKey,
   onOpenImportResume,
+  onSaveWorkspace,
+  saveStatus,
   userName,
+  userPhotoURL,
   onSignOut,
+  onOpenFeedback,
+  onOpenAccountSettings,
+  onOpenSyncCenter,
+  syncError,
+  knownAccounts,
+  currentUserId,
+  onSwitchAccount,
 }) => {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) setIsUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 w-full min-w-0 overflow-visible bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 font-sans transition-colors">
       <div className="max-w-[1720px] w-full min-w-0 mx-auto px-3 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2 xl:gap-4">
@@ -137,7 +178,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold transition-colors flex-shrink-0 whitespace-nowrap cursor-pointer"
               title="导入已有简历文件或文本"
             >
-              <Upload className="w-3.5 h-3.5 flex-shrink-0" />
+              <FileInput className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="hidden xl:inline">导入简历</span>
             </button>
           )}
@@ -147,38 +188,64 @@ export const Header: React.FC<HeaderProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap"
             title="导出高保真 PDF、Word 或发送求职信"
           >
-            <Download className="w-3.5 h-3.5 flex-shrink-0" />
+            <FileOutput className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden xl:inline">导出与发送</span>
           </button>
 
           {/* Quick AI Model Switcher (Trae / Workbuddy style) */}
           <ModelQuickSwitcher onOpenSettings={onOpenApiKey} />
 
+          <button
+            onClick={onSaveWorkspace}
+            disabled={saveStatus === 'saving'}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:text-[#0071e3] dark:hover:text-[#0071e3] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 flex-shrink-0 cursor-pointer disabled:cursor-wait"
+            title={saveStatus === 'error' ? '上次云端保存失败，点击重试' : '立即保存简历与工作区到云端'}
+          >
+            {saveStatus === 'saving' ? <LoaderCircle className="w-4 h-4 animate-spin" /> : syncError || saveStatus === 'error' ? <CloudOff className="w-4 h-4 text-amber-600" /> : saveStatus === 'saved' ? <CloudCheck className="w-4 h-4 text-emerald-600" /> : <Cloud className="w-4 h-4" />}
+            <span className="hidden 2xl:inline text-xs font-semibold">
+              {saveStatus === 'saving' ? '保存中' : syncError || saveStatus === 'error' ? '同步异常' : saveStatus === 'saved' ? '已保存' : '云端保存'}
+            </span>
+          </button>
+
           {/* Theme Toggle Button */}
           <ThemeToggle />
 
-          {/* API Key Modal Button */}
-          <button
-            onClick={onOpenApiKey}
-            className="p-2 text-slate-600 dark:text-slate-300 hover:text-[#0071e3] dark:hover:text-[#0071e3] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 flex-shrink-0 cursor-pointer"
-            title="AI 模型与通用 API 设置"
-          >
-            <Key className="w-4 h-4" />
-          </button>
-
-          <div className="hidden 2xl:flex max-w-36 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5" title={userName}>
-            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950 text-[10px] font-black uppercase text-blue-700 dark:text-blue-300">
-              {userName.slice(0, 1)}
-            </span>
-            <span className="truncate text-[11px] font-bold text-slate-600 dark:text-slate-300">{userName}</span>
+          <div ref={userMenuRef} className="relative flex-shrink-0">
+            <button
+              id="btn-user-menu"
+              type="button"
+              onClick={() => setIsUserMenuOpen(value => !value)}
+              className="flex max-w-44 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-600 transition-colors hover:border-blue-200 hover:text-[#0071e3] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              aria-expanded={isUserMenuOpen}
+              title={userName}
+            >
+              {sanitizeImageUrl(userPhotoURL) ? <img src={sanitizeImageUrl(userPhotoURL)} alt="账户头像" className="h-6 w-6 flex-shrink-0 rounded-lg object-cover" /> : <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[10px] font-black uppercase text-blue-700 dark:bg-blue-950 dark:text-blue-300">{userName.slice(0, 1)}</span>}
+              <span className="hidden max-w-24 truncate text-[11px] font-bold 2xl:inline">{userName}</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isUserMenuOpen && (
+              <div className="absolute right-0 top-full z-[90] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 px-2.5 py-2.5 dark:border-slate-800">
+                  <UserRound className="h-4 w-4 text-[#0071e3]" />
+                  <div className="min-w-0"><div className="text-[10px] text-slate-400">当前账户</div><div className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">{userName}</div></div>
+                </div>
+                <button type="button" onClick={() => { setIsUserMenuOpen(false); onOpenFeedback(); }} className="mt-1 flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <MessageSquareText className="h-4 w-4 text-[#0071e3]" />问题反馈
+                </button>
+                <button type="button" onClick={() => { setIsUserMenuOpen(false); onOpenAccountSettings(); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <Settings className="h-4 w-4 text-[#0071e3]" />账户设置
+                </button>
+                <button type="button" onClick={() => { setIsUserMenuOpen(false); onOpenSyncCenter(); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <DatabaseBackup className="h-4 w-4 text-[#0071e3]" />云端同步与还原
+                </button>
+                {knownAccounts.filter(account => account.uid !== currentUserId).map(account => <button key={account.uid} type="button" onClick={() => onSwitchAccount(account.email)} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"><Users className="h-4 w-4"/><span className="min-w-0"><b className="block truncate text-slate-700 dark:text-slate-200">{account.displayName}</b><span className="block truncate text-[10px]">{account.email}</span></span></button>)}
+                <button type="button" onClick={() => onSwitchAccount()} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><Users className="h-4 w-4 text-[#0071e3]"/>登录其他账户</button>
+                <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 dark:text-slate-300 dark:hover:bg-red-950/40">
+                  <LogOut className="h-4 w-4" />退出登录
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={onSignOut}
-            className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors border border-slate-200 dark:border-slate-800"
-            title="退出登录"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
 

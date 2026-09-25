@@ -50,7 +50,54 @@
   background: #475569;
 }
 
+/* Notion-style knowledge canvas: one surface for reading and editing. */
+.knowledge-block-editor .bn-container {
+  width: 100%;
+  background: transparent;
+}
+
+.knowledge-block-editor .bn-editor {
+  min-height: inherit;
+  padding: 2rem 2.75rem 5rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.knowledge-block-editor.is-readonly .bn-editor {
+  padding: 0;
+}
+
+.knowledge-block-editor .bn-block-content {
+  font-size: 0.925rem;
+  line-height: 1.8;
+}
+
+.knowledge-block-editor.is-readonly .bn-block-content {
+  border-radius: 0.5rem;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.knowledge-block-editor.is-readonly .reading-highlighted-block {
+  background: rgba(250, 204, 21, 0.24);
+  box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.24);
+}
+
+.dark .knowledge-block-editor.is-readonly .reading-highlighted-block {
+  background: rgba(234, 179, 8, 0.18);
+  box-shadow: 0 0 0 5px rgba(234, 179, 8, 0.18);
+}
+
+@media (max-width: 768px) {
+  .knowledge-block-editor .bn-editor {
+    padding: 1.5rem 1.25rem 4rem;
+  }
+}
+
 /* Dedicated High-Fidelity Print Styling for Resume PDF Export */
+.resume-pdf-print-stage {
+  display: none;
+}
+
 @media print {
   html, body, .dark, .dark body {
     background: #ffffff !important;
@@ -66,48 +113,71 @@
     display: none !important;
   }
 
-  body * {
-    visibility: hidden;
+  #root > div {
+    display: block !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
-  #resume-document,
-  #resume-document * {
-    visibility: visible;
+  #root > div > :not(.resume-pdf-print-stage) {
+    display: none !important;
   }
 
-  #resume-document {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  .resume-pdf-print-stage {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  #resume-print-document {
+    position: static !important;
+    box-sizing: border-box !important;
     width: 100% !important;
     max-width: none !important;
-    margin: 0 !important;
-    padding: 12mm 14mm !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #resume-print-document h2,
+  #resume-print-document h3 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+
+  #resume-print-document .resume-print-item,
+  #resume-print-document li {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
   }
 
   /* Force light theme colors on print */
-  #resume-document h1,
-  #resume-document h2,
-  #resume-document h3,
-  #resume-document p,
-  #resume-document span,
-  #resume-document li,
-  #resume-document div {
+  #resume-print-document h1,
+  #resume-print-document h2,
+  #resume-print-document h3,
+  #resume-print-document p,
+  #resume-print-document span,
+  #resume-print-document li,
+  #resume-print-document div {
     color: #0f172a !important;
   }
 
-  #resume-document .bg-slate-50,
-  #resume-document .bg-slate-100 {
+  #resume-print-document .bg-slate-50,
+  #resume-print-document .bg-slate-100 {
     background-color: #f8fafc !important;
   }
 
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 12mm 14mm;
   }
 }

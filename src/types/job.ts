@@ -27,6 +27,27 @@ export interface CompanyDossier {
   updatedAt?: string;
 }
 
+export interface JobCommunicationFollowUp {
+  question: string;
+  answerHint: string;
+}
+
+export interface JobCommunicationAdvice {
+  interviewerIntent: string;
+  answerFramework: string[];
+  suggestedAnswer: string;
+  followUpQuestions: JobCommunicationFollowUp[];
+  cautions: string[];
+}
+
+export interface JobCommunicationRecord extends JobCommunicationAdvice {
+  id: string;
+  question: string;
+  aiSuggestedAnswer?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface JobApplication {
   id: string;
   companyName: string;
@@ -47,6 +68,9 @@ export interface JobApplication {
 
   // 公司背调与 HR 资料合集 (Company Dossier)
   companyDossier?: CompanyDossier;
+
+  // 与招聘方沟通、面试问答准备（随岗位同步到云端工作区）
+  communicationRecords?: JobCommunicationRecord[];
 
   // 面试排程与提醒信息
   scheduledInterviewDate?: string;      // e.g. "2026-09-23T14:30"

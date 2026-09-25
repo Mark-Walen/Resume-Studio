@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ResumeData } from '../../types/resume';
-import { JobApplication } from '../../types/job';
+import { CompanyDossier, JobApplication } from '../../types/job';
 import { ParsedJdInfo, JdMatchAnalysis } from '../../types/proxy';
 import { fetchAndAnalyzeJd } from '../../services/geminiService';
+import { sanitizeExternalUrl } from '../../utils/security';
 import {
   Globe,
   Link,
@@ -21,7 +22,10 @@ import {
   FileCheck,
   BookmarkPlus,
   HelpCircle,
-  X
+  X,
+  ClipboardPaste,
+  Monitor,
+  Server
 } from 'lucide-react';
 
 interface JobSiteProxyModalProps {
@@ -44,10 +48,14 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
   const [result, setResult] = useState<{
     parsedJd: ParsedJdInfo;
     matchAnalysis: JdMatchAnalysis;
+    extractionMethod?: 'pasted-text' | 'http' | 'browser';
+    sourceTitle?: string;
+    companyDossier?: CompanyDossier;
   } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isAddedSuccess, setIsAddedSuccess] = useState(false);
   const [targetStatus, setTargetStatus] = useState<'wishlist' | 'applied'>('wishlist');
+  const [showBrowserImportHelp, setShowBrowserImportHelp] = useState(false);
 
   if (!isOpen) return null;
 
@@ -59,6 +67,7 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
     }
 
     setErrorMsg(null);
+    setResult(null);
     setIsLoading(true);
     setIsAddedSuccess(false);
 
@@ -72,7 +81,21 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
       setIsLoading(false);
     } catch (err: any) {
       setIsLoading(false);
-      setErrorMsg(err.message || '抓取或分析岗位信息失败，请检查网络或在右上角配置通用 API Key');
+      const message = err.message || '抓取或分析岗位信息失败，请检查网络或在右上角配置通用 API Key';
+      setErrorMsg(message);
+      if (/安全验证|登录|验证码|反爬虫|复制.*JD/i.test(message)) setShowBrowserImportHelp(true);
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) throw new Error('剪贴板中没有可用文本。');
+      setRawJdInput(text.slice(0, 50_000));
+      setErrorMsg(null);
+      setResult(null);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : '无法读取剪贴板，请允许剪贴板权限或手动粘贴。');
     }
   };
 
@@ -80,20 +103,50 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
     if (!result) return;
     const { parsedJd, matchAnalysis } = result;
 
+    const sourceUrl = sanitizeExternalUrl(parsedJd.sourceUrl || urlInput);
+    const today = new Date().toISOString().split('T')[0];
+    const requiredSkills = parsedJd.requiredSkills || [];
+    const bonusSkills = parsedJd.bonusSkills || [];
+    const responsibilities = parsedJd.responsibilities || [];
     const newJob: JobApplication = {
       id: 'job-proxy-' + Date.now(),
       companyName: parsedJd.companyName || '目标招聘企业',
       position: parsedJd.position || '期望岗位',
       salaryExpectation: parsedJd.salaryRange || '面议',
+      salary: parsedJd.salaryRange || '面议',
       location: parsedJd.location || '待定',
       status: targetStatus,
       priority: matchAnalysis.matchScore >= 85 ? 'high' : 'medium',
       source: urlInput ? (urlInput.includes('zhipin') ? 'Boss直聘' : urlInput.includes('lagou') ? '拉勾招聘' : urlInput.includes('liepin') ? '猎聘' : '网页代理导入') : 'JD直接解析',
-      jobDescription: `【核心要求与职责】：\n${parsedJd.jobDescription}\n\n【必备技能】：${parsedJd.requiredSkills.join('、')}\n\n【匹配度得分】：${matchAnalysis.matchScore} (${matchAnalysis.matchGrade})\n\n【AI 建议】：\n${matchAnalysis.targetedResumeAdvice.join('\n')}`,
+      jobDescription: [
+        `【岗位概述】\n${parsedJd.jobDescription || '暂无'}`,
+        `【岗位职责】\n${responsibilities.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【经验与学历】\n经验：${parsedJd.experienceYears || '未注明'}；学历：${parsedJd.education || '未注明'}`,
+        `【必备技能】\n${requiredSkills.join('、') || '暂无'}`,
+        `【加分技能】\n${bonusSkills.join('、') || '暂无'}`,
+        sourceUrl ? `【来源网址】\n${sourceUrl}` : ''
+      ].filter(Boolean).join('\n\n'),
       wishlistTargetDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      appliedDate: targetStatus === 'applied' ? new Date().toISOString().split('T')[0] : undefined,
-      notes: `【AI 自荐信】：\n${matchAnalysis.customizedCoverLetter}`,
-      updatedAt: new Date().toISOString().split('T')[0]
+      appliedDate: targetStatus === 'applied' ? today : undefined,
+      notes: [
+        `【匹配度】${matchAnalysis.matchScore} 分 · ${matchAnalysis.matchGrade}`,
+        `【匹配结论】\n${matchAnalysis.matchSummary || '暂无'}`,
+        `【核心优势】\n${matchAnalysis.matchingStrengths.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【潜在风险】\n${matchAnalysis.potentialGaps.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【简历优化建议】\n${matchAnalysis.targetedResumeAdvice.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【面试准备】\n${matchAnalysis.recommendedInterviewPrep.map((item, index) => `${index + 1}. ${item}`).join('\n') || '暂无'}`,
+        `【AI 自荐信】\n${matchAnalysis.customizedCoverLetter || '暂无'}`
+      ].join('\n\n'),
+      companyDossier: {
+        ...(result.companyDossier || {}),
+        teamAndTechStack: result.companyDossier?.teamAndTechStack || [...requiredSkills, ...bonusSkills].join(' · '),
+        keyInterviewStyle: result.companyDossier?.keyInterviewStyle || matchAnalysis.recommendedInterviewPrep.join('\n'),
+        riskAlerts: result.companyDossier?.riskAlerts?.length ? result.companyDossier.riskAlerts : matchAnalysis.potentialGaps,
+        collectedLinks: sourceUrl ? [{ id: `source-${Date.now()}`, title: result.sourceTitle || '原招聘页面', url: sourceUrl }] : [],
+        updatedAt: today
+      },
+      createdAt: today,
+      updatedAt: today
     };
 
     onAddJob(newJob);
@@ -167,9 +220,30 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
-                  或直接粘贴招聘 JD 文本：
-                </label>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
+                      浏览器辅助导入 / 直接粘贴 JD：
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowBrowserImportHelp(value => !value)}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0071e3] hover:underline"
+                    >
+                      <HelpCircle className="h-3 w-3" />
+                      {showBrowserImportHelp ? '收起说明' : '怎么使用？'}
+                    </button>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">遇到登录或验证码时，在原页面复制可见职位内容，再从剪贴板导入。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-[#0071e3] hover:text-[#0071e3] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  读取剪贴板
+                </button>
                 {(urlInput || rawJdInput) && (
                   <button
                     onClick={() => { setUrlInput(''); setRawJdInput(''); setResult(null); }}
@@ -186,6 +260,33 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                 onChange={e => setRawJdInput(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#0071e3] font-mono"
               />
+
+              {showBrowserImportHelp && (
+                <div className="mt-2.5 rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-[11px] text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-bold">需要登录或安全验证时，按以下步骤操作</div>
+                    {sanitizeExternalUrl(urlInput) && (
+                      <a
+                        href={sanitizeExternalUrl(urlInput)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 font-bold text-[#0071e3] hover:underline dark:text-blue-300"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        打开原网页
+                      </a>
+                    )}
+                  </div>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 leading-5">
+                    <li>在招聘网站原页面完成登录、滑块或短信验证，确认岗位详情已经完整显示。</li>
+                    <li>选中岗位名称、公司、薪资、职责和要求等可见文字并复制；也可以使用仓库中的 Chrome“Resume Pilot 岗位导入器”扩展一键复制当前页。</li>
+                    <li>返回这里点击“读取剪贴板”，确认下方文本框已有内容，再点击“代理抓取并分析”。有粘贴内容时系统不会再次抓取受限网页。</li>
+                  </ol>
+                  <p className="mt-2 border-t border-blue-200/70 pt-2 text-[10px] text-blue-700 dark:border-blue-800 dark:text-blue-300">
+                    浏览器辅助导入只处理你主动复制的可见文字，不读取招聘网站 Cookie、密码或浏览历史。
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -213,6 +314,13 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
           {/* Analysis Result */}
           {result && (
             <div className="space-y-4 animate-in fade-in">
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                {result.extractionMethod === 'browser' ? <Monitor className="h-4 w-4" /> : <Server className="h-4 w-4" />}
+                <span className="font-semibold">
+                  {result.extractionMethod === 'browser' ? '已通过云端 Chromium 读取页面' : result.extractionMethod === 'pasted-text' ? '已使用浏览器辅助导入内容' : '已通过服务器读取静态页面'}
+                </span>
+                {result.sourceTitle && <span className="truncate text-emerald-700/80 dark:text-emerald-400/80">· {result.sourceTitle}</span>}
+              </div>
               {/* Job Header Card */}
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="space-y-1">
@@ -314,6 +422,20 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                 </div>
               </div>
 
+              {result.companyDossier && (
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-3 dark:border-cyan-900/60 dark:bg-cyan-950/20">
+                  <div className="flex items-center gap-1.5 font-bold text-cyan-900 dark:text-cyan-200"><Building2 className="h-4 w-4" />企业初步背调（基于招聘页证据）</div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 text-[11px] leading-5 text-cyan-950 dark:text-cyan-100 sm:grid-cols-2">
+                    {result.companyDossier.hrIntro && <div><b>业务与招聘背景：</b>{result.companyDossier.hrIntro}</div>}
+                    {result.companyDossier.teamAndTechStack && <div><b>团队与技术栈：</b>{result.companyDossier.teamAndTechStack}</div>}
+                    {result.companyDossier.reputationAndWorkLife && <div><b>工作方式与福利：</b>{result.companyDossier.reputationAndWorkLife}</div>}
+                    {result.companyDossier.keyInterviewStyle && <div><b>面试关注推断：</b>{result.companyDossier.keyInterviewStyle}</div>}
+                  </div>
+                  {!!result.companyDossier.riskAlerts?.length && <ul className="mt-2 list-disc space-y-1 border-t border-cyan-200/70 pt-2 pl-4 text-[11px] text-cyan-900 dark:border-cyan-800 dark:text-cyan-200">{result.companyDossier.riskAlerts.map((risk, index) => <li key={`${risk}-${index}`}>{risk}</li>)}</ul>}
+                  <p className="mt-2 text-[10px] text-cyan-700 dark:text-cyan-300">未接入权威工商和员工评价数据源的信息会明确标为待核实，不作为事实断言。</p>
+                </div>
+              )}
+
               {/* Recommended Interview Prep */}
               {result.matchAnalysis.recommendedInterviewPrep && result.matchAnalysis.recommendedInterviewPrep.length > 0 && (
                 <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-xl border border-purple-200 dark:border-purple-900/60 space-y-1.5">
@@ -385,9 +507,9 @@ export const JobSiteProxyModal: React.FC<JobSiteProxyModalProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-blue-100 dark:border-slate-700">
-                  {urlInput ? (
+                  {sanitizeExternalUrl(urlInput) ? (
                     <a
-                      href={urlInput}
+                      href={sanitizeExternalUrl(urlInput)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[#0071e3] hover:underline font-semibold text-xs"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Cpu, ChevronDown, Check, Settings, Sparkles, Zap } from 'lucide-react';
-import { AiModelProfile, PROVIDER_CONFIGS } from '../../types/aiProvider';
+import { AiModelProfile, PROVIDER_CONFIGS, THINKING_EFFORT_LABELS } from '../../types/aiProvider';
 import { loadAiModelProfiles, getActiveAiProfile, setActiveAiProfile } from '../../utils/db';
 
 interface ModelQuickSwitcherProps {
@@ -111,7 +111,7 @@ export const ModelQuickSwitcher: React.FC<ModelQuickSwitcherProps> = ({ onOpenSe
                       </span>
                     </div>
                     <span className="text-[11px] font-mono text-slate-400 truncate mt-0.5">
-                      {p.modelName}
+                      {p.modelName} · {THINKING_EFFORT_LABELS[p.thinkingEffort || 'default']}
                     </span>
                   </div>
                   {isSelected && (

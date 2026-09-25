@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { InterviewRecord } from '../../types/interview';
 import { Plus, Video, Music, Sparkles, ChevronRight, Trash2, Calendar, Clock, Search, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { showAppConfirm } from '../common/AppFeedback';
 
 interface InterviewListProps {
   interviews: InterviewRecord[];
@@ -123,9 +124,9 @@ export const InterviewList: React.FC<InterviewListProps> = ({
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      if (confirm('确定删除该场面试记录吗？')) {
+                      if (await showAppConfirm('确定删除该场面试记录吗？', { title: '删除面试记录', confirmLabel: '删除', danger: true })) {
                         onDeleteInterview(iv.id);
                       }
                     }}

@@ -1,4 +1,4 @@
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useRef, useState } from 'react';
 import { FirebaseError } from 'firebase/app';
 import {
   ArrowRight,
@@ -16,17 +16,23 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import App from '../../App';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { APP_COPYRIGHT, APP_VERSION } from '../../config/appMeta';
+import { LegalConsent, LegalDocumentDialog, LegalLinks } from '../legal/LegalCenter';
+import { LegalDocumentType } from '../../config/legal';
 
 type AuthMode = 'signin' | 'register' | 'reset';
+
+const App = React.lazy(() => import('../../App'));
 
 function getAuthError(error: unknown): string {
   const code = error instanceof FirebaseError ? error.code : '';
   const messages: Record<string, string> = {
-    'auth/invalid-credential': '邮箱或密码不正确。',
-    'auth/email-already-in-use': '该邮箱已经注册，请直接登录。',
+    'auth/invalid-credential': '无法完成登录，请检查信息或稍后重试。',
+    'auth/user-not-found': '无法完成登录，请检查信息或稍后重试。',
+    'auth/wrong-password': '无法完成登录，请检查信息或稍后重试。',
+    'auth/email-already-in-use': '无法完成注册，请检查信息或稍后重试。',
     'auth/invalid-email': '请输入有效的邮箱地址。',
     'auth/weak-password': '密码强度不足，请使用至少 10 位并包含大小写字母和数字。',
     'auth/popup-closed-by-user': 'Google 登录窗口已关闭。',
@@ -52,19 +58,32 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
   const { registerWithEmail, sendPasswordReset, signInWithEmail, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('resume-pilot-next-account') || '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [legalAccepted, setLegalAccepted] = useState(false);
+  const [legalDocument, setLegalDocument] = useState<LegalDocumentType | null>(null);
+  const [website, setWebsite] = useState('');
+  const [blockedUntil, setBlockedUntil] = useState(0);
+  const failedAttempts = useRef(0);
+  const openedAt = useRef(Date.now());
 
   const run = async (action: () => Promise<void>) => {
+    if (Date.now() < blockedUntil) {
+      setError('尝试过于频繁，请稍后再试。');
+      return;
+    }
     setBusy(true);
     setError('');
     setMessage('');
     try {
       await action();
+      failedAttempts.current = 0;
     } catch (err) {
+      failedAttempts.current += 1;
+      if (failedAttempts.current >= 5) setBlockedUntil(Date.now() + 30_000);
       setError(getAuthError(err));
     } finally {
       setBusy(false);
@@ -73,6 +92,10 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (website || Date.now() - openedAt.current < 700) {
+      setError('请求未通过安全检查，请稍后重试。');
+      return;
+    }
     if (mode === 'reset') {
       void run(async () => {
         await sendPasswordReset(email);
@@ -81,6 +104,10 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
       return;
     }
     if (mode === 'register') {
+      if (!legalAccepted) {
+        setError('请先阅读并同意用户协议、隐私政策及个人信息收集清单。');
+        return;
+      }
       void run(() => registerWithEmail(name, email, password));
       return;
     }
@@ -91,6 +118,8 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
     setMode(next);
     setError('');
     setMessage('');
+    setLegalAccepted(false);
+    openedAt.current = Date.now();
   };
 
   return (
@@ -113,7 +142,13 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
             <button
               type="button"
               disabled={busy}
-              onClick={() => void run(signInWithGoogle)}
+              onClick={() => {
+                if (!legalAccepted) {
+                  setError('请先阅读并同意用户协议、隐私政策及个人信息收集清单。');
+                  return;
+                }
+                void run(() => signInWithGoogle(true));
+              }}
               className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-base font-black text-blue-600 shadow-sm">G</span>
@@ -136,6 +171,8 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
             </label>
           )}
 
+          {mode === 'register' && <input aria-hidden="true" tabIndex={-1} autoComplete="off" value={website} onChange={event => setWebsite(event.target.value)} className="pointer-events-none absolute h-px w-px opacity-0" name="website" />}
+
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
             邮箱
             <input required type="email" value={email} onChange={event => setEmail(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-950" placeholder="name@example.com" autoComplete="email" />
@@ -144,9 +181,11 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
           {mode !== 'reset' && (
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
               密码
-              <input required minLength={6} type="password" value={password} onChange={event => setPassword(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-950" placeholder={mode === 'register' ? '至少 10 位，建议包含大小写字母和数字' : '输入密码'} autoComplete={mode === 'register' ? 'new-password' : 'current-password'} />
+              <input required minLength={mode === 'register' ? 10 : 6} type="password" value={password} onChange={event => setPassword(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-950" placeholder={mode === 'register' ? '至少 10 位，须包含大小写字母和数字' : '输入密码'} autoComplete={mode === 'register' ? 'new-password' : 'current-password'} />
             </label>
           )}
+
+          {mode !== 'reset' && <LegalConsent checked={legalAccepted} onChange={setLegalAccepted} onOpen={setLegalDocument} googleOnly={mode === 'signin'} />}
 
           {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700">{error}</p>}
           {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-medium text-emerald-700">{message}</p>}
@@ -168,6 +207,7 @@ function AuthDialog({ mode: initialMode, onClose }: { mode: AuthMode; onClose: (
           </div>
         </form>
       </div>
+      {legalDocument && <LegalDocumentDialog type={legalDocument} onClose={() => setLegalDocument(null)} />}
     </div>
   );
 }
@@ -238,18 +278,17 @@ function GuestLanding() {
                 <div className="rounded-2xl bg-blue-50 p-3 text-blue-600"><BarChart3 className="h-6 w-6" /></div>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-3">
-                {[['目标公司', '8'], ['面试安排', '3'], ['待复盘', '2']].map(([label, value]) => (
+                {['简历资料', '求职进度', '复盘知识'].map((label) => (
                   <div key={label} className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
-                    <p className="text-2xl font-black">{value}</p><p className="mt-1 text-[11px] font-semibold text-slate-500">{label}</p>
+                    <CheckCircle2 className="h-5 w-5 text-blue-500" /><p className="mt-2 text-[11px] font-semibold text-slate-500">{label}</p>
                   </div>
                 ))}
               </div>
               <div className="mt-4 space-y-3">
-                {['嵌入式软件工程师 · 技术二面', 'IoT 平台开发 · 简历精修', '系统工程师 · 公司背调'].map((item, index) => (
+                {['整理真实经历与成果', '跟踪自己的投递和面试', '沉淀个人笔记与闪卡'].map((item, index) => (
                   <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-100 dark:border-slate-800 p-3.5">
                     <span className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-orange-400' : index === 1 ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                     <span className="flex-1 text-xs font-bold text-slate-700 dark:text-slate-200">{item}</span>
-                    <span className="text-[10px] text-slate-400">私人数据</span>
                   </div>
                 ))}
               </div>
@@ -283,6 +322,8 @@ function GuestLanding() {
           <button onClick={() => setAuthMode('signin')} className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800"><LockKeyhole className="h-4 w-4" />进入安全工作台</button>
         </section>
       </main>
+
+      <footer className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-slate-200 px-5 py-5 text-center text-[11px] text-slate-400 dark:border-slate-800"><span>{APP_COPYRIGHT} · Version {APP_VERSION}</span><LegalLinks className="inline-flex items-center gap-2" /></footer>
 
       {authMode && <AuthDialog mode={authMode} onClose={() => setAuthMode(null)} />}
     </div>
@@ -323,5 +364,5 @@ export function AuthGate() {
   if (loading) return <LoadingScreen />;
   if (!user) return <GuestLanding />;
   if (!user.emailVerified && user.providerData.some(provider => provider.providerId === 'password')) return <VerifyEmailScreen />;
-  return <App />;
+  return <React.Suspense fallback={<LoadingScreen />}><App /></React.Suspense>;
 }

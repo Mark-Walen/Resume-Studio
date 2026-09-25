@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { InterviewRecord, InterviewQuestionItem, MediaAttachment, UnansweredSolution } from '../../types/interview';
 import { getMediaBlob } from '../../utils/db';
+import { downloadMediaAttachment } from '../../services/mediaStorageService';
 import { requestInterviewFeedback } from '../../services/geminiService';
+import { showAppMessage } from '../common/AppFeedback';
 import {
   Sparkles,
   Play,
@@ -43,7 +45,10 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
   const handlePlayMedia = async (attachment: MediaAttachment) => {
     try {
       const blobKey = attachment.blobId || attachment.id;
-      const blob = await getMediaBlob(blobKey);
+      let blob = await getMediaBlob(blobKey);
+      if (!blob && attachment.cloudObjectPath) {
+        blob = await downloadMediaAttachment(attachment.id);
+      }
       if (blob) {
         if (activeMediaUrl) {
           URL.revokeObjectURL(activeMediaUrl);
@@ -57,10 +62,11 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
         setActiveMediaType(attachment.type);
         setActiveMediaName(attachment.name);
       } else {
-        alert('未找到本地存储的媒体流，请重新上传。');
+        showAppMessage('未找到可用的本地或云端附件，请重新上传。', 'warning');
       }
     } catch (err) {
       console.error('Error playing media:', err);
+      showAppMessage(err instanceof Error ? err.message : '附件读取失败。', 'error');
     }
   };
 
@@ -111,7 +117,7 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
 
       onUpdateRecord(updatedRecord);
     } catch (err: any) {
-      alert('AI 复盘分析失败：' + err.message);
+      showAppMessage('AI 复盘分析失败：' + err.message, 'error');
     } finally {
       setIsGeneratingFeedback(false);
     }
@@ -208,7 +214,7 @@ export const InterviewDetail: React.FC<InterviewDetailProps> = ({
             <div className="p-4 bg-slate-950 dark:bg-black rounded-xl overflow-hidden mt-3 shadow-inner">
               <div className="text-xs font-semibold text-slate-300 mb-2 flex items-center justify-between">
                 <span>正在播放: {activeMediaName}</span>
-                <span className="text-[10px] text-[#0071e3]">本地安全播放中</span>
+                <span className="text-[10px] text-[#0071e3]">安全播放中</span>
               </div>
               {activeMediaType === 'video' ? (
                 <video

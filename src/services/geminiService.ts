@@ -8,6 +8,7 @@ import { JournalExtractResponse, WorkDailyLog } from '../types/journal';
 import { getActiveAiProfile, getCustomApiKey } from '../utils/db';
 import { auth } from './firebase';
 import { ModelProviderType } from '../types/aiProvider';
+import { CompanyDossier, JobApplication, JobCommunicationAdvice } from '../types/job';
 
 const PROVIDER_IDS: Record<ModelProviderType, string> = {
   claude: 'anthropic',
@@ -30,6 +31,7 @@ async function requestAiApi(path: string, init: RequestInit): Promise<Response> 
   if (profile) {
     headers.set('x-ai-provider', PROVIDER_IDS[profile.provider]);
     headers.set('x-ai-model', profile.modelName);
+    headers.set('x-ai-thinking-effort', profile.thinkingEffort || 'default');
     headers.set('x-ai-compatibility', profile.provider === 'anthropic_compatible' ? 'anthropic' : 'openai');
     if (profile.customBaseUrl) headers.set('x-ai-base-url', profile.customBaseUrl);
   }
@@ -205,6 +207,9 @@ export async function fetchAndAnalyzeJd(params: {
 }): Promise<{
   parsedJd: ParsedJdInfo;
   matchAnalysis: JdMatchAnalysis;
+  companyDossier?: CompanyDossier;
+  extractionMethod?: 'pasted-text' | 'http' | 'browser';
+  sourceTitle?: string;
 }> {
   const customKey = getCustomApiKey();
 
@@ -225,14 +230,48 @@ export async function fetchAndAnalyzeJd(params: {
     if (json.success && json.parsedJd && json.matchAnalysis) {
       return {
         parsedJd: json.parsedJd,
-        matchAnalysis: json.matchAnalysis
+        matchAnalysis: json.matchAnalysis,
+        companyDossier: json.companyDossier,
+        extractionMethod: json.extractionMethod,
+        sourceTitle: json.sourceTitle,
       };
     }
     throw new Error(json.error || '职位代理或匹配分析异常');
   } catch (err: any) {
-    console.warn('API fetchAndAnalyzeJd failed, using heuristic fallback:', err);
-    return fallbackAnalyzeJd(params.url, params.rawJdText, params.currentResume);
+    console.warn('API fetchAndAnalyzeJd failed:', err);
+    throw err instanceof Error ? err : new Error('获取或分析职位信息失败。');
   }
+}
+
+export async function requestTranslateResume(params: { resume: ResumeData; targetLanguage: string; mode: 'direct' | 'localized'; targetRegion?: string }): Promise<ResumeData> {
+  const response = await requestAiApi('/api/translate-resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success || !payload.data) throw new Error(payload.error || '简历翻译失败。');
+  return payload.data as ResumeData;
+}
+
+export async function requestJobCommunicationAdvice(params: {
+  question: string;
+  currentResume: ResumeData;
+  job: JobApplication;
+}): Promise<JobCommunicationAdvice> {
+  const customKey = getCustomApiKey();
+  const res = await requestAiApi('/api/job-communication', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(customKey ? { 'x-gemini-api-key': customKey } : {})
+    },
+    body: JSON.stringify({ ...params, customApiKey: customKey })
+  });
+
+  const json = await res.json();
+  if (json.success && json.data) return json.data;
+  throw new Error(json.error || '职位沟通建议生成失败');
 }
 
 // ================= Fallback Logic =================
@@ -249,21 +288,17 @@ function fallbackGenerateResume(
   return {
     title: isAi ? 'AI 架构与全栈研发专家' : isFrontend ? '资深前端技术专家 / 架构师' : '资深全栈研发工程师',
     personalInfo: {
-      fullName: existing?.personalInfo.fullName || '张伟 (Vincent Zhang)',
+      fullName: existing?.personalInfo.fullName || '',
       jobTitle: isAi ? 'AI 全栈架构师 / Tech Lead' : isFrontend ? '资深前端技术专家' : '资深全栈工程师',
-      email: existing?.personalInfo.email || 'vincent.zhang@example.com',
-      phone: existing?.personalInfo.phone || '+86 138-0013-8000',
-      location: existing?.personalInfo.location || '北京 / 远程',
+      email: existing?.personalInfo.email || '',
+      phone: existing?.personalInfo.phone || '',
+      location: existing?.personalInfo.location || '',
       website: existing?.personalInfo.website,
       github: existing?.personalInfo.github,
       linkedin: existing?.personalInfo.linkedin
     },
     summary: `具备丰富的大规模分布式与现代 Web 交互架构落地经验。根据输入信息自动提炼：深耕${prompt.slice(0, 45)}等关键业务场景，熟练主导技术方案选型、系统性能优化与工程化基建，兼具深厚底层编码功底与团队业务交付保障能力。`,
-    skills: existing?.skills || [
-      { id: 's-1', category: '核心技术栈', skills: ['React 19', 'TypeScript', 'Node.js', 'Next.js', 'Tailwind CSS'] },
-      { id: 's-2', category: '架构与性能', skills: ['高并发架构', '分布式缓存', 'Web Vitals 优化', 'Microfrontends', 'CI/CD'] },
-      { id: 's-3', category: 'AI 赋能', skills: ['Gemini API 编排', 'RAG 检索增强', 'Prompt 工程', '自动化工作流'] }
-    ]
+    skills: existing?.skills || []
   };
 }
 

@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { showAppConfirm } from './components/common/AppFeedback';
 import { ResumeData, ResumeTemplateId } from './types/resume';
 import { JobApplication, ApplicationStatus } from './types/job';
 import { InterviewRecord } from './types/interview';
 import { CrossInterviewDiagnosticReport } from './types/diagnostic';
 import { defaultResume } from './data/defaultResume';
-import { INITIAL_JOB_APPLICATIONS, mockInterviews } from './data/mockInterviews';
-import { INITIAL_KNOWLEDGE_BASE } from './data/knowledgeBaseData';
-import { DEFAULT_LEETBOOKS } from './data/defaultBooks';
-import { INITIAL_WORK_DAILY_LOGS } from './data/defaultJournals';
 import { KnowledgeItem, KnowledgeBook } from './types/knowledge';
 import { WorkDailyLog } from './types/journal';
 import {
   loadResumeData,
   saveResumeData,
+  loadResumeLibrary,
+  saveResumeLibrary,
+  loadActiveResumeId,
+  saveActiveResumeId,
   loadJobApplications,
   saveJobApplications,
   loadInterviewRecords,
@@ -30,52 +31,96 @@ import {
   hasLocalWorkspaceData,
   WORKSPACE_DATA_CHANGED_EVENT,
 } from './utils/db';
-import { migrateOrLoadCloudWorkspace, saveCloudWorkspace } from './services/workspaceSyncService';
+import { createWorkspacePatch, migrateOrLoadCloudWorkspace, restoreWorkspace, saveCloudWorkspace, saveCloudWorkspaceIncremental } from './services/workspaceSyncService';
+import { migrateLocalMediaToCloud } from './services/mediaStorageService';
 import { Header, MainTab } from './components/Header';
-import { ResumePreview } from './components/resume/ResumePreview';
-import { ResumeEditor } from './components/resume/ResumeEditor';
-import { ResumeImportModal } from './components/resume/ResumeImportModal';
-import { AiResumeGeneratorModal } from './components/resume/AiResumeGeneratorModal';
-import { ExportModal } from './components/resume/ExportModal';
-import { InterviewManagementDashboard } from './components/interview_management/InterviewManagementDashboard';
-import { InterviewsAndReplayDashboard } from './components/interview/InterviewsAndReplayDashboard';
-import { InterviewModal } from './components/interview/InterviewModal';
-import { KnowledgeBase } from './components/knowledge/KnowledgeBase';
-import { ApiKeyModal } from './components/ApiKeyModal';
-import { WorkDailyLogDashboard } from './components/WorkDailyLogDashboard';
-import { JdKnowledgeRecommenderModal } from './components/JdKnowledgeRecommenderModal';
 import {
   RotateCcw,
   Layout,
   Columns,
   Eye,
   FileEdit
+  ,CloudOff
+  ,X
+  ,Languages
 } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
+import { APP_COPYRIGHT, APP_VERSION } from './config/appMeta';
+import { LegalLinks } from './components/legal/LegalCenter';
+
+const lazyNamed = <T extends React.ComponentType<any>>(loader: () => Promise<Record<string, unknown>>, name: string) =>
+  React.lazy(async () => ({ default: (await loader())[name] as T }));
+
+const ResumePreview = lazyNamed(() => import('./components/resume/ResumePreview'), 'ResumePreview');
+const ResumeLibraryControls = lazyNamed(() => import('./components/resume/ResumeLibraryControls'), 'ResumeLibraryControls');
+const ResumeEditor = lazyNamed(() => import('./components/resume/ResumeEditor'), 'ResumeEditor');
+const ResumeImportModal = lazyNamed(() => import('./components/resume/ResumeImportModal'), 'ResumeImportModal');
+const AiResumeGeneratorModal = lazyNamed(() => import('./components/resume/AiResumeGeneratorModal'), 'AiResumeGeneratorModal');
+const ExportModal = lazyNamed(() => import('./components/resume/ExportModal'), 'ExportModal');
+const InterviewManagementDashboard = lazyNamed(() => import('./components/interview_management/InterviewManagementDashboard'), 'InterviewManagementDashboard');
+const InterviewsAndReplayDashboard = lazyNamed(() => import('./components/interview/InterviewsAndReplayDashboard'), 'InterviewsAndReplayDashboard');
+const InterviewModal = lazyNamed(() => import('./components/interview/InterviewModal'), 'InterviewModal');
+const KnowledgeBase = lazyNamed(() => import('./components/knowledge/KnowledgeBase'), 'KnowledgeBase');
+const ApiKeyModal = lazyNamed(() => import('./components/ApiKeyModal'), 'ApiKeyModal');
+const WorkDailyLogDashboard = lazyNamed(() => import('./components/WorkDailyLogDashboard'), 'WorkDailyLogDashboard');
+const JdKnowledgeRecommenderModal = lazyNamed(() => import('./components/JdKnowledgeRecommenderModal'), 'JdKnowledgeRecommenderModal');
+const FeedbackModal = lazyNamed(() => import('./components/common/FeedbackModal'), 'FeedbackModal');
+const AccountSettingsModal = lazyNamed(() => import('./components/auth/AccountSettingsModal'), 'AccountSettingsModal');
+const WorkspaceSyncModal = lazyNamed(() => import('./components/sync/WorkspaceSyncModal'), 'WorkspaceSyncModal');
+const ResumeTranslationModal = lazyNamed(() => import('./components/resume/ResumeTranslationModal'), 'ResumeTranslationModal');
+
+function createBlankResume(index: number): ResumeData {
+  const now = new Date().toISOString();
+  return {
+    id: `resume-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: `未命名简历 ${index}`,
+    lastModified: now,
+    personalInfo: { fullName: '', jobTitle: '', email: '', phone: '', location: '' },
+    jobIntent: { desiredPosition: '', desiredSalary: '', desiredCity: '', jobStatus: '', workType: '' },
+    summary: '',
+    skills: [],
+    workExperience: [],
+    projects: [],
+    education: [],
+    certificates: [],
+    customSections: [],
+  };
+}
 
 export default function App() {
-  const { signOutUser, user } = useAuth();
+  const { signOutUser, user, knownAccounts, switchAccount } = useAuth();
   const hadLocalWorkspaceOnLogin = useRef(hasLocalWorkspaceData()).current;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [syncError, setSyncError] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaMigrationUser = useRef<string | null>(null);
+  const lastCloudSnapshot = useRef<ReturnType<typeof createLocalWorkspaceSnapshot> | null>(null);
   // Navigation
-  const [currentTab, setCurrentTab] = useState<MainTab>('resume');
+  const [currentTab, setCurrentTab] = useState<MainTab>(() => window.location.hash.startsWith('#knowledge-book=') ? 'knowledge' : 'resume');
 
   // Resume State
-  const [resume, setResume] = useState<ResumeData>(() => loadResumeData(defaultResume));
+  const [resumeLibrary, setResumeLibrary] = useState<ResumeData[]>(() => loadResumeLibrary(defaultResume));
+  const [activeResumeId, setActiveResumeId] = useState<string>(() => loadActiveResumeId(loadResumeLibrary(defaultResume)));
+  const [resume, setResume] = useState<ResumeData>(() => {
+    const library = loadResumeLibrary(defaultResume);
+    const activeId = loadActiveResumeId(library);
+    return library.find(item => item.id === activeId) || loadResumeData(defaultResume);
+  });
   const [templateId, setTemplateId] = useState<ResumeTemplateId>('modern');
   const [resumeViewMode, setResumeViewMode] = useState<'split' | 'edit' | 'preview'>('split');
+  const [sortResumeByDate, setSortResumeByDate] = useState(true);
 
   // Jobs Pipeline State
   const [jobs, setJobs] = useState<JobApplication[]>(() => {
     const saved = loadJobApplications();
-    return saved.length > 0 ? saved : INITIAL_JOB_APPLICATIONS;
+    return saved;
   });
 
   // Interviews State
   const [interviews, setInterviews] = useState<InterviewRecord[]>(() => {
     const saved = loadInterviewRecords();
-    return saved.length > 0 ? saved : mockInterviews;
+    return saved;
   });
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
 
@@ -86,17 +131,17 @@ export default function App() {
 
   // Basic Knowledge Base State
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>(() => {
-    return loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE);
+    return loadKnowledgeItems();
   });
 
   // LeetBooks State
   const [books, setBooks] = useState<KnowledgeBook[]>(() => {
-    return loadLeetBooks(DEFAULT_LEETBOOKS);
+    return loadLeetBooks();
   });
 
   // Work Daily Logs State
   const [workLogs, setWorkLogs] = useState<WorkDailyLog[]>(() => {
-    return loadWorkDailyLogs(INITIAL_WORK_DAILY_LOGS);
+    return loadWorkDailyLogs();
   });
 
   // JD Recommender Modal State
@@ -109,6 +154,10 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportInitialTab, setExportInitialTab] = useState<'export' | 'email'>('export');
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
+  const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
+  const [isTranslationOpen, setIsTranslationOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<InterviewRecord | null>(null);
   const [initialInterviewCompany, setInitialInterviewCompany] = useState<string | undefined>();
@@ -127,12 +176,15 @@ export default function App() {
         if (cancelled) return;
         const synced = applyCloudWorkspaceSnapshot(result.payload);
         setResume(synced.resume);
+        setResumeLibrary(synced.resumes);
+        setActiveResumeId(synced.activeResumeId);
         setJobs(synced.jobs);
         setInterviews(synced.interviews);
         setDiagnosticReport(synced.diagnosticReport);
         setKnowledgeItems(synced.knowledgeItems);
         setBooks(synced.books);
         setWorkLogs(synced.workLogs);
+        lastCloudSnapshot.current = result.payload;
         setWorkspaceReady(true);
       })
       .catch(error => {
@@ -144,18 +196,39 @@ export default function App() {
     return () => { cancelled = true; };
   }, [hadLocalWorkspaceOnLogin, user?.uid]);
 
+  const saveWorkspaceNow = useCallback(async (mode: 'incremental' | 'full' = 'incremental') => {
+    if (!workspaceReady) return;
+    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+    setSaveStatus('saving');
+    try {
+      const snapshot = createLocalWorkspaceSnapshot();
+      if (mode === 'full') {
+        await saveCloudWorkspace(snapshot);
+        lastCloudSnapshot.current = snapshot;
+      } else {
+        const patch = createWorkspacePatch(lastCloudSnapshot.current, snapshot);
+        if (Object.keys(patch).length) {
+          const result = await saveCloudWorkspaceIncremental(patch);
+          lastCloudSnapshot.current = result.payload;
+        }
+      }
+      setSyncError('');
+      setSaveStatus('saved');
+      saveStatusTimer.current = setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (error) {
+      console.error('Cloud workspace save failed:', error);
+      setSyncError(error instanceof Error ? error.message : '云端保存失败。');
+      setSaveStatus('error');
+    }
+  }, [workspaceReady]);
+
   useEffect(() => {
     if (!workspaceReady) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const queueCloudSave = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        void saveCloudWorkspace(createLocalWorkspaceSnapshot())
-          .then(() => setSyncError(''))
-          .catch(error => {
-            console.error('Cloud workspace save failed:', error);
-            setSyncError(error instanceof Error ? error.message : '云端保存失败。');
-          });
+        void saveWorkspaceNow();
       }, 900);
     };
     window.addEventListener(WORKSPACE_DATA_CHANGED_EVENT, queueCloudSave);
@@ -163,12 +236,34 @@ export default function App() {
       window.removeEventListener(WORKSPACE_DATA_CHANGED_EVENT, queueCloudSave);
       if (timer) clearTimeout(timer);
     };
-  }, [workspaceReady]);
+  }, [workspaceReady, saveWorkspaceNow]);
+
+  useEffect(() => {
+    if (!workspaceReady || !user?.uid || mediaMigrationUser.current === user.uid) return;
+    mediaMigrationUser.current = user.uid;
+    void migrateLocalMediaToCloud(interviews).then(result => {
+      if (result.migrated > 0) setInterviews(result.records);
+      if (result.failed > 0) {
+        setSyncError(`${result.failed} 个本地附件暂未上传到 Cloud Storage，下次登录会继续重试。`);
+      }
+    }).catch(error => {
+      console.error('Local media migration failed:', error);
+      setSyncError(error instanceof Error ? error.message : '附件迁移失败。');
+    });
+  }, [interviews, user?.uid, workspaceReady]);
 
   // Auto persist
   useEffect(() => {
-    if (workspaceReady) saveResumeData(resume);
-  }, [resume, workspaceReady]);
+    if (!workspaceReady) return;
+    const updatedResume = { ...resume, lastModified: new Date().toISOString() };
+    const updatedLibrary = resumeLibrary.some(item => item.id === activeResumeId)
+      ? resumeLibrary.map(item => item.id === activeResumeId ? updatedResume : item)
+      : [...resumeLibrary, updatedResume];
+    setResumeLibrary(updatedLibrary);
+    saveResumeData(updatedResume);
+    saveResumeLibrary(updatedLibrary);
+    saveActiveResumeId(activeResumeId);
+  }, [resume, activeResumeId, workspaceReady]);
 
   useEffect(() => {
     if (workspaceReady) saveJobApplications(jobs);
@@ -196,21 +291,86 @@ export default function App() {
     }
   }, [diagnosticReport, workspaceReady]);
 
-  const handleImportResumeSuccess = (imported: Partial<ResumeData>) => {
-    setResume((prev) => ({
-      ...prev,
-      ...imported,
-      personalInfo: {
-        ...prev.personalInfo,
-        ...(imported.personalInfo || {}),
-      },
-      skills: imported.skills || prev.skills,
-      workExperience: imported.workExperience || prev.workExperience,
-      projects: imported.projects || prev.projects,
-      education: imported.education || prev.education,
-      certificates: imported.certificates || prev.certificates,
-      customSections: imported.customSections || prev.customSections,
-    }));
+  const handleImportResumeSuccess = (imported: ResumeData, mergeMode: 'replace' | 'merge') => {
+    setResume((prev) => {
+      if (mergeMode === 'replace') {
+        return {
+          ...imported,
+          id: activeResumeId,
+          title: imported.title || prev.title,
+          lastModified: new Date().toISOString(),
+        };
+      }
+
+      const importedId = (prefix: string, id?: string) => `${prefix}-${Date.now()}-${id || Math.random().toString(36).slice(2, 8)}`;
+      const importedCustomSections = (imported.customSections || []).map(item => ({ ...item, id: importedId('custom', item.id) }));
+      const currentSectionOrder = prev.sectionOrder || [
+        'workExperience',
+        'projects',
+        'skills',
+        'education',
+        'certificates',
+        ...(prev.customSections || []).map(item => item.id),
+      ];
+      return {
+        ...prev,
+        summary: [prev.summary, imported.summary].filter(Boolean).join('\n\n'),
+        skills: [...prev.skills, ...(imported.skills || []).map(item => ({ ...item, id: importedId('skill', item.id) }))],
+        workExperience: [...prev.workExperience, ...(imported.workExperience || []).map(item => ({ ...item, id: importedId('work', item.id) }))],
+        projects: [...prev.projects, ...(imported.projects || []).map(item => ({ ...item, id: importedId('project', item.id) }))],
+        education: [...prev.education, ...(imported.education || []).map(item => ({ ...item, id: importedId('education', item.id) }))],
+        certificates: [...prev.certificates, ...(imported.certificates || []).map(item => ({ ...item, id: importedId('certificate', item.id) }))],
+        customSections: [...(prev.customSections || []), ...importedCustomSections],
+        sectionOrder: [...currentSectionOrder, ...importedCustomSections.map(item => item.id)],
+        sectionVisibility: {
+          ...(prev.sectionVisibility || {}),
+          ...Object.fromEntries(importedCustomSections.map(item => [item.id, true])),
+        },
+        lastModified: new Date().toISOString(),
+      };
+    });
+  };
+
+  const handleSelectResume = (id: string) => {
+    const selected = resumeLibrary.find(item => item.id === id);
+    if (!selected || id === activeResumeId) return;
+    setActiveResumeId(id);
+    setResume(selected);
+  };
+
+  const handleCreateResume = () => {
+    const created = createBlankResume(resumeLibrary.length + 1);
+    setResumeLibrary(prev => [...prev, created]);
+    setActiveResumeId(created.id);
+    setResume(created);
+  };
+
+  const handleDuplicateResume = () => {
+    const duplicated: ResumeData = {
+      ...structuredClone(resume),
+      id: `resume-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title: `${resume.title || resume.personalInfo.fullName || '未命名简历'} 副本`,
+      lastModified: new Date().toISOString(),
+    };
+    setResumeLibrary(prev => [...prev, duplicated]);
+    setActiveResumeId(duplicated.id);
+    setResume(duplicated);
+  };
+
+  const handleRenameResume = () => {
+    const nextTitle = prompt('请输入新的简历名称：', resume.title || resume.personalInfo.fullName || '未命名简历')?.trim();
+    if (!nextTitle) return;
+    setResume(prev => ({ ...prev, title: nextTitle }));
+  };
+
+  const handleDeleteResume = async () => {
+    if (resumeLibrary.length <= 1) return;
+    if (!(await showAppConfirm(`确定删除“${resume.title || '当前简历'}”吗？`, { title: '删除简历', confirmLabel: '删除', danger: true }))) return;
+    const remaining = resumeLibrary.filter(item => item.id !== activeResumeId);
+    const next = remaining[0];
+    setResumeLibrary(remaining);
+    setActiveResumeId(next.id);
+    setResume(next);
   };
 
   const handleSaveJob = (job: JobApplication) => {
@@ -223,8 +383,8 @@ export default function App() {
     });
   };
 
-  const handleDeleteJob = (id: string) => {
-    if (confirm('确定删除该投递记录吗？')) {
+  const handleDeleteJob = async (id: string) => {
+    if (await showAppConfirm('确定删除该投递记录吗？', { title: '删除投递记录', confirmLabel: '删除', danger: true })) {
       setJobs((prev) => prev.filter((j) => j.id !== id));
     }
   };
@@ -266,8 +426,18 @@ export default function App() {
         onOpenExport={() => handleOpenExport('export')}
         onOpenApiKey={() => setIsApiKeyOpen(true)}
         onOpenImportResume={() => setIsResumeImportOpen(true)}
+        onSaveWorkspace={() => void saveWorkspaceNow()}
+        saveStatus={saveStatus}
         userName={user?.displayName || user?.email || '用户'}
+        userPhotoURL={user?.photoURL || undefined}
         onSignOut={() => void signOutUser()}
+        onOpenFeedback={() => setIsFeedbackOpen(true)}
+        onOpenAccountSettings={() => setIsAccountSettingsOpen(true)}
+        onOpenSyncCenter={() => setIsSyncCenterOpen(true)}
+        syncError={syncError}
+        knownAccounts={knownAccounts}
+        currentUserId={user?.uid}
+        onSwitchAccount={email => void switchAccount(email)}
       />
 
       {!workspaceReady && (
@@ -278,16 +448,26 @@ export default function App() {
         </div>
       )}
       {workspaceReady && syncError && (
-        <div className="fixed right-4 top-20 z-[115] max-w-sm rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 shadow-lg">
-          云端同步暂时不可用，当前修改仍已保存在本机：{syncError}
+        <div className="fixed right-4 top-20 z-[115] flex max-w-sm items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 shadow-lg">
+          <CloudOff className="mt-0.5 h-4 w-4 flex-none"/><span>云端同步暂时不可用，当前修改仍已保存在本机：{syncError}</span><button type="button" onClick={() => setSyncError('')} aria-label="关闭同步提示" className="rounded p-0.5 hover:bg-amber-100 dark:hover:bg-amber-900"><X className="h-3.5 w-3.5"/></button>
         </div>
       )}
 
+      <React.Suspense fallback={<div className="flex flex-1 items-center justify-center py-24 text-sm font-semibold text-slate-400">正在加载工作区…</div>}>
       {/* Main Workspace */}
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-4 sm:p-6 lg:p-8">
         {/* ================= TAB 1: RESUME STUDIO ================= */}
         {currentTab === 'resume' && (
           <div className="space-y-4">
+            <ResumeLibraryControls
+              resumes={resumeLibrary}
+              activeResumeId={activeResumeId}
+              onSelect={handleSelectResume}
+              onCreate={handleCreateResume}
+              onDuplicate={handleDuplicateResume}
+              onRename={handleRenameResume}
+              onDelete={handleDeleteResume}
+            />
             {/* Template Selector & Toolbar */}
             <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 transition-colors">
               {/* Template Chips */}
@@ -381,17 +561,27 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setIsTranslationOpen(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300"><Languages className="h-3.5 w-3.5"/>翻译与本地化</button>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" title="只调整预览和导出顺序，不改写原始数据">
+                    <input
+                      type="checkbox"
+                      checked={sortResumeByDate}
+                      onChange={event => setSortResumeByDate(event.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-[#0071e3]"
+                    />
+                    按时间倒序
+                  </label>
                   <button
-                    onClick={() => {
-                      if (confirm('确定重置为您提供的默认优质高阶简历模板吗？')) {
-                        setResume(defaultResume);
+                    onClick={async () => {
+                      if (await showAppConfirm('确定清空当前简历内容吗？此操作不会影响其他简历。', { title: '清空当前简历', confirmLabel: '确认清空', danger: true })) {
+                        setResume({ ...structuredClone(defaultResume), id: activeResumeId, title: resume.title });
                       }
                     }}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                    title="恢复默认简历数据"
+                    title="清空当前简历内容"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    重置模板
+                    清空内容
                   </button>
                 </div>
               </div>
@@ -415,7 +605,7 @@ export default function App() {
               {(resumeViewMode === 'split' || resumeViewMode === 'preview') && (
                 <div className={resumeViewMode === 'split' ? 'lg:col-span-7' : 'lg:col-span-12'}>
                   <div className="sticky top-20">
-                    <ResumePreview resume={resume} templateId={templateId} />
+                    <ResumePreview resume={resume} templateId={templateId} sortByDate={sortResumeByDate} />
                   </div>
                 </div>
               )}
@@ -427,7 +617,7 @@ export default function App() {
         {currentTab === 'interview_management' && (
           <InterviewManagementDashboard
             jobApplications={jobs}
-            onAddApplication={(app) => {
+            onAddApplication={(app: JobApplication) => {
               const newApp: JobApplication = {
                 ...app,
                 id: `job-${Date.now()}`,
@@ -440,7 +630,7 @@ export default function App() {
             onDeleteApplication={handleDeleteJob}
             currentResume={resume}
             onUpdateResume={setResume}
-            onStartMockInterview={(companyName) => {
+            onStartMockInterview={(companyName: string) => {
               setCurrentTab('interviews');
               setInitialInterviewCompany(companyName);
               setIsInterviewModalOpen(true);
@@ -453,14 +643,14 @@ export default function App() {
           <InterviewsAndReplayDashboard
             interviews={interviews}
             selectedInterviewId={selectedInterviewId}
-            onSelectInterview={(id) => setSelectedInterviewId(id)}
+            onSelectInterview={(id: string) => setSelectedInterviewId(id)}
             onAddInterview={() => {
               setEditingInterview(null);
               setInitialInterviewCompany(undefined);
               setIsInterviewModalOpen(true);
             }}
             onDeleteInterview={handleDeleteInterview}
-            onEditInterview={(rec) => {
+            onEditInterview={(rec: InterviewRecord) => {
               setEditingInterview(rec);
               setIsInterviewModalOpen(true);
             }}
@@ -477,7 +667,7 @@ export default function App() {
             onUpdateItems={setKnowledgeItems}
             books={books}
             onSaveBooks={setBooks}
-            onOpenJdRecommender={(sectionTitle) => {
+            onOpenJdRecommender={(sectionTitle?: string) => {
               setJdRecommenderInitialSection(sectionTitle);
               setIsJdRecommenderOpen(true);
             }}
@@ -495,15 +685,19 @@ export default function App() {
         )}
       </main>
 
+      <footer className="mx-auto flex w-full max-w-[1720px] flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-slate-200 px-5 py-5 text-[11px] text-slate-400 dark:border-slate-800">
+        <span>{APP_COPYRIGHT}</span><span>Version {APP_VERSION}</span><LegalLinks className="inline-flex items-center gap-2" /><button type="button" onClick={() => setIsFeedbackOpen(true)} className="font-semibold hover:text-[#0071e3]">问题反馈</button>
+      </footer>
+
       {/* Global Modals */}
-      <ResumeImportModal
+      {isResumeImportOpen && <ResumeImportModal
         isOpen={isResumeImportOpen}
         onClose={() => setIsResumeImportOpen(false)}
         currentResume={resume}
         onImportSuccess={handleImportResumeSuccess}
-      />
+      />}
 
-      <AiResumeGeneratorModal
+      {isAiResumeOpen && <AiResumeGeneratorModal
         isOpen={isAiResumeOpen}
         onClose={() => setIsAiResumeOpen(false)}
         existingResume={resume}
@@ -512,30 +706,52 @@ export default function App() {
           setIsAiResumeOpen(false);
           setIsApiKeyOpen(true);
         }}
-      />
+      />}
 
-      <ExportModal
+      {isExportOpen && <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         resume={resume}
+        templateId={templateId}
+        sortByDate={sortResumeByDate}
         initialTab={exportInitialTab}
-      />
+      />}
 
-      <ApiKeyModal
+      {isApiKeyOpen && <ApiKeyModal
         isOpen={isApiKeyOpen}
         onClose={() => setIsApiKeyOpen(false)}
-      />
+      />}
 
-      <InterviewModal
+      {isFeedbackOpen && <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        pageContext={currentTab}
+      />}
+
+      {isAccountSettingsOpen && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} />}
+
+      {isSyncCenterOpen && <WorkspaceSyncModal isOpen={isSyncCenterOpen} onClose={() => setIsSyncCenterOpen(false)} onIncrementalSave={() => saveWorkspaceNow('incremental')} onFullSave={() => saveWorkspaceNow('full')} onRestore={async (id: string) => {
+        const result = await restoreWorkspace(id);
+        const synced = applyCloudWorkspaceSnapshot(result.payload);
+        setResume(synced.resume); setResumeLibrary(synced.resumes); setActiveResumeId(synced.activeResumeId); setJobs(synced.jobs); setInterviews(synced.interviews); setDiagnosticReport(synced.diagnosticReport); setKnowledgeItems(synced.knowledgeItems); setBooks(synced.books); setWorkLogs(synced.workLogs);
+        lastCloudSnapshot.current = result.payload;
+      }} />}
+
+      {isTranslationOpen && <ResumeTranslationModal isOpen={isTranslationOpen} onClose={() => setIsTranslationOpen(false)} resume={resume} onTranslated={(translatedResume: ResumeData, suggestedTemplate: ResumeTemplateId) => {
+        const copy = { ...translatedResume, id: `resume-${Date.now()}`, title: translatedResume.title || `${resume.title} · 翻译版`, lastModified: new Date().toISOString() };
+        setResumeLibrary(previous => [...previous, copy]); setResume(copy); setActiveResumeId(copy.id); setTemplateId(suggestedTemplate); setIsTranslationOpen(false);
+      }} onOpenApiKeySettings={() => { setIsTranslationOpen(false); setIsApiKeyOpen(true); }} />}
+
+      {isInterviewModalOpen && <InterviewModal
         isOpen={isInterviewModalOpen}
         onClose={() => setIsInterviewModalOpen(false)}
         onSave={handleSaveInterview}
         editingRecord={editingInterview}
         initialCompanyName={initialInterviewCompany}
-      />
+      />}
 
       {/* JD to Knowledge Recommender Modal */}
-      <JdKnowledgeRecommenderModal
+      {isJdRecommenderOpen && <JdKnowledgeRecommenderModal
         isOpen={isJdRecommenderOpen}
         onClose={() => {
           setIsJdRecommenderOpen(false);
@@ -544,10 +760,11 @@ export default function App() {
         jobApplications={jobs}
         currentResume={resume}
         preselectedSectionTitle={jdRecommenderInitialSection}
-        onAddKnowledgeItem={(item) => {
+        onAddKnowledgeItem={(item: KnowledgeItem) => {
           setKnowledgeItems((prev) => [item, ...prev]);
         }}
-      />
+      />}
+      </React.Suspense>
     </div>
   );
 }

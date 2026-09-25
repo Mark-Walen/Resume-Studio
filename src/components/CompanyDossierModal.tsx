@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showAppMessage } from './common/AppFeedback';
 import {
   X,
   Building,
@@ -17,6 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { JobApplication, CompanyDossier, DossierLink } from '../types/job';
+import { sanitizeExternalUrl } from '../utils/security';
 
 interface CompanyDossierModalProps {
   isOpen: boolean;
@@ -92,10 +94,15 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
 
   const handleAddLink = () => {
     if (!newLinkTitle.trim() || !newLinkUrl.trim()) return;
+    const safeUrl = sanitizeExternalUrl(newLinkUrl);
+    if (!safeUrl) {
+      showAppMessage('链接仅支持安全的 HTTP/HTTPS 地址。', 'warning');
+      return;
+    }
     const newL: DossierLink = {
       id: `dl-${Date.now()}`,
       title: newLinkTitle.trim(),
-      url: newLinkUrl.trim(),
+      url: safeUrl,
       note: newLinkNote.trim()
     };
     setDossier({
@@ -115,43 +122,7 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
   };
 
   const handleAiAutoFill = () => {
-    const isByte = application.companyName.includes('字节');
-    const isAli = application.companyName.includes('阿里');
-    const isTencent = application.companyName.includes('腾讯');
-
-    let sampleHr = '注重一线实战与解决复杂系统问题能力，技术扁平，倡导数据导向与业务敏捷闭环。';
-    let sampleComp = '15~18 薪，年终绩效浮动 3~6 个月，期权归属满 1 年起生效，餐补房补齐全。';
-    let sampleTeam = '核心研发团队约 80 人，技术栈覆盖 React / TypeScript / Go / 分布式高并发架构。';
-    let sampleRep = '双休保障良好，项目攻坚期偶有加班；技术分享氛围浓厚，晋升评审注重技术深度。';
-    let sampleStyle = '一面注重数据结构与高并发系统手撕，二面深挖真实业务架构演进与容灾降级方案。';
-    let sampleQuestions = [
-      '请问团队目前在架构升级上面临的最大技术挑战是什么？',
-      '入职后前 3 个月期望我能主导交付的核心业务目标是什么？',
-      '团队内部的代码评审流程与技术决策机制是怎样的？'
-    ];
-    let sampleRisks = [
-      '近期有业务线重组合并动态，需在二面时关注组织架构稳定性',
-      '试用期转正有绩效答辩要求，需提前了解量化指标'
-    ];
-
-    if (isByte) {
-      sampleHr = '业务高速迭代，推崇 Context, not Control，追求极致工程效率。';
-      sampleStyle = '代码手撕高频，重视算法复杂度与现场白板编码能力，二面三面深入项目底层原理。';
-    } else if (isAli) {
-      sampleHr = '推崇技术中台抽象与商业化落地，鼓励跨团队协同与长远技术沉淀。';
-      sampleStyle = '深度追问高并发高可用分布式中间件源码，关注高可用故障演练与容量评估。';
-    }
-
-    setDossier({
-      hrIntro: dossier.hrIntro || sampleHr,
-      compensationStructure: dossier.compensationStructure || sampleComp,
-      teamAndTechStack: dossier.teamAndTechStack || sampleTeam,
-      reputationAndWorkLife: dossier.reputationAndWorkLife || sampleRep,
-      keyInterviewStyle: dossier.keyInterviewStyle || sampleStyle,
-      reverseQuestions: dossier.reverseQuestions?.length ? dossier.reverseQuestions : sampleQuestions,
-      riskAlerts: dossier.riskAlerts?.length ? dossier.riskAlerts : sampleRisks,
-      collectedLinks: dossier.collectedLinks || []
-    });
+    showAppMessage('已移除虚构的示例背调数据。请通过职位导入获得真实公司信息，或手动填写已核实的资料。', 'info', 5200);
   };
 
   return (
@@ -419,7 +390,7 @@ export const CompanyDossierModal: React.FC<CompanyDossierModalProps> = ({
                 >
                   <div className="flex items-center space-x-2 truncate">
                     <a
-                      href={link.url}
+                      href={sanitizeExternalUrl(link.url)}
                       target="_blank"
                       rel="noreferrer"
                       className="font-semibold text-[#0071e3] hover:underline flex items-center space-x-1"

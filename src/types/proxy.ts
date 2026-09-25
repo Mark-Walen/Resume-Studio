@@ -26,7 +26,11 @@ export interface JdMatchAnalysis {
 export interface JdProxyResponse {
   success: boolean;
   rawTextLength?: number;
+  extractionMethod?: 'pasted-text' | 'http' | 'browser';
+  sourceTitle?: string;
   parsedJd: ParsedJdInfo;
   matchAnalysis: JdMatchAnalysis;
+  companyDossier?: CompanyDossier;
   error?: string;
 }
+import { CompanyDossier } from './job';

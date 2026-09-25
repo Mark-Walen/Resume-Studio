@@ -21,24 +21,51 @@ import {
   Code,
   User
 } from 'lucide-react';
+import { sanitizeImageUrl } from '../../utils/security';
 
 interface ResumePreviewProps {
   resume: ResumeData;
   templateId: ResumeTemplateId;
+  sortByDate?: boolean;
+  documentId?: string;
 }
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId }) => {
+function dateRank(value?: string, current = false): number {
+  if (current || !value || /(至今|现在|present|current)/i.test(value)) return Number.MAX_SAFE_INTEGER;
+  const matched = value.match(/(19|20)\d{2}(?:[-/.](\d{1,2}))?/);
+  if (!matched) return 0;
+  return Number(matched[0].slice(0, 4)) * 12 + Number(matched[2] || 1);
+}
+
+function newestFirst<T extends { startDate?: string; endDate?: string; current?: boolean; date?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const endDifference = dateRank(b.endDate || b.date, b.current) - dateRank(a.endDate || a.date, a.current);
+    return endDifference || dateRank(b.startDate) - dateRank(a.startDate);
+  });
+}
+
+export const ResumePreview: React.FC<ResumePreviewProps> = ({
+  resume,
+  templateId,
+  sortByDate = true,
+  documentId = 'resume-document'
+}) => {
   const {
-    personalInfo,
+    personalInfo: rawPersonalInfo,
     jobIntent,
     summary,
     skills = [],
-    workExperience = [],
-    projects = [],
-    education = [],
-    certificates = [],
+    workExperience: rawWorkExperience = [],
+    projects: rawProjects = [],
+    education: rawEducation = [],
+    certificates: rawCertificates = [],
     customSections = []
   } = resume;
+  const workExperience = sortByDate ? newestFirst(rawWorkExperience) : rawWorkExperience;
+  const projects = sortByDate ? newestFirst(rawProjects) : rawProjects;
+  const education = sortByDate ? newestFirst(rawEducation) : rawEducation;
+  const certificates = sortByDate ? newestFirst(rawCertificates) : rawCertificates;
+  const personalInfo = { ...rawPersonalInfo, avatarUrl: sanitizeImageUrl(rawPersonalInfo.avatarUrl) };
 
   // Active section ordering & visibility
   const sectionOrder = resume.sectionOrder || [
@@ -117,7 +144,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
               <div className="flex-shrink-0 w-20 h-26 border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 rounded-xs flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-[10px] print:hidden">
                 <User className="w-5 h-5 mb-0.5 text-slate-300 dark:text-slate-600" />
                 <span className="font-medium text-[10px]">1寸照片</span>
-                <span className="text-[8px] text-slate-400 dark:text-slate-500">测试占位</span>
+                <span className="text-[8px] text-slate-400 dark:text-slate-500">头像</span>
               </div>
             )}
 
@@ -226,7 +253,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
             ) : (
               <div className="w-18 h-24 border border-dashed border-slate-400 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-[10px] mb-2 print:hidden">
                 <User className="w-5 h-5 mb-0.5 text-slate-400" />
-                <span className="text-[9px]">测试照</span>
+                <span className="text-[9px]">头像</span>
               </div>
             )}
           </div>
@@ -304,7 +331,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
               <div className="w-24 h-32 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 mb-3 mx-auto sm:mx-0 print:hidden">
                 <User className="w-8 h-8 mb-1 text-slate-300 dark:text-slate-600" />
                 <span className="text-[11px] font-medium">证件照</span>
-                <span className="text-[9px] text-slate-400">测试占位</span>
+                <span className="text-[9px] text-slate-400">头像</span>
               </div>
             )}
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">{personalInfo.fullName}</h1>
@@ -393,7 +420,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
                 教育背景
               </div>
               {education.map(edu => (
-                <div key={edu.id} className="text-xs">
+                <div key={edu.id} className="resume-print-item text-xs">
                   <div className="font-bold text-slate-900 dark:text-white">{edu.school}</div>
                   <div className="text-slate-600 dark:text-slate-400 text-[11px]">{edu.degree} · {edu.major}</div>
                   <div className="text-slate-400 dark:text-slate-500 text-[10px] font-mono">{edu.startDate} ~ {edu.endDate}</div>
@@ -410,7 +437,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
                 资质与荣誉
               </div>
               {certificates.map(c => (
-                <div key={c.id} className="text-xs">
+                <div key={c.id} className="resume-print-item text-xs">
                   <div className="font-semibold text-slate-900 dark:text-white">{c.name}</div>
                   <div className="text-slate-400 dark:text-slate-500 text-[10px]">{c.issuer} {c.date ? `(${c.date})` : ''}</div>
                 </div>
@@ -448,7 +475,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
               </div>
               <div className="space-y-4">
                 {workExperience.map(exp => (
-                  <div key={exp.id} className="text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                  <div key={exp.id} className="resume-print-item text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
                     <div className="flex justify-between items-baseline font-bold text-slate-900 dark:text-white mb-0.5 gap-2">
                       <span className="text-sm flex-1 min-w-0 pr-2">{exp.company} <span className="font-normal text-slate-600 dark:text-slate-400">| {exp.position}</span></span>
                       <span className="text-slate-500 dark:text-slate-400 font-medium text-xs font-mono flex-shrink-0 whitespace-nowrap ml-2">{exp.startDate} ~ {exp.endDate}</span>
@@ -482,7 +509,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
               </div>
               <div className="space-y-4">
                 {projects.map(proj => (
-                  <div key={proj.id} className="text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                  <div key={proj.id} className="resume-print-item text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-3">
                     <div className="flex justify-between items-baseline font-bold text-slate-900 dark:text-white mb-0.5 gap-2">
                       <span className="text-sm flex-1 min-w-0 pr-2">{proj.name} <span className="font-normal text-slate-600 dark:text-slate-400">({proj.role})</span></span>
                       <span className="text-slate-500 dark:text-slate-400 font-medium text-xs font-mono flex-shrink-0 whitespace-nowrap ml-2">{proj.startDate} ~ {proj.endDate}</span>
@@ -542,7 +569,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
             ) : (
               <div className="w-20 h-26 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 flex flex-col items-center justify-center text-indigo-400 dark:text-indigo-400 text-[10px] print:hidden flex-shrink-0">
                 <User className="w-5 h-5 mb-0.5" />
-                <span className="font-medium text-[10px]">测试占位</span>
+                <span className="font-medium text-[10px]">头像</span>
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -645,7 +672,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
             ) : (
               <div className="w-14 h-18 border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-[9px] flex-shrink-0 print:hidden">
                 <User className="w-4 h-4" />
-                <span>测试</span>
+                <span>头像</span>
               </div>
             )}
             <div>
@@ -722,7 +749,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
 
           <div className={isTimeline ? 'relative pl-5 border-l-2 border-blue-500/30 dark:border-blue-400/30 space-y-5' : isCompact ? 'space-y-2.5' : 'space-y-4'}>
             {workExperience.map(exp => (
-              <div key={exp.id} className={`text-xs ${isTimeline ? 'relative' : ''}`}>
+              <div key={exp.id} className={`resume-print-item text-xs ${isTimeline ? 'relative' : ''}`}>
                 {isTimeline && (
                   <div className="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-[#0071e3] border-2 border-white dark:border-slate-900" />
                 )}
@@ -772,7 +799,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
 
           <div className={isTimeline ? 'relative pl-5 border-l-2 border-blue-500/30 dark:border-blue-400/30 space-y-5' : isCompact ? 'space-y-2.5' : 'space-y-4'}>
             {projects.map(proj => (
-              <div key={proj.id} className={`text-xs ${isTimeline ? 'relative' : ''}`}>
+              <div key={proj.id} className={`resume-print-item text-xs ${isTimeline ? 'relative' : ''}`}>
                 {isTimeline && (
                   <div className="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-[#0071e3] border-2 border-white dark:border-slate-900" />
                 )}
@@ -859,7 +886,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
 
           <div className="space-y-2.5">
             {education.map(edu => (
-              <div key={edu.id} className="text-xs">
+              <div key={edu.id} className="resume-print-item text-xs">
                 <div className="flex justify-between items-baseline gap-2">
                   <div className="font-bold text-slate-900 dark:text-white flex-1 min-w-0 pr-2">
                     <span>{edu.school}</span>
@@ -906,7 +933,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
 
           <div className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
             {certificates.map(c => (
-              <div key={c.id} className="flex items-baseline justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <div key={c.id} className="resume-print-item flex items-baseline justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
                 <div className="flex items-center gap-2">
                   <Award className="w-3.5 h-3.5 text-[#0071e3] flex-shrink-0" />
                   <span className="font-semibold text-slate-900 dark:text-white">{c.name}</span>
@@ -949,7 +976,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, templateId
 
   return (
     <div
-      id="resume-document"
+      id={documentId}
       className="resume-print-container bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-8 sm:p-12 shadow-sm rounded-xl border border-slate-200 dark:border-slate-800 min-h-[1050px] font-sans max-w-4xl mx-auto transition-colors duration-200 print:bg-white print:text-black print:border-none print:shadow-none print:p-0"
     >
       {templateId === 'modern' && renderModernTemplate()}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { KnowledgeItem, KnowledgeCategory, KnowledgeDifficulty, KnowledgeBook } from '../../types/knowledge';
-import { LeetBookReader } from '../LeetBookReader';
+import { showAppMessage } from '../common/AppFeedback';
+import { listPublishedBooks } from '../../services/knowledgePublishingService';
 import {
   BookOpen,
   Search,
@@ -24,6 +25,8 @@ import {
   BookMarked,
   X
 } from 'lucide-react';
+
+const LeetBookReader = React.lazy(() => import('../LeetBookReader').then(module => ({ default: module.LeetBookReader })));
 
 interface KnowledgeBaseProps {
   items: KnowledgeItem[];
@@ -63,6 +66,34 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(items[0]?.id || null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [publicBooks, setPublicBooks] = useState<KnowledgeBook[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void listPublishedBooks().then(result => {
+      if (!cancelled) setPublicBooks(result);
+    }).catch(error => console.warn('Failed to load published knowledge books:', error));
+    return () => { cancelled = true; };
+  }, [books]);
+
+  const combinedBooks = useMemo(() => {
+    const localShareIds = new Set(books.map(book => book.shareId).filter(Boolean));
+    const localIds = new Set(books.map(book => book.id));
+    return [...books, ...publicBooks.filter(book => !localIds.has(book.id) && (!book.shareId || !localShareIds.has(book.shareId)))];
+  }, [books, publicBooks]);
+
+  const saveReaderBooks = (next: KnowledgeBook[]) => {
+    const localIds = new Set(books.map(book => book.id));
+    const remoteIds = new Set(publicBooks.map(book => book.id));
+    const nextLocal = next.filter(book => localIds.has(book.id) || (!remoteIds.has(book.id) && book.ownership !== 'community'));
+    publicBooks.forEach(publicBook => {
+      const changed = next.find(book => book.id === publicBook.id);
+      if (changed?.isSubscribed && !nextLocal.some(book => book.id === changed.id || (book.shareId && book.shareId === changed.shareId))) {
+        nextLocal.push({ ...changed, ownership: 'subscribed' });
+      }
+    });
+    onSaveBooks(nextLocal);
+  };
 
   // Add Custom Item Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -115,7 +146,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
   const handleAddNewItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newSummary.trim()) {
-      alert('请填写标题和考点提要');
+      showAppMessage('请填写标题和考点提要。', 'warning');
       return;
     }
 
@@ -222,17 +253,32 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({
         </div>
 
         <span className="text-xs text-slate-400 dark:text-slate-500 font-mono hidden sm:inline-block pr-3">
-          {viewMode === 'leetbook' ? `共 ${books.length} 本专栏书籍` : `共 ${filtered.length} 条闪卡`}
+          {viewMode === 'leetbook' ? `共 ${combinedBooks.length} 本专栏书籍` : `共 ${filtered.length} 条闪卡`}
         </span>
       </div>
 
       {/* View Content */}
       {viewMode === 'leetbook' ? (
+        <React.Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900">正在加载专栏阅读器…</div>}>
         <LeetBookReader
-          books={books}
-          onSaveBooks={onSaveBooks}
+          books={combinedBooks}
+          onSaveBooks={saveReaderBooks}
           onOpenJdRecommender={onOpenJdRecommender}
+          onAddFlashcard={(title, content, tags, category) => onUpdateItems([{
+            id: `k-reading-${Date.now()}`,
+            title,
+            category,
+            difficulty: 'foundation',
+            tags: tags.length ? tags : ['阅读摘录'],
+            summary: content,
+            underlyingPrinciples: content,
+            modelAnswer: content,
+            isBookmarked: true,
+            isMastered: false,
+            customAdded: true,
+          }, ...items])}
         />
+        </React.Suspense>
       ) : (
         <>
           {/* Filter and Search Bar */}

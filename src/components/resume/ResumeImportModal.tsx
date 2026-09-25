@@ -2,8 +2,9 @@ import React, { useState, useRef } from 'react';
 import { ResumeData } from '../../types/resume';
 import { scanUploadedFile, SecurityScanResult } from '../../utils/security';
 import { parseResumeWithAi } from '../../services/geminiService';
+import { extractPdfText } from '../../utils/pdf';
 import {
-  Upload,
+  FileInput,
   FileText,
   ShieldCheck,
   AlertTriangle,
@@ -14,7 +15,10 @@ import {
   UserCheck,
   Briefcase,
   Code2,
-  GraduationCap
+  GraduationCap,
+  ClipboardPaste,
+  FolderOpen,
+  X
 } from 'lucide-react';
 
 interface ResumeImportModalProps {
@@ -45,6 +49,10 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
   if (!isOpen) return null;
 
   const handleFileSelect = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg('文件超过 10MB 限制，请压缩或换用文本版简历。');
+      return;
+    }
     setSelectedFile(file);
     setErrorMsg(null);
     setParsedPreview(null);
@@ -63,8 +71,21 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
 
       // 2. Read content safely
       let textContent = '';
-      if (file.name.endsWith('.json')) {
-        textContent = await file.text();
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith('.pdf')) {
+        textContent = await extractPdfText(file);
+      } else if (lowerName.endsWith('.json')) {
+        const raw = await file.text();
+        const decoded = JSON.parse(raw);
+        const sharedResume = decoded?.format === 'resume-pilot.resume'
+          ? decoded.resume
+          : decoded;
+        if (sharedResume?.personalInfo && Array.isArray(sharedResume?.workExperience)) {
+          setParsedPreview(sharedResume as ResumeData);
+          setIsParsing(false);
+          return;
+        }
+        textContent = raw;
       } else {
         textContent = scan.sanitizedContent || (await file.text());
       }
@@ -78,7 +99,11 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
       setIsParsing(true);
       const parsed = await parseResumeWithAi(
         textContent,
-        file.name.endsWith('.json') ? 'application/json' : 'text/markdown'
+        lowerName.endsWith('.json')
+          ? 'application/json'
+          : lowerName.endsWith('.pdf')
+            ? 'application/pdf-extracted-text'
+            : 'text/markdown'
       );
       setParsedPreview(parsed);
       setIsParsing(false);
@@ -130,18 +155,18 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 dark:bg-blue-950/80 text-[#0071e3] dark:text-blue-300 rounded-xl">
-              <Upload className="w-5 h-5" />
+              <FileInput className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">智能简历导入与结构化重构</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">支持 PDF/Word文本、Markdown、JSON 及格式安全排毒扫描</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">支持 PDF、Markdown、TXT 和 Resume Pilot 共享包</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -158,7 +183,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                📂 导入已有文件 (MD / TXT / JSON)
+                <span className="inline-flex items-center justify-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" />导入文件</span>
               </button>
               <button
                 onClick={() => { setActiveTab('paste'); resetState(); }}
@@ -168,7 +193,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                📝 直接粘贴简历正文 / 格式文本
+                <span className="inline-flex items-center justify-center gap-1.5"><ClipboardPaste className="w-3.5 h-3.5" />粘贴简历正文</span>
               </button>
             </div>
           )}
@@ -203,7 +228,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
                     点击选择或拖拽简历文件到此处
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    支持 .md, .txt, .json, .docx文本导出 (最大 10MB)
+                    支持 PDF、Markdown、TXT 与 Resume Pilot 共享 JSON（最大 10MB）
                   </div>
                 </div>
                 <span className="px-3 py-1 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-[#0071e3] dark:text-blue-300 rounded-lg text-xs font-semibold shadow-2xs">
@@ -212,7 +237,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".md,.txt,.json,.docx,.pdf"
+                  accept=".md,.txt,.json,.pdf"
                   className="hidden"
                   onChange={e => {
                     if (e.target.files && e.target.files[0]) {

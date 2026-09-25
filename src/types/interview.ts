@@ -30,6 +30,8 @@ export interface MediaAttachment {
   sizeBytes?: number;
   size?: number;
   blobId?: string;
+  cloudObjectPath?: string;
+  cloudSyncedAt?: string;
   dataUrl?: string;              // Base64 or Blob URL for playback
   durationSec?: number;
 }

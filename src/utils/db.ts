@@ -1,20 +1,18 @@
 import { ResumeData } from '../types/resume';
 import { JobApplication } from '../types/job';
 import { InterviewRecord } from '../types/interview';
-import { DEFAULT_RESUME, DEFAULT_TEST_AVATAR } from '../data/defaultResume';
-import { INITIAL_JOB_APPLICATIONS, INITIAL_INTERVIEW_RECORDS } from '../data/mockInterviews';
+import { DEFAULT_RESUME } from '../data/defaultResume';
 
 import { CrossInterviewDiagnosticReport } from '../types/diagnostic';
 import { KnowledgeItem, KnowledgeBook } from '../types/knowledge';
 import { WorkDailyLog } from '../types/journal';
-import { DEFAULT_LEETBOOKS } from '../data/defaultBooks';
-import { INITIAL_WORK_DAILY_LOGS } from '../data/defaultJournals';
-import { INITIAL_KNOWLEDGE_BASE } from '../data/knowledgeBaseData';
 import { AiModelProfile, PROVIDER_CONFIGS } from '../types/aiProvider';
 import { encryptApiKey, decryptApiKey } from './crypto';
 import { auth } from '../services/firebase';
 
 const RESUME_KEY = 'ai_resume_data_v2';
+const RESUME_LIBRARY_KEY = 'ai_resume_library_v1';
+const ACTIVE_RESUME_ID_KEY = 'ai_active_resume_id_v1';
 const JOBS_KEY = 'ai_jobs_data_v2';
 const INTERVIEWS_KEY = 'ai_interviews_data_v2';
 const DIAGNOSTIC_KEY = 'ai_diagnostic_report_v2';
@@ -24,11 +22,20 @@ const KNOWLEDGE_KEY = 'ai_knowledge_items_v1';
 const LEETBOOKS_KEY = 'ai_leetbooks_data_v1';
 const WORK_JOURNAL_KEY = 'ai_work_daily_logs_v1';
 
+const isShowcaseResume = (id?: string) => id === 'resume-default-001';
+const isShowcaseJob = (id?: string) => !!id && /^job-[1-6]$/.test(id);
+const isShowcaseInterview = (id?: string) => !!id && /^iv-00[1-3]$/.test(id);
+const isShowcaseKnowledge = (id?: string) => !!id && /^kb-(?:fe|be|algo|sys|ai|hr)-\d+$/i.test(id);
+const isShowcaseBook = (id?: string) => !!id && ['book-concurrency-arch', 'book-frontend-perf', 'book-ai-agent-fullstack'].includes(id);
+const isShowcaseLog = (id?: string) => !!id && /^log-[1-3]$/.test(id);
+
 export const WORKSPACE_DATA_CHANGED_EVENT = 'resume-pilot-workspace-data-changed';
 
 export interface WorkspaceSnapshot {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   resume: ResumeData;
+  resumes: ResumeData[];
+  activeResumeId: string;
   jobs: JobApplication[];
   interviews: InterviewRecord[];
   diagnosticReport: CrossInterviewDiagnosticReport | null;
@@ -40,6 +47,8 @@ export interface WorkspaceSnapshot {
 
 const WORKSPACE_STORAGE_KEYS = [
   RESUME_KEY,
+  RESUME_LIBRARY_KEY,
+  ACTIVE_RESUME_ID_KEY,
   JOBS_KEY,
   INTERVIEWS_KEY,
   DIAGNOSTIC_KEY,
@@ -164,10 +173,7 @@ export function loadResumeData(fallback?: ResumeData): ResumeData {
     const raw = readScopedStorage(RESUME_KEY);
     if (raw) {
       const parsed: ResumeData = JSON.parse(raw);
-      if (parsed.personalInfo && !parsed.personalInfo.avatarUrl) {
-        parsed.personalInfo.avatarUrl = DEFAULT_TEST_AVATAR;
-      }
-      return parsed;
+      if (!isShowcaseResume(parsed.id)) return parsed;
     }
   } catch {
     // fallback
@@ -186,11 +192,11 @@ export function saveResumeData(data: ResumeData): void {
 export function loadJobApplications(): JobApplication[] {
   try {
     const raw = readScopedStorage(JOBS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return (JSON.parse(raw) as JobApplication[]).filter(item => !isShowcaseJob(item.id));
   } catch {
     // fallback
   }
-  return INITIAL_JOB_APPLICATIONS;
+  return [];
 }
 
 export function saveJobApplications(jobs: JobApplication[]): void {
@@ -204,11 +210,11 @@ export function saveJobApplications(jobs: JobApplication[]): void {
 export function loadInterviewRecords(): InterviewRecord[] {
   try {
     const raw = readScopedStorage(INTERVIEWS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return (JSON.parse(raw) as InterviewRecord[]).filter(item => !isShowcaseInterview(item.id));
   } catch {
     // fallback
   }
-  return INITIAL_INTERVIEW_RECORDS;
+  return [];
 }
 
 export function saveInterviewRecords(records: InterviewRecord[]): void {
@@ -262,9 +268,10 @@ export function loadAiModelProfiles(): AiModelProfile[] {
           const isLegacySystemDefault = profile.id === 'profile-gemini-default'
             && profile.provider === 'gemini'
             && ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].includes(profile.modelName);
+          const normalized = { ...profile, thinkingEffort: profile.thinkingEffort || 'default' } as AiModelProfile;
           return isLegacySystemDefault
-            ? { ...profile, modelName: PROVIDER_CONFIGS.gemini.defaultModel }
-            : profile;
+            ? { ...normalized, modelName: PROVIDER_CONFIGS.gemini.defaultModel }
+            : normalized;
         });
       }
     }
@@ -280,6 +287,7 @@ export function loadAiModelProfiles(): AiModelProfile[] {
       name: 'Google Gemini (默认配置)',
       provider: 'gemini',
       modelName: PROVIDER_CONFIGS.gemini.defaultModel,
+      thinkingEffort: 'default',
       encryptedApiKey: legacyKey.startsWith('SECURE_VAULT_V2::') ? legacyKey : (legacyKey ? encryptApiKey(legacyKey) : ''),
       isActive: true,
       createdAt: new Date().toISOString(),
@@ -320,7 +328,7 @@ export function setActiveAiProfile(id: string): void {
 export function loadDiagnosticReport(): CrossInterviewDiagnosticReport | null {
   try {
     const raw = readScopedStorage(DIAGNOSTIC_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return JSON.parse(raw) as CrossInterviewDiagnosticReport;
   } catch {
     // fallback
   }
@@ -335,10 +343,10 @@ export function saveDiagnosticReport(report: CrossInterviewDiagnosticReport): vo
   }
 }
 
-export function loadKnowledgeItems(fallback: KnowledgeItem[]): KnowledgeItem[] {
+export function loadKnowledgeItems(fallback: KnowledgeItem[] = []): KnowledgeItem[] {
   try {
     const raw = readScopedStorage(KNOWLEDGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return (JSON.parse(raw) as KnowledgeItem[]).filter(item => !isShowcaseKnowledge(item.id));
   } catch {
     // fallback
   }
@@ -353,10 +361,10 @@ export function saveKnowledgeItems(items: KnowledgeItem[]): void {
   }
 }
 
-export function loadLeetBooks(fallback: KnowledgeBook[] = DEFAULT_LEETBOOKS): KnowledgeBook[] {
+export function loadLeetBooks(fallback: KnowledgeBook[] = []): KnowledgeBook[] {
   try {
     const raw = readScopedStorage(LEETBOOKS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return (JSON.parse(raw) as KnowledgeBook[]).filter(item => !isShowcaseBook(item.id));
   } catch {
     // fallback
   }
@@ -371,10 +379,10 @@ export function saveLeetBooks(books: KnowledgeBook[]): void {
   }
 }
 
-export function loadWorkDailyLogs(fallback: WorkDailyLog[] = INITIAL_WORK_DAILY_LOGS): WorkDailyLog[] {
+export function loadWorkDailyLogs(fallback: WorkDailyLog[] = []): WorkDailyLog[] {
   try {
     const raw = readScopedStorage(WORK_JOURNAL_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return (JSON.parse(raw) as WorkDailyLog[]).filter(item => !isShowcaseLog(item.id));
   } catch {
     // fallback
   }
@@ -389,6 +397,52 @@ export function saveWorkDailyLogs(logs: WorkDailyLog[]): void {
   }
 }
 
+function deduplicateResumeLibrary(resumes: ResumeData[]): ResumeData[] {
+  const byId = new Map<string, ResumeData>();
+  resumes.forEach((resume, index) => {
+    if (!resume || typeof resume !== 'object') return;
+    const id = typeof resume.id === 'string' && resume.id.trim()
+      ? resume.id
+      : `resume-recovered-${index}`;
+    byId.set(id, { ...resume, id });
+  });
+  return [...byId.values()];
+}
+
+export function loadResumeLibrary(fallback: ResumeData = DEFAULT_RESUME): ResumeData[] {
+  try {
+    const raw = readScopedStorage(RESUME_LIBRARY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const normalized = deduplicateResumeLibrary(parsed).filter(resume => !isShowcaseResume(resume.id));
+        if (normalized.length !== parsed.length) saveResumeLibrary(normalized);
+        if (normalized.length > 0) return normalized;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load resume library:', err);
+  }
+  return [loadResumeData(fallback)];
+}
+
+export function saveResumeLibrary(resumes: ResumeData[]): void {
+  try {
+    writeScopedStorage(RESUME_LIBRARY_KEY, JSON.stringify(deduplicateResumeLibrary(resumes)));
+  } catch (err) {
+    console.warn('Failed to save resume library:', err);
+  }
+}
+
+export function loadActiveResumeId(resumes: ResumeData[] = loadResumeLibrary()): string {
+  const stored = readScopedStorage(ACTIVE_RESUME_ID_KEY);
+  return resumes.some(item => item.id === stored) ? stored! : resumes[0].id;
+}
+
+export function saveActiveResumeId(id: string): void {
+  writeScopedStorage(ACTIVE_RESUME_ID_KEY, id);
+}
+
 export function hasLocalWorkspaceData(): boolean {
   return WORKSPACE_STORAGE_KEYS.some(key => (
     localStorage.getItem(scopedStorageKey(key)) !== null || localStorage.getItem(key) !== null
@@ -400,13 +454,18 @@ function withoutCloudApiKeys(profiles: AiModelProfile[]): AiModelProfile[] {
 }
 
 export function createLocalWorkspaceSnapshot(): WorkspaceSnapshot {
+  const resumes = loadResumeLibrary();
+  const activeResumeId = loadActiveResumeId(resumes);
+  const resume = resumes.find(item => item.id === activeResumeId) || loadResumeData();
   return {
-    schemaVersion: 1,
-    resume: loadResumeData(),
+    schemaVersion: 2,
+    resume,
+    resumes,
+    activeResumeId,
     jobs: loadJobApplications(),
     interviews: loadInterviewRecords(),
     diagnosticReport: loadDiagnosticReport(),
-    knowledgeItems: loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE),
+    knowledgeItems: loadKnowledgeItems(),
     books: loadLeetBooks(),
     workLogs: loadWorkDailyLogs(),
     aiProfiles: withoutCloudApiKeys(loadAiModelProfiles()),
@@ -420,19 +479,30 @@ export function applyCloudWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>
     ...profile,
     encryptedApiKey: localKeys.get(profile.id) || '',
   }));
+  const legacyResume = snapshot.resume || loadResumeData();
+  const incomingResumes = snapshot.resumes?.length ? snapshot.resumes : [legacyResume];
+  const resumes = deduplicateResumeLibrary(incomingResumes.filter(resume => !isShowcaseResume(resume.id)));
+  if (!resumes.length) resumes.push(structuredClone(DEFAULT_RESUME));
+  const activeResumeId = resumes.some(item => item.id === snapshot.activeResumeId)
+    ? snapshot.activeResumeId!
+    : resumes[0].id;
   const normalized: WorkspaceSnapshot = {
-    schemaVersion: 1,
-    resume: snapshot.resume || loadResumeData(),
-    jobs: snapshot.jobs || loadJobApplications(),
-    interviews: snapshot.interviews || loadInterviewRecords(),
+    schemaVersion: 2,
+    resume: resumes.find(item => item.id === activeResumeId) || resumes[0],
+    resumes,
+    activeResumeId,
+    jobs: (snapshot.jobs ?? loadJobApplications()).filter(job => !isShowcaseJob(job.id)),
+    interviews: (snapshot.interviews ?? loadInterviewRecords()).filter(interview => !isShowcaseInterview(interview.id)),
     diagnosticReport: snapshot.diagnosticReport ?? null,
-    knowledgeItems: snapshot.knowledgeItems || loadKnowledgeItems(INITIAL_KNOWLEDGE_BASE),
-    books: snapshot.books || loadLeetBooks(),
-    workLogs: snapshot.workLogs || loadWorkDailyLogs(),
+    knowledgeItems: (snapshot.knowledgeItems ?? loadKnowledgeItems()).filter(item => !isShowcaseKnowledge(item.id)),
+    books: (snapshot.books ?? loadLeetBooks()).filter(book => !isShowcaseBook(book.id)),
+    workLogs: (snapshot.workLogs ?? loadWorkDailyLogs()).filter(log => !isShowcaseLog(log.id)),
     aiProfiles: mergedProfiles,
   };
 
   saveResumeData(normalized.resume);
+  saveResumeLibrary(normalized.resumes);
+  saveActiveResumeId(normalized.activeResumeId);
   saveJobApplications(normalized.jobs);
   saveInterviewRecords(normalized.interviews);
   if (normalized.diagnosticReport) saveDiagnosticReport(normalized.diagnosticReport);
